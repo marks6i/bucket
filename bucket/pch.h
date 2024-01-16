@@ -16,7 +16,9 @@
 
 #include "../include/my_ctime.h"
 
+#if BUCKET_USING_GTEST_
 #include "gtest/gtest.h"
+#endif // BUCKET_USING_GTEST_
 
 #if !defined(_MSC_VER)
 #pragma GCC diagnostic ignored "-Wwrite-strings"
