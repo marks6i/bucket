@@ -12,9 +12,7 @@
 #include <cstdio>
 #include <iostream>
 #include <vector>
-#include <ctime>
-
-#include "../include/my_ctime.h"
+#include <mutex>
 
 #if BUCKET_USING_GTEST_
 #include "gtest/gtest.h"
