@@ -57,38 +57,38 @@ inline std::time_t make_time(int year, int month, int day, int hour, int minute,
 
 // Glossary only works because I've done a "plus 1" to the char value to create the range. This would
 // work if the char whose bucket we were trying to create was equal to maximum char value.
-template <typename _V, typename _P = std::less<std::basic_string<_V>>>
+template <typename _T, typename _V = basic_string<_T>, typename _P = std::less<_V>>
 struct Glossary : public masutils::buckets<
+	_T,
 	_V,
-	std::basic_string<_V>,
-	masutils::bucket_traits<_V>,
-	masutils::unique_bucket_value_traits<std::basic_string<_V>, std::set<std::basic_string<_V>, _P> > > {
+	masutils::bucket_traits<_T>,
+	masutils::unique_bucket_value_traits<_V, std::set<_V, _P> > > {
 
 	Glossary() {};
 
-	Glossary(_V low, _V high) : masutils::buckets<
+	Glossary(_T low, _T high) : masutils::buckets<
+		_T,
 		_V,
-		std::basic_string<_V>,
-		masutils::bucket_traits<_V>,
-		masutils::unique_bucket_value_traits<std::basic_string<_V>, std::set<std::basic_string<_V>, _P> > > (
+		masutils::bucket_traits<_T>,
+		masutils::unique_bucket_value_traits<_V, std::set<_V, _P> > > (
 				std::toupper(low),
-			static_cast<_V>(std::toupper(high) + 1)
+			static_cast<_T>(std::toupper(high) + 1)
 		) {};
 
-	void add(std::basic_string<_V> word) {
+	void add(_V word) {
 		this->spread(
 			std::toupper(word[0]),
-			static_cast<_V>(std::toupper(word[0]) + 1), word);
+			static_cast<_T>(std::toupper(word[0]) + 1), word);
 	}
 };
 
-template <class _V>
+template <class _T>
 struct caseInsensitiveLess {
-	bool operator()(const _V& lhs, const _V& rhs) const
+	bool operator()(const _T& lhs, const _T& rhs) const
 	{
-		_V::size_type xs(lhs.size());
-		_V::size_type ys(rhs.size());
-		_V::size_type bound(0);
+		_T::size_type xs(lhs.size());
+		_T::size_type ys(rhs.size());
+		_T::size_type bound(0);
 
 		if (xs < ys)
 			bound = xs;
@@ -96,7 +96,7 @@ struct caseInsensitiveLess {
 			bound = ys;
 
 		{
-			_V::size_type i = 0;
+			_T::size_type i = 0;
 			for (auto it1 = lhs.begin(), it2 = rhs.begin(); i < bound; ++i, ++it1, ++it2)
 			{
 				if (std::tolower(*it1) < std::tolower(*it2))

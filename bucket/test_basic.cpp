@@ -39,6 +39,7 @@ TEST(TestCaseName, TestName) {
 #define _TEST9
 #define _TEST10
 #define _TEST11
+#define _TEST12
 
 
 template<class _E>
@@ -376,7 +377,7 @@ void test10() {
 
 void test11() {
 #ifdef _TEST11
-	Glossary<char, caseInsensitiveLess<basic_string<char>>> bucket; // unconstrained bucket
+	Glossary<char, basic_string<char>, caseInsensitiveLess<basic_string<char>>> bucket; // unconstrained bucket
 
 	cout << "============ test11 ============" << endl;
 
@@ -386,6 +387,20 @@ void test11() {
 
 	printBucket(bucket);
 #endif // #ifdef _TEST11
+}
+
+void test12() {
+#ifdef _TEST12
+	Glossary<char, char*, caseInsensitiveLess<basic_string<char>>> bucket; // unconstrained bucket
+
+	cout << "============ test12 ============" << endl;
+
+	for (auto it = words.begin(); it != words.end(); ++it) {
+		bucket.add(*it);
+	}
+
+	printBucket(bucket);
+#endif // #ifdef _TEST12
 }
 
 int main()
@@ -403,6 +418,7 @@ int main()
 	test9();
 	test10();
 	test11();
+	test12();
 
 	cout << endl << "end timestamp: " << time_stamp() << endl;
 
