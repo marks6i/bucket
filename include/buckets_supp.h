@@ -21,6 +21,14 @@
 #error Must include buckets.h first
 #endif
 
+#ifndef VECTOR_H_
+#include <vector>
+#endif // VECTOR_H_
+
+#ifndef SET_H_
+#include <set>
+#endif // SET_H_
+
 namespace masutils {
 
 template<class _E, class _C = std::vector<_E> >
@@ -76,6 +84,31 @@ protected:
 	~bucket_value_add_traits() {}
 };
 
-}
+template<class _E, class _C = std::set<_E> >
+struct unique_bucket_value_traits {
+
+	typedef _E  value_type;
+	typedef _C  value_container;
+
+	typedef typename value_container::const_iterator const_iterator;
+
+	static void add(value_container& _X, const value_type& _Y)
+	{
+		_X.insert(_Y);
+	}
+	static void append(value_container& _X, const value_container& _Y)
+	{
+		for (const_iterator p = _Y.begin();
+			p != _Y.end();
+			++p)
+		{
+			add(_X, *p);
+		}
+	}
+protected:
+	~unique_bucket_value_traits() {}
+};
+
+} // namespace masutils
 
 #endif // MASUTILS_BUCKETS_SUPP_H_

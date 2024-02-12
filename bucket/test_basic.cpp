@@ -3,7 +3,7 @@
 #include "../include/buckets.h"
 #include "../include/buckets_supp.h"
 
-#include "../include/test_supp.h"
+#include "../include/test/support.h"
 
 using namespace std;
 using namespace masutils;
@@ -16,26 +16,6 @@ using DescendCharBucket = buckets<int, char*, bucket_traits_descending<int>>;
 using MostRecentBucket  = buckets<int, char*, bucket_traits<int>, most_recent_bucket_value_traits<char*>>;
 using AddIntBucket      = buckets<int, int, bucket_traits<int>, bucket_value_add_traits<int>>;
 using AddDoubleBucket   = buckets<int, double, bucket_traits<int>, bucket_value_add_traits<double>>;
-
-// Glossary only works because I've done a "plus 1" to the char value to create the range. This would
-// work if the char whose bucket we were trying to create was equal to maximum char value.
-template <class _V>
-struct Glossary 
-	: public buckets<char, _V> {
-
-	using value_type = _V;
-
-	// should have been able to just use buckets(...) in constructors below instead of buckets<char, _V>(...)
-	// this appears to be a bug in older versions of GCC
-	Glossary() : buckets() {};
-	Glossary(char low, char high) : buckets<char, _V>(
-		static_cast<unsigned char>(toupper(low)), 
-		static_cast<unsigned char>(toupper(high)) + 1) {};
-
-	void add(value_type word) { this->spread(
-		static_cast<unsigned char>(toupper(word[0])), 
-		static_cast<unsigned char>(toupper(word[0])) + 1, word); }
-};
 
 #if BUCKET_USING_GTEST_
 // Converting this to Google Test
@@ -90,10 +70,10 @@ void printBucket(_E& bucket)
 }
 
 #ifndef _GENERIC_PRINTING
-template <class _V>
-void printBucket(Glossary<_V>& bucket)
+template <class _VT, class _V>
+void printBucket(Glossary<_VT, _V>& bucket)
 {
-	using value_type = Glossary<_V>;
+	using value_type = Glossary<_VT, _V>;
 
 	cout << "----void printBucket(Glossary& bucket)" << endl;
 
@@ -167,9 +147,10 @@ const std::vector<char *> words = {
 	"orange",
 	"pineapple",
 	"mango",
-	"apple",
 	"apricot",
-	"banana"
+	"apple",
+	"banana",
+	"aPricot"
 };
 
 // ======================= begin tests ================================
@@ -367,7 +348,7 @@ void test8() {
 
 void test9() {
 #ifdef _TEST9
-	Glossary<std::string> bucket; // unconstrained bucket
+	Glossary<char> bucket; // unconstrained bucket
 
 	cout << "============ test9 ============" << endl;
 
@@ -381,7 +362,7 @@ void test9() {
 
 void test10() {
 #ifdef _TEST10
-	Glossary<std::string> bucket('M', 'P'); // constrained bucket
+	Glossary<char> bucket('M', 'P'); // constrained bucket
 
 	cout << "============ test10 ============" << endl;
 
@@ -395,7 +376,7 @@ void test10() {
 
 void test11() {
 #ifdef _TEST11
-	Glossary<const char*> bucket; // unconstrained bucket
+	Glossary<char, caseInsensitiveLess<basic_string<char>>> bucket; // unconstrained bucket
 
 	cout << "============ test11 ============" << endl;
 
