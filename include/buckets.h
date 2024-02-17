@@ -20,29 +20,13 @@
 
 #include <functional>
 #include <list>
+#include <stdexcept>
+
 #include "triplet.h"
+#include "compare_traits.h"
+
 
 namespace masutils {
-
-template<class _E>
-struct bucket_traits {
-
-    typedef _E index_type;
-
-    static bool eq(const _E& _X, const _E& _Y) { return (_X == _Y); }
-    static bool lt(const _E& _X, const _E& _Y) { return (_X <  _Y); }
-    static void assign  (_E& _X, const _E& _Y) {         _X =  _Y;  }
-protected:
-	~bucket_traits() {}
-};
-
-template<class _E>
-struct bucket_traits_descending : public bucket_traits<_E> {
-
-    static bool lt(const _E& _X, const _E& _Y) { return (_Y < _X); }
-protected:
-	~bucket_traits_descending() {}
-};
 
 template<class _E, class _C = std::list<_E> >
 struct bucket_value_traits {
@@ -60,7 +44,7 @@ protected:
 
 template <class indices,
           class values,
-          class traits = bucket_traits<indices>,
+          class traits = compare_traits<indices>,
           class container = bucket_value_traits<values> >
 class buckets
 {
@@ -97,7 +81,11 @@ public:
     const_reverse_iterator rend() const
                                     { return const_reverse_iterator(_buckets.rend()); }
 
-    int size() const                { return _buckets.size(); }
+    std::size_t size() const        { return _buckets.size(); }
+    bool empty() const              { return _buckets.empty(); }
+    index_type low() const          { return _low; }
+    index_type high() const         { return _high; }
+    bool constrained() const        { return _constrained; }
 
 private:
     buckets(const mytype&);
@@ -119,6 +107,7 @@ public:
 
     ~buckets() {}
 
+protected:
     bool splice(index_type low, index_type high, iterator& begin, iterator& end)
     {
         index_type _l, _h;
@@ -337,6 +326,7 @@ public:
         return added_to_bucket;
     }
 
+public:
     int spread(index_type low, index_type high, value_type value)
     {
         value_container _container;
@@ -359,12 +349,10 @@ public:
     {
         int added_to_bucket = 0;
 
-        for (iterator p = aBucket.begin(); p != aBucket.end(); ++p)
+        for (const_iterator p = aBucket.begin(); p != aBucket.end(); ++p)
         {
-            triplet_type& triplet = *p;
-            added_to_bucket += spread(triplet.first,
-                                      triplet.second,
-                                      triplet.third);
+            const triplet_type& triplet = *p;
+            added_to_bucket += spread(triplet);
         }
 
         return added_to_bucket;
@@ -374,12 +362,10 @@ public:
     {
         int added_to_bucket = 0;
 
-        for (iterator p = aBucket.begin(); p != aBucket.end(); ++p)
+        for (const_iterator p = aBucket.begin(); p != aBucket.end(); ++p)
         {
-            triplet_type& triplet = *p;
-            added_to_bucket += cover(triplet.first,
-                                     triplet.second,
-                                     triplet.third);
+            const triplet_type& triplet = *p;
+            added_to_bucket += cover(triplet);
         }
 
         return added_to_bucket;

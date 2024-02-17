@@ -2,8 +2,7 @@
 // pch.h
 //
 
-#ifndef PCH_H_
-#define PCH_H_
+#pragma once
 
 // TODO: reference additional headers your program requires here
 
@@ -13,9 +12,13 @@
 #include <iostream>
 #include <vector>
 #include <mutex>
+#include <set>
+#include <ctime>
+#include <list>
+#include <functional>
 
 #if BUCKET_USING_GTEST_
-#include "gtest/gtest.h"
+//#include "gtest/gtest.h"
 #endif // BUCKET_USING_GTEST_
 
 #if !defined(_MSC_VER)
@@ -25,5 +28,3 @@
 #if defined(__MINGW32__) || defined(__MINGW64__)
 #define __MINGW__
 #endif
-
-#endif // PCH_H_

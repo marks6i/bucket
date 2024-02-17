@@ -29,6 +29,14 @@
 #include <set>
 #endif // SET_H_
 
+#ifndef STRING_H_
+#include <string>
+#endif // STRING_H_
+
+#ifndef MASUTILS_OPTIONAL_H_
+#include "optional.h"
+#endif // MASUTILS_OPTIONAL_H_
+
 namespace masutils {
 
 template<class _E, class _C = std::vector<_E> >
@@ -107,6 +115,121 @@ struct unique_bucket_value_traits {
 	}
 protected:
 	~unique_bucket_value_traits() {}
+};
+
+template <class _T>
+struct caseInsensitiveLess {
+	bool operator()(const _T& lhs, const _T& rhs) const
+	{
+		_T::size_type xs(lhs.size());
+		_T::size_type ys(rhs.size());
+		_T::size_type bound(0);
+
+		if (xs < ys)
+			bound = xs;
+		else
+			bound = ys;
+
+		{
+			_T::size_type i = 0;
+			for (auto it1 = lhs.begin(), it2 = rhs.begin(); i < bound; ++i, ++it1, ++it2)
+			{
+				if (std::tolower(*it1) < std::tolower(*it2))
+					return true;
+
+				if (std::tolower(*it2) < std::tolower(*it1))
+					return false;
+			}
+		}
+		return false;
+	}
+};
+
+template<typename _T>
+class bucket_value_wrapper {
+public:
+	bucket_value_wrapper(const _T& _value) : value(_value) {}
+
+	friend std::ostream& operator<<(std::ostream& os, const bucket_value_wrapper& wrapper) {
+		os << wrapper.get();
+		return os;
+	}
+
+	const _T& get() const {
+		return value;
+	}
+
+private:
+	const _T& value;
+};
+
+template <typename CharT, typename Traits, typename Alloc>
+class bucket_value_wrapper<std::basic_string<CharT, Traits, Alloc>> {
+public:
+	bucket_value_wrapper(const std::basic_string<CharT, Traits, Alloc>& _value) : value(_value) {}
+
+	friend std::ostream& operator<<(std::ostream& os, const bucket_value_wrapper<std::basic_string<CharT, Traits, Alloc>>& wrapper) {
+		os << "\"" << wrapper.get() << "\"";
+		return os;
+	}
+
+	std::basic_string<CharT, Traits, Alloc> get() const {
+		return value;
+	}
+
+private:
+	const std::basic_string<CharT, Traits, Alloc>& value;
+};
+
+template <>
+class bucket_value_wrapper<char*> {
+public:
+	bucket_value_wrapper(const char* _value) : value(_value) {}
+
+	friend std::ostream& operator<<(std::ostream& os, const bucket_value_wrapper<char*>& wrapper) {
+		os << "\"" << wrapper.get() << "\"";
+		return os;
+	}
+
+	const std::basic_string<char>& get() const {
+		return value;
+	}
+
+private:
+	const std::basic_string<char> value;
+};
+
+template<typename bucket_type,
+	typename index_wrapper = bucket_value_wrapper<bucket_type::index_type>,
+	typename value_wrapper = bucket_value_wrapper<bucket_type::value_type> >
+class bucket_wrapper {
+public:
+	bucket_wrapper(const bucket_type& _bucket) : bucket(_bucket) {}
+
+	friend std::ostream& operator<<(std::ostream& os, const bucket_wrapper& wrapper) {
+		bool bFirst = true;
+		for (auto it = wrapper.bucket.begin(); it != wrapper.bucket.end(); ++it) {
+			if (!bFirst) {
+				os << "," << std::endl;
+			}
+			os << "{ " << index_wrapper(it->first) << ", " << index_wrapper(it->second) << ", ";
+			os << "{ ";
+			bool bFirst2 = true;
+			for (auto it2 = it->third.begin(); it2 != it->third.end(); ++it2) {
+				if (!bFirst2) {
+					os << ", ";
+				}
+				os << value_wrapper(*it2);
+				bFirst2 = false;
+			}
+			os << " } }";
+			bFirst = false;
+		}
+		return os;
+	}
+
+private:
+	const bucket_type& bucket;
 };
 
 } // namespace masutils

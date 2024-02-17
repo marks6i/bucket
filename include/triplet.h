@@ -17,6 +17,12 @@
 
 namespace masutils {
 
+// This is a simple triplet class that is used to hold three values.  It is used
+// inplace of std::tuple when the number of elements is known and fixed.  It also
+// allow for simple initialization of the elements from an initializer list.
+// This class can go away when there is a fix to the std::tuple class (N4387).
+// This is necessary for C++14 and before.
+
 template <typename _T1, typename _T2, typename _T3>
 struct triplet
 {
