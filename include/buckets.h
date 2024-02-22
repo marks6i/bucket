@@ -36,7 +36,9 @@ struct bucket_value_traits {
 
     static void add   (value_container& _X,  const value_type& _Y)
                         { _X.push_back(_Y); }
-    static void append(value_container& _X,  const value_container& _Y)
+
+    template<class other_value_container>
+    static void append(value_container& _X,  const other_value_container& _Y)
                         { _X.insert(_X.end(), _Y.begin(), _Y.end()); }
 protected:
 	~bucket_value_traits() {}
@@ -45,20 +47,20 @@ protected:
 template <class indices,
           class values,
           class traits = compare_traits<indices>,
-          class container = bucket_value_traits<values> >
+          class container_traits = bucket_value_traits<values> >
 class buckets
 {
 public:
     typedef buckets<indices,
                     values,
                     traits,
-                    container> mytype;
+                    container_traits> mytype;
 
     typedef indices            index_type;
     typedef values             value_type;
 
-    typedef       typename container::value_container value_container;
-    typedef const typename container::value_container const_value_container;
+    typedef       typename container_traits::value_container value_container;
+    typedef const typename container_traits::value_container const_value_container;
     typedef triplet<index_type,
                     index_type,
                     value_container>                  triplet_type;
@@ -280,7 +282,7 @@ protected:
             if (traits::lt(_h,  triplet.first)) break;    // already done...
             value_container& _ocontainer = triplet.third;
             const value_container& _icontainer = _triplet.third;
-            container::append(_ocontainer, _icontainer);
+            container_traits::append(_ocontainer, _icontainer);
             added_to_bucket++;
         }
 
@@ -330,7 +332,7 @@ public:
     int spread(index_type low, index_type high, value_type value)
     {
         value_container _container;
-        container::add(_container, value);
+        container_traits::add(_container, value);
         triplet_type _triplet(low, high, _container);
 
         return spread(_triplet);
@@ -339,13 +341,14 @@ public:
     int cover(index_type low, index_type high, value_type value)
     {
         value_container _container;
-        container::add(_container, value);
+        container_traits::add(_container, value);
         triplet_type _triplet(low, high, _container);
 
         return cover(_triplet);
     }
 
-    int spread(const buckets& aBucket)
+    template<class other_container_traits>
+    int spread(const buckets<indices, values, traits, other_container_traits>& aBucket)
     {
         int added_to_bucket = 0;
 
@@ -358,7 +361,8 @@ public:
         return added_to_bucket;
     }
 
-    int cover(const buckets& aBucket)
+    template<class other_container_traits>
+    int cover(const buckets<indices, values, traits, other_container_traits>& aBucket)
     {
         int added_to_bucket = 0;
 

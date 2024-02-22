@@ -54,7 +54,9 @@ struct most_recent_bucket_value_traits {
 			_X.push_back(_Y);
 		}
 	}
-	static void append(value_container& _X, const value_container& _Y)
+
+	template<typename other_value_container>
+	static void append(value_container& _X, const other_value_container& _Y)
 	{
 		add(_X, _Y.back());
 	}
@@ -79,7 +81,9 @@ struct bucket_value_add_traits {
 			_X.push_back(_Y);
 		}
 	}
-	static void append(value_container& _X, const value_container& _Y)
+
+	template<typename other_value_container>
+	static void append(value_container& _X, const other_value_container& _Y)
 	{
 		for (const_iterator p = _Y.begin();
 			p != _Y.end();
@@ -104,7 +108,9 @@ struct unique_bucket_value_traits {
 	{
 		_X.insert(_Y);
 	}
-	static void append(value_container& _X, const value_container& _Y)
+
+	template<typename other_value_container>
+	static void append(value_container& _X, const other_value_container& _Y)
 	{
 		for (const_iterator p = _Y.begin();
 			p != _Y.end();
