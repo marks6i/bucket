@@ -39,36 +39,36 @@
 
 namespace masutils {
 
-template<class _E, class _C = std::vector<_E> >
+template<class E, class C = std::vector<E> >
 struct most_recent_bucket_value_traits {
 
-	typedef _E  value_type;
-	typedef _C  value_container;
+	typedef E  value_type;
+	typedef C  value_container;
 
-	static void add(value_container& _X, const value_type& _Y)
+	static void add(value_container& x, const value_type& y)
 	{
-		if (_X.size() > 0) {
-			_X.front() = _Y;
+		if (x.size() > 0) {
+			x.front() = y;
 		}
 		else {
-			_X.push_back(_Y);
+			x.push_back(y);
 		}
 	}
 
-	template<typename other_value_container>
-	static void append(value_container& _X, const other_value_container& _Y)
+	template<typename OtherValueContainer>
+	static void append(value_container& x, const OtherValueContainer& y)
 	{
-		add(_X, _Y.back());
+		add(x, y.back());
 	}
 protected:
-	~most_recent_bucket_value_traits() {}
+	~most_recent_bucket_value_traits() = default;
 };
 
-template<class _E, class _C = std::vector<_E> >
+template<class E, class C = std::vector<E> >
 struct bucket_value_add_traits {
 
-	typedef _E  value_type;
-	typedef _C  value_container;
+	typedef E  value_type;
+	typedef C  value_container;
 
 	typedef typename value_container::const_iterator const_iterator;
 
@@ -93,43 +93,43 @@ struct bucket_value_add_traits {
 		}
 	}
 protected:
-	~bucket_value_add_traits() {}
+	~bucket_value_add_traits() = default;
 };
 
-template<class _E, class _C = std::set<_E> >
+template<class E, class C = std::set<E> >
 struct unique_bucket_value_traits {
 
-	typedef _E  value_type;
-	typedef _C  value_container;
+	typedef E  value_type;
+	typedef C  value_container;
 
 	typedef typename value_container::const_iterator const_iterator;
 
-	static void add(value_container& _X, const value_type& _Y)
+	static void add(value_container& x, const value_type& y)
 	{
-		_X.insert(_Y);
+		x.insert(y);
 	}
 
 	template<typename other_value_container>
-	static void append(value_container& _X, const other_value_container& _Y)
+	static void append(value_container& x, const other_value_container& y)
 	{
-		for (const_iterator p = _Y.begin();
-			p != _Y.end();
+		for (const_iterator p = y.begin();
+			p != y.end();
 			++p)
 		{
-			add(_X, *p);
+			add(x, *p);
 		}
 	}
 protected:
-	~unique_bucket_value_traits() {}
+	~unique_bucket_value_traits() = default;
 };
 
-template <class _T>
+template <class T>
 struct caseInsensitiveLess {
-	bool operator()(const _T& lhs, const _T& rhs) const
+	bool operator()(const T& lhs, const T& rhs) const
 	{
-		_T::size_type xs(lhs.size());
-		_T::size_type ys(rhs.size());
-		_T::size_type bound(0);
+		const typename T::size_type xs(lhs.size());
+		const typename T::size_type ys(rhs.size());
+		typename T::size_type bound(0);
 
 		if (xs < ys)
 			bound = xs;
@@ -137,7 +137,7 @@ struct caseInsensitiveLess {
 			bound = ys;
 
 		{
-			_T::size_type i = 0;
+			typename T::size_type i = 0;
 			for (auto it1 = lhs.begin(), it2 = rhs.begin(); i < bound; ++i, ++it1, ++it2)
 			{
 				if (std::tolower(*it1) < std::tolower(*it2))
@@ -151,28 +151,28 @@ struct caseInsensitiveLess {
 	}
 };
 
-template<typename _T>
+template<typename T>
 class bucket_value_wrapper {
 public:
-	bucket_value_wrapper(const _T& _value) : value(_value) {}
+	bucket_value_wrapper(const T& value_) noexcept : value(value_) {}
 
 	friend std::ostream& operator<<(std::ostream& os, const bucket_value_wrapper& wrapper) {
 		os << wrapper.get();
 		return os;
 	}
 
-	const _T& get() const {
+	const T& get() const noexcept {
 		return value;
 	}
 
 private:
-	const _T& value;
+	const T& value;
 };
 
 template <typename CharT, typename Traits, typename Alloc>
 class bucket_value_wrapper<std::basic_string<CharT, Traits, Alloc>> {
 public:
-	bucket_value_wrapper(const std::basic_string<CharT, Traits, Alloc>& _value) : value(_value) {}
+	explicit bucket_value_wrapper(const std::basic_string<CharT, Traits, Alloc>& value_) noexcept : value(value_) {}
 
 	friend std::ostream& operator<<(std::ostream& os, const bucket_value_wrapper<std::basic_string<CharT, Traits, Alloc>>& wrapper) {
 		os << "\"" << wrapper.get() << "\"";
@@ -190,14 +190,14 @@ private:
 template <>
 class bucket_value_wrapper<char*> {
 public:
-	bucket_value_wrapper(const char* _value) : value(_value) {}
+	explicit bucket_value_wrapper(const char* value_) : value(value_) {}
 
 	friend std::ostream& operator<<(std::ostream& os, const bucket_value_wrapper<char*>& wrapper) {
 		os << "\"" << wrapper.get() << "\"";
 		return os;
 	}
 
-	const std::basic_string<char>& get() const {
+	const std::basic_string<char>& get() const noexcept {
 		return value;
 	}
 
@@ -206,30 +206,30 @@ private:
 };
 
 template<typename bucket_type,
-	typename index_wrapper = bucket_value_wrapper<bucket_type::index_type>,
-	typename value_wrapper = bucket_value_wrapper<bucket_type::value_type> >
+	typename IndexWrapper = bucket_value_wrapper<typename bucket_type::index_type>,
+	typename ValueWrapper = bucket_value_wrapper<typename bucket_type::value_type> >
 class bucket_wrapper {
 public:
-	bucket_wrapper(const bucket_type& _bucket) : bucket(_bucket) {}
+	explicit bucket_wrapper(const bucket_type& bucket_) noexcept : bucket(bucket_) {}
 
 	friend std::ostream& operator<<(std::ostream& os, const bucket_wrapper& wrapper) {
-		bool bFirst = true;
+		bool b_first = true;
 		for (auto it = wrapper.bucket.begin(); it != wrapper.bucket.end(); ++it) {
-			if (!bFirst) {
+			if (!b_first) {
 				os << "," << std::endl;
 			}
-			os << "{ " << index_wrapper(it->first) << ", " << index_wrapper(it->second) << ", ";
+			os << "{ " << IndexWrapper(it->first) << ", " << IndexWrapper(it->second) << ", ";
 			os << "{ ";
-			bool bFirst2 = true;
+			bool b_first2 = true;
 			for (auto it2 = it->third.begin(); it2 != it->third.end(); ++it2) {
-				if (!bFirst2) {
+				if (!b_first2) {
 					os << ", ";
 				}
-				os << value_wrapper(*it2);
-				bFirst2 = false;
+				os << ValueWrapper(*it2);
+				b_first2 = false;
 			}
 			os << " } }";
-			bFirst = false;
+			b_first = false;
 		}
 		return os;
 	}

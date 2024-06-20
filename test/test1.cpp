@@ -64,7 +64,7 @@ TEST(BucketTest, ConstrainedWithSpread) {
 	}
 
 	EXPECT_TRUE(bucket.spread(50, 60, 5)) << "spread is within the constrained area; should return true";
-	EXPECT_EQ(bucket.size(), 3) << "bucket in constrained range; size should be 3, one bucket not continguous";
+	EXPECT_EQ(bucket.size(), 3) << "bucket in constrained range; size should be 3, one bucket not contiguous";
 	{
 		mastest::bucket_compare<TestBucket>::instance_list difference_list;
 		EXPECT_TRUE(
@@ -351,7 +351,7 @@ TEST(BucketTest, SpreadBucketIntoAnother) {
 		mastest::bucket_compare<TestBucket>::instance_list difference_list;
 		ASSERT_TRUE(
 			bucket_compare<TestBucket>::equal(unconstrained_bucket, expected_unconstrained_buckets, difference_list)
-		) << "valid setup: unconstrained bucket has 13 buckete" << std::endl << "failed: " << difference_list;
+		) << "valid setup: unconstrained bucket has 13 buckets" << std::endl << "failed: " << difference_list;
 	}
 
 	// ------------------------------------------------------------------------------------------------------------------------
@@ -389,7 +389,7 @@ TEST(BucketTest, SpreadBucketIntoAnother) {
 			mastest::bucket_compare<TestBucket>::instance_list difference_list;
 			EXPECT_TRUE(
 				bucket_compare<TestBucket>::equal(test_bucket, expected_constrained_buckets, difference_list)
-			) << "constrained bucket assigned an unconstrained bucket applies the contraints" << std::endl << "failed: " << difference_list;
+			) << "constrained bucket assigned an unconstrained bucket applies the constraints" << std::endl << "failed: " << difference_list;
 		}
 	}
 

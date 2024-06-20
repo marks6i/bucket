@@ -25,357 +25,489 @@
 #include "triplet.h"
 #include "compare_traits.h"
 
-
-namespace masutils {
-
-template<class _E, class _C = std::list<_E> >
-struct bucket_value_traits {
-
-    typedef _E value_type;
-    typedef _C value_container;
-
-    static void add   (value_container& _X,  const value_type& _Y)
-                        { _X.push_back(_Y); }
-
-    template<class other_value_container>
-    static void append(value_container& _X,  const other_value_container& _Y)
-                        { _X.insert(_X.end(), _Y.begin(), _Y.end()); }
-protected:
-	~bucket_value_traits() {}
-};
-
-template <class indices,
-          class values,
-          class traits = compare_traits<indices>,
-          class container_traits = bucket_value_traits<values> >
-class buckets
+namespace masutils
 {
-public:
-    typedef buckets<indices,
-                    values,
-                    traits,
-                    container_traits> mytype;
+	template <class E_, class C_ = std::list<E_>>
+	struct bucket_value_traits
+	{
+		typedef E_ value_type;
+		typedef C_ value_container;
 
-    typedef indices            index_type;
-    typedef values             value_type;
+		static void add(value_container& x_, const value_type& y_)
+		{
+			x_.push_back(y_);
+		}
 
-    typedef       typename container_traits::value_container value_container;
-    typedef const typename container_traits::value_container const_value_container;
-    typedef triplet<index_type,
-                    index_type,
-                    value_container>                  triplet_type;
-    typedef std::list<triplet_type>                   triplet_list;
+		template <class other_value_container>
+		static void append(value_container& x_, const other_value_container& y_)
+		{
+			x_.insert(x_.end(), y_.begin(), y_.end());
+		}
 
-    typedef typename triplet_list::iterator               iterator;
-    typedef typename triplet_list::const_iterator         const_iterator;
-    typedef typename triplet_list::reverse_iterator       reverse_iterator;
-    typedef typename triplet_list::const_reverse_iterator const_reverse_iterator;
+	protected:
+		~bucket_value_traits() = default;
+	};
 
-    iterator begin()                { return _buckets.begin(); }
-    iterator end()                  { return _buckets.end(); }
-    const_iterator begin() const    { return const_iterator(_buckets.begin()); }
-    const_iterator end() const      { return const_iterator(_buckets.end()); }
+	template <class Indices,
+	          class Values,
+	          class Traits = compare_traits<Indices>,
+	          class ContainerTraits = bucket_value_traits<Values>>
+	class buckets
+	{
+	public:
+		typedef buckets<Indices,
+		                Values,
+		                Traits,
+		                ContainerTraits> mytype;
 
-    reverse_iterator rbegin()       { return _buckets.rbegin(); }
-    reverse_iterator rend()         { return _buckets.rend(); }
-    const_reverse_iterator rbegin() const
-                                    { return const_reverse_iterator(_buckets.rbegin()); }
-    const_reverse_iterator rend() const
-                                    { return const_reverse_iterator(_buckets.rend()); }
+		typedef Indices index_type;
+		typedef Values value_type;
 
-    std::size_t size() const        { return _buckets.size(); }
-    bool empty() const              { return _buckets.empty(); }
-    index_type low() const          { return _low; }
-    index_type high() const         { return _high; }
-    bool constrained() const        { return _constrained; }
+		typedef typename ContainerTraits::value_container value_container;
+		typedef const typename ContainerTraits::value_container const_value_container;
+		typedef triplet<index_type,
+		                index_type,
+		                value_container> triplet_type;
+		typedef std::list<triplet_type> triplet_list;
 
-private:
-    buckets(const mytype&);
-    mytype& operator=(const mytype&);
+		typedef typename triplet_list::iterator iterator;
+		typedef typename triplet_list::const_iterator const_iterator;
+		typedef typename triplet_list::reverse_iterator reverse_iterator;
+		typedef typename triplet_list::const_reverse_iterator const_reverse_iterator;
 
-    triplet_list    _buckets;
-    index_type      _low;
-    index_type      _high;
-    bool            _constrained;
+		iterator begin() { return buckets_.begin(); }
+		iterator end() { return buckets_.end(); }
+		const_iterator begin() const noexcept { return const_iterator(buckets_.begin()); }
+		const_iterator end() const noexcept { return const_iterator(buckets_.end()); }
 
-public:
-    explicit buckets(index_type low, index_type high) : _low(low), _high(high), _constrained(true)
-    {
-        if (traits::lt(_high, _low))
-            throw std::invalid_argument("Arguments not in correct order.");
-    }
+		reverse_iterator rbegin() { return buckets_.rbegin(); }
+		reverse_iterator rend() { return buckets_.rend(); }
 
-    explicit buckets() : _low(0), _high(0), _constrained(false) {}
+		const_reverse_iterator rbegin() const
+		{
+			return const_reverse_iterator(buckets_.rbegin());
+		}
 
-    ~buckets() {}
+		const_reverse_iterator rend() const
+		{
+			return const_reverse_iterator(buckets_.rend());
+		}
 
-protected:
-    bool splice(index_type low, index_type high, iterator& begin, iterator& end)
-    {
-        index_type _l, _h;
-        traits::assign(_l, low);
-        traits::assign(_h, high);
+	private:
+		enum class iteration_direction { forward, reverse };
 
-        if (_constrained)
-        {
-            if (traits::lt(_h, _low) || traits::lt(_high, _l))
-              return false;
+		// Define the range_iterator
+		template <bool IsConst>
+		class range_iterator
+		{
+			typedef typename std::conditional_t<IsConst, const triplet_list, triplet_list> parent_list;
+			typedef typename std::conditional_t<IsConst, const_iterator, iterator> iterator_range;
 
-            // They now must overlap somewhere and their range can now be
-            // constricted to the bounds
-            if (traits::lt(_l,  _low)) traits::assign(_l, _low);
-            if (traits::lt(_high, _h)) traits::assign(_h, _high);
-        }
+			iterator_range current_;
+			iterator_range begin_;
+			iterator_range end_;
+			index_type start_range_;
+			index_type end_range_;
+			iteration_direction direction_;
 
-        index_type _lowest, _highest;
-        traits::assign(_lowest, _l);
-        traits::assign(_highest, _h);
+		private:
+			static bool overlaps(const triplet_type& triplet, index_type start_range, index_type end_range)
+			{
+				return !(triplet.first >= end_range || triplet.second < start_range);
+			}
 
-        // check for overlaps to slice buckets
-        for (iterator p = _buckets.begin(); p != _buckets.end(); ++p)
-        {
-            if (traits::lt(_l, _h) != true)
-                break; // all done since range is null
+		public:
+			range_iterator(parent_list& list, index_type start_range, index_type end_range, iteration_direction direction)
+				: begin_(list.begin()), end_(list.end()), start_range_(start_range), end_range_(end_range), direction_(direction)
+			{
+				if (direction_ == iteration_direction::forward)
+				{
+					current_ = begin_;
+					while (current_ != end_ && !overlaps(*current_, start_range_, end_range_))
+					{
+						++current_;
+					}
+				}
+				else
+				{
+					current_ = end_;
+					if (current_ != begin_)
+					{
+						do
+						{
+							--current_;
+							if (overlaps(*current_, start_range_, end_range_))
+							{
+								++current_;
+								break;
+							}
+						} while (current_ != begin_);
+					}
+				}
+			}
 
-            triplet_type& triplet = *p;
+			range_iterator& operator++()
+			{
+				if (direction_ == iteration_direction::forward)
+				{
+					do
+					{
+						++current_;
+					}
+					while (current_ != end_ && !overlaps(*current_, start_range_, end_range_));
+				}
+				return *this;
+			}
 
-            // step 1: first isolate the part of the new range which occurs
-            // before the current bucket
-            if (traits::lt(_l, triplet.first))
-            {
-                value_container _container;
-                if (traits::lt(triplet.first, _h)) // overlap
-                {
-                    triplet_type _triplet(_l, triplet.first, _container);
-                    _buckets.insert(p, _triplet);
-                    traits::assign(_l, triplet.first);
-                }
-                else // no overlap
-                {
-                    triplet_type _triplet(_l, _h, _container);
-                    _buckets.insert(p, _triplet);
-                    traits::assign(_l, triplet.first);
-                    continue; // it all ends before the current bucket
-                              // so we're done
-                }
-            }
+			range_iterator& operator--()
+			{
+				if (direction_ == iteration_direction::reverse)
+				{
+					if (current_ != begin_)
+					{
+						do
+						{
+							--current_;
+						}
+						while (current_ != begin_ && !overlaps(*current_, start_range_, end_range_));
+					}
+				}
+				return *this;
+			}
 
-            // step 2: now isolate the part remaining which starts at
-            // the current bucket but ends before the the end of the
-            // current bucket
-            if (traits::eq(_l, triplet.first))
-            {
-                if (traits::lt(_h, triplet.second))
-                {
-                    triplet_type _triplet(triplet);
-                    traits::assign(_triplet.second, _h);
-                    _buckets.insert(p, _triplet);
-                    traits::assign(triplet.first, _h);
-                    traits::assign(_l, _h);
-                    continue;
-                }
-                else
-                {   // already have a bucket from _l to triplet.second
-                    // (the current bucket) so adjust _l
-                    traits::assign(_l, triplet.second);
-                }
-            }
+			bool operator==(const range_iterator& other) const { return current_ == other.current_; }
+			bool operator!=(const range_iterator& other) const { return !(*this == other); }
 
-            // step 3: now isolate the part remaining which starts after
-            // the current bucket and create the two buckets which split
-            // the current bucket with _l
-            if (traits::lt(_l, triplet.second))
-            {
-                {   // first create the "start of current bucket to
-                    // _l" bucket
-                    triplet_type _triplet(triplet);
-                    traits::assign(_triplet.second, _l);
-                    _buckets.insert(p, _triplet);
-                    // next change current bucket to be "_l to end of
-                    // current bucket"
-                    traits::assign(triplet.first, _l);
-                }
+			triplet_type& operator*() { return *current_; }
+			triplet_type* operator->() { return &(*current_); }
+		};
 
-                // step 4: now isolate the part remaining which starts at
-                // _l, the new start of the current bucket and check if _h
-                // is less than the end of the current bucket
-                if (traits::lt(_h, triplet.second))
-                {
-                    triplet_type _triplet(triplet);
-                    traits::assign(_triplet.second, _h);
-                    _buckets.insert(p, _triplet);
-                    traits::assign(triplet.first, _h);
-                }
+	public:
 
-                // already have a bucket from _l to triplet.second, adjust
-                // _l to after the current bucket -- triplet.second
-                traits::assign(_l, triplet.second);
-            }
+		// Forward iterators
+		template <bool IsConst>
+		range_iterator<IsConst> beginRange(index_type start_range, index_type end_range)
+		{
+			return range_iterator<IsConst>(buckets_, start_range, end_range, iteration_direction::forward);
+		}
 
-            // at most, only _l (which should be after current bucket) to
-            // _h is remaining, so loop
-        }
+		template <bool IsConst>
+		range_iterator<IsConst> endRange(index_type start_range, index_type end_range)
+		{
+			return range_iterator<IsConst>(buckets_, end_range, end_range, iteration_direction::forward);
+		}
 
-        if (traits::lt(_l, _h)) // either first bucket or after last bucket
-        {
-            value_container _container;
-            triplet_type _triplet(_l, _h, _container);
-            _buckets.push_back(_triplet);
-        }
+		// Reverse iterators
+		template <bool IsConst>
+		range_iterator<IsConst> rbeginRange(index_type start_range, index_type end_range)
+		{
+			return range_iterator<IsConst>(buckets_, start_range, end_range, iteration_direction::reverse);
+		}
 
-        bool bBegin = false, bEnd = false;
+		template <bool IsConst>
+		range_iterator<IsConst> rendRange(index_type start_range, index_type end_range)
+		{
+			return range_iterator<IsConst>(buckets_, end_range, end_range, iteration_direction::reverse);
+		}
 
-        {
-            for (iterator p = _buckets.begin(); p != _buckets.end(); ++p)
-            {
-                triplet_type& triplet = *p;
-                if (traits::eq(_lowest, triplet.first))
-                {
-                    begin = p;
-                    bBegin = true;
-                }
-                if (traits::eq(_highest, triplet.second))
-                {
-                    end = p;
-                    ++end;
-                    bEnd = true;
-                    break;
-                }
-            }
-        }
+		std::size_t size() const { return buckets_.size(); }
+		bool empty() const { return buckets_.empty(); }
+		index_type low() const { return low_; }
+		index_type high() const { return high_; }
+		bool constrained() const { return constrained_; }
 
-        return (bBegin && bEnd);
-    }
+	private:
+		buckets(const mytype&) = default;
+		mytype& operator=(const mytype&) = default;
 
-    int spread(const triplet_type& _triplet)
-    {
-        int added_to_bucket = 0;
+		triplet_list buckets_;
+		index_type low_;
+		index_type high_;
+		bool constrained_;
 
-        iterator begin, end;
-        bool bSpliced = splice(_triplet.first, _triplet.second, begin, end);
+	public:
+		explicit buckets(index_type low, index_type high) : low_(low), high_(high), constrained_(true)
+		{
+			if (Traits::lt(high_, low_))
+				throw std::invalid_argument("Arguments not in correct order.");
+		}
 
-        if (!bSpliced)
-            return added_to_bucket;
+		explicit buckets() noexcept : low_(0), high_(0), constrained_(false)
+		{
+		}
 
-        index_type _l, _h;
-        traits::assign(_l, _triplet.first);
-        traits::assign(_h, _triplet.second);
 
-        if (_constrained)
-        {
-            // The call to splice above catches the condition below so it
-            // is not needed here
+		~buckets() = default; // Destructor
+		buckets& operator=(buckets&&) noexcept = default;
 
-            //if (traits::lt(_h, _low) || traits::lt(_high, _l))
-            //  return false;
+	protected:
+		bool splice(index_type low, index_type high, iterator& begin, iterator& end)
+		{
+			index_type l, h;
+			Traits::assign(l, low);
+			Traits::assign(h, high);
 
-            // They now must overlap somewhere and their range can now be
-            // constricted to the bounds
-            if (traits::lt(_l,  _low)) traits::assign(_l, _low);
-            if (traits::lt(_high, _h)) traits::assign(_h, _high);
-        }
+			if (constrained_)
+			{
+				if (Traits::lt(h, low_) || Traits::lt(high_, l))
+					return false;
 
-        for (iterator p = begin; p != end; ++p)
-        {
-            triplet_type& triplet = *p;
-            if (traits::lt(triplet.second, _l)) continue; // not yet...
-            if (traits::lt(_h,  triplet.first)) break;    // already done...
-            value_container& _ocontainer = triplet.third;
-            const value_container& _icontainer = _triplet.third;
-            container_traits::append(_ocontainer, _icontainer);
-            added_to_bucket++;
-        }
+				// They now must overlap somewhere and their range can now be
+				// constricted to the bounds
+				if (Traits::lt(l, low_)) Traits::assign(l, low_);
+				if (Traits::lt(high_, h)) Traits::assign(h, high_);
+			}
 
-        return added_to_bucket;
-    }
+			index_type lowest_, highest_;
+			Traits::assign(lowest_, l);
+			Traits::assign(highest_, h);
 
-    int cover(const triplet_type& _triplet)
-    {
-        int added_to_bucket = 0;
+			// check for overlaps to slice buckets
+			for (iterator p = buckets_.begin(); p != buckets_.end(); ++p)
+			{
+				if (Traits::lt(l, h) != true)
+					break; // all done since range is null
 
-        iterator begin, end;
-        bool bSpliced = splice(_triplet.first, _triplet.second, begin, end);
+				triplet_type& triplet = *p;
 
-        if (!bSpliced)
-            return added_to_bucket;
+				// step 1: first isolate the part of the new range which occurs
+				// before the current bucket
+				if (Traits::lt(l, triplet.first))
+				{
+					value_container container_;
+					if (Traits::lt(triplet.first, h)) // overlap
+					{
+						triplet_type _triplet(l, triplet.first, container_);
+						buckets_.insert(p, _triplet);
+						Traits::assign(l, triplet.first);
+					}
+					else // no overlap
+					{
+						triplet_type _triplet(l, h, container_);
+						buckets_.insert(p, _triplet);
+						Traits::assign(l, triplet.first);
+						continue; // it all ends before the current bucket
+						// so we're done
+					}
+				}
 
-        index_type _l, _h;
-        traits::assign(_l, _triplet.first);
-        traits::assign(_h, _triplet.second);
+				// step 2: now isolate the part remaining which starts at
+				// the current bucket but ends before the end of the
+				// current bucket
+				if (Traits::eq(l, triplet.first))
+				{
+					if (Traits::lt(h, triplet.second))
+					{
+						triplet_type triplet_(triplet);
+						Traits::assign(triplet_.second, h);
+						buckets_.insert(p, triplet_);
+						Traits::assign(triplet.first, h);
+						Traits::assign(l, h);
+						continue;
+					}
+					else
+					{
+						// already have a bucket from l to triplet.second
+						// (the current bucket) so adjust l
+						Traits::assign(l, triplet.second);
+					}
+				}
 
-        if (_constrained)
-        {
-            // The call to splice above catches the condition below so it
-            // is not needed here
+				// step 3: now isolate the part remaining which starts after
+				// the current bucket and create the two buckets which split
+				// the current bucket with _l
+				if (Traits::lt(l, triplet.second))
+				{
+					{
+						// first create the "start of current bucket to
+						// _l" bucket
+						triplet_type triplet_(triplet);
+						Traits::assign(triplet_.second, l);
+						buckets_.insert(p, triplet_);
+						// next change current bucket to be "_l to end of
+						// current bucket"
+						Traits::assign(triplet.first, l);
+					}
 
-            //if (traits::lt(_h, _low) || traits::lt(_high, _l))
-            //  return false;
+					// step 4: now isolate the part remaining which starts at
+					// _l, the new start of the current bucket and check if _h
+					// is less than the end of the current bucket
+					if (Traits::lt(h, triplet.second))
+					{
+						triplet_type triplet_(triplet);
+						Traits::assign(triplet_.second, h);
+						buckets_.insert(p, triplet_);
+						Traits::assign(triplet.first, h);
+					}
 
-            // They now must overlap somewhere and their range can now be
-            // constricted to the bounds
-            if (traits::lt(_l,  _low)) traits::assign(_l, _low);
-            if (traits::lt(_high, _h)) traits::assign(_h, _high);
-        }
+					// already have a bucket from l to triplet.second, adjust
+					// l to after the current bucket -- triplet.second
+					Traits::assign(l, triplet.second);
+				}
 
-        iterator next = _buckets.erase(begin, end);
+				// at most, only l (which should be after current bucket) to
+				// h is remaining, so loop
+			}
 
-        triplet_type _triplet2(_l, _h, _triplet.third);
+			if (Traits::lt(l, h)) // either first bucket or after last bucket
+			{
+				value_container container_;
+				triplet_type _triplet(l, h, container_);
+				buckets_.push_back(_triplet);
+			}
 
-        _buckets.insert(next, _triplet2);
+			bool b_begin = false, b_end = false;
 
-        added_to_bucket++;
+			{
+				for (iterator p = buckets_.begin(); p != buckets_.end(); ++p)
+				{
+					const triplet_type& triplet = *p;
+					if (Traits::eq(lowest_, triplet.first))
+					{
+						begin = p;
+						b_begin = true;
+					}
+					if (Traits::eq(highest_, triplet.second))
+					{
+						end = p;
+						++end;
+						b_end = true;
+						break;
+					}
+				}
+			}
 
-        return added_to_bucket;
-    }
+			return (b_begin && b_end);
+		}
 
-public:
-    int spread(index_type low, index_type high, value_type value)
-    {
-        value_container _container;
-        container_traits::add(_container, value);
-        triplet_type _triplet(low, high, _container);
+		int spread(const triplet_type& triplet_)
+		{
+			int added_to_bucket = 0;
 
-        return spread(_triplet);
-    }
+			iterator begin, end;
+			const bool b_spliced = splice(triplet_.first, triplet_.second, begin, end);
 
-    int cover(index_type low, index_type high, value_type value)
-    {
-        value_container _container;
-        container_traits::add(_container, value);
-        triplet_type _triplet(low, high, _container);
+			if (!b_spliced)
+				return added_to_bucket;
 
-        return cover(_triplet);
-    }
+			index_type l, h;
+			Traits::assign(l, triplet_.first);
+			Traits::assign(h, triplet_.second);
 
-    template<class other_container_traits>
-    int spread(const buckets<indices, values, traits, other_container_traits>& aBucket)
-    {
-        int added_to_bucket = 0;
+			if (constrained_)
+			{
+				// The call to splice above catches the condition below so it
+				// is not needed here
 
-        for (const_iterator p = aBucket.begin(); p != aBucket.end(); ++p)
-        {
-            const triplet_type& triplet = *p;
-            added_to_bucket += spread(triplet);
-        }
+				//if (traits::lt(h, low_) || traits::lt(high_, l))
+				//  return false;
 
-        return added_to_bucket;
-    }
+				// They now must overlap somewhere and their range can now be
+				// constricted to the bounds
+				if (Traits::lt(l, low_)) Traits::assign(l, low_);
+				if (Traits::lt(high_, h)) Traits::assign(h, high_);
+			}
 
-    template<class other_container_traits>
-    int cover(const buckets<indices, values, traits, other_container_traits>& aBucket)
-    {
-        int added_to_bucket = 0;
+			for (iterator p = begin; p != end; ++p)
+			{
+				triplet_type& triplet = *p;
+				if (Traits::lt(triplet.second, l)) continue; // not yet...
+				if (Traits::lt(h, triplet.first)) break; // already done...
+				value_container& ocontainer_ = triplet.third;
+				const value_container& icontainer_ = triplet_.third;
+				ContainerTraits::append(ocontainer_, icontainer_);
+				added_to_bucket++;
+			}
 
-        for (const_iterator p = aBucket.begin(); p != aBucket.end(); ++p)
-        {
-            const triplet_type& triplet = *p;
-            added_to_bucket += cover(triplet);
-        }
+			return added_to_bucket;
+		}
 
-        return added_to_bucket;
-    }
-};
+		int cover(const triplet_type& triplet_)
+		{
+			int added_to_bucket = 0;
 
+			iterator begin, end;
+			const bool b_spliced = splice(triplet_.first, triplet_.second, begin, end);
+
+			if (!b_spliced)
+				return added_to_bucket;
+
+			index_type l, h;
+			Traits::assign(l, triplet_.first);
+			Traits::assign(h, triplet_.second);
+
+			if (constrained_)
+			{
+				// The call to splice above catches the condition below so it
+				// is not needed here
+
+				//if (traits::lt(h, low_) || traits::lt(high_, l))
+				//  return false;
+
+				// They now must overlap somewhere and their range can now be
+				// constricted to the bounds
+				if (Traits::lt(l, low_)) Traits::assign(l, low_);
+				if (Traits::lt(high_, h)) Traits::assign(h, high_);
+			}
+
+			iterator next = buckets_.erase(begin, end);
+
+			triplet_type triplet2_(l, h, triplet_.third);
+
+			buckets_.insert(next, triplet2_);
+
+			added_to_bucket++;
+
+			return added_to_bucket;
+		}
+
+	public:
+		int spread(index_type low, index_type high, value_type value)
+		{
+			value_container container_;
+			ContainerTraits::add(container_, value);
+			triplet_type triplet_(low, high, container_);
+
+			return spread(triplet_);
+		}
+
+		int cover(index_type low, index_type high, value_type value)
+		{
+			value_container container_;
+			ContainerTraits::add(container_, value);
+			triplet_type triplet_(low, high, container_);
+
+			return cover(triplet_);
+		}
+
+		template <class OtherContainerTraits>
+		int spread(const buckets<Indices, Values, Traits, OtherContainerTraits>& bucket_)
+		{
+			int added_to_bucket = 0;
+
+			for (const_iterator p = bucket_.begin(); p != bucket_.end(); ++p)
+			{
+				const triplet_type& triplet = *p;
+				added_to_bucket += spread(triplet);
+			}
+
+			return added_to_bucket;
+		}
+
+		template <class OtherContainerTraits>
+		int cover(const buckets<Indices, Values, Traits, OtherContainerTraits>& bucket_)
+		{
+			int added_to_bucket = 0;
+
+			for (const_iterator p = bucket_.begin(); p != bucket_.end(); ++p)
+			{
+				const triplet_type& triplet = *p;
+				added_to_bucket += cover(triplet);
+			}
+
+			return added_to_bucket;
+		}
+	};
 }
 
 #endif // MASUTILS_BUCKETS_H_
