@@ -27,13 +27,15 @@ Mark, the owner, is there from 6:00am until 6:00pm.
 
 So, what does the schedule look like?
 
-​	 4:00am  -   6:00am: John
-​	 6:00am  -   7:00am: John, Mark
-​	 7:00am  -   8:00am: Sarah, John, Mark
-​	 8:00am  - 10:00am: Sarah, John, Ruby, Mark
-​	10:00am - 12:00pm: Sarah, Ruby, Mark
-​	12:00pm -   2:00pm: Sarah, Mark
- 	 2:00pm -   6:00pm: Phil, Mark
+```
+ ​4:00am -  6:00am: John  
+​ 6:00am -  7:00am: John, Mark  
+​ 7:00am -  8:00am: Sarah, John, Mark  
+​ 8:00am - 10:00am: Sarah, John, Ruby, Mark  
+​10:00am - 12:00pm: Sarah, Ruby, Mark  
+​12:00pm -  2:00pm: Sarah, Mark  
+ 2:00pm -  6:00pm: Phil, Mark
+```  
 
 From this we can see that there are four people working the rush period from 8:00am until 10:00am, and that 3 people are working from 10:00am until 12:00pm.
 
@@ -68,9 +70,11 @@ There are two basic operations for a bucket - spread and cover.  We can see from
 Now, when we spread John's time from 4:00am until 10:00am, we see that there is already an existing bucket which partially overlaps with John's time - 7am to 2pm. In this case, the existing bucket from 7am to 2pm is split into two buckets - 7am to 10am and 10am to 2pm. Sarah is still in both of these buckets, and John is added to the bucket from 7am to 10am. A new bucket is created from 4am to 7am, and John is added to this bucket. After these two spread operations, there are now three buckets in the bakery_schedule and it looks
 like this:
 
-​	 4:00am  -   7:00am: John
-​	 7:00am  - 10:00am: John, Sarah
-​	10:00am -   2:00pm: Sarah
+```
+​ 4:00am -  7:00am: John  
+​ 7:00am - 10:00am: John, Sarah  
+​10:00am -  2:00pm: Sarah
+```  
 
 The cover operation does not add the value to existing buckets, rather it removes either wholly or in part any bucket that overlaps with the cover range and adds a new bucket with the given value.
 
