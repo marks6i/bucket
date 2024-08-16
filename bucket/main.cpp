@@ -7,15 +7,15 @@
 using namespace masutils;
 using namespace masxtra;
 
-using CharBucket = buckets<int,    char*>;
-using WorkBucket = buckets<time_t, char*>;
+using char_bucket = buckets<int,    const char*>;
+using work_bucket = buckets<time_t, const char*>;
 
-using DescendCharBucket = buckets<int, char*,  compare_traits_descending<int>>;
-using MostRecentBucket  = buckets<int, char*,  compare_traits<int>, most_recent_bucket_value_traits<char*>>;
-using AddIntBucket      = buckets<int, int,    compare_traits<int>, bucket_value_add_traits<int>>;
-using AddDoubleBucket   = buckets<int, double, compare_traits<int>, bucket_value_add_traits<double>>;
+using descend_char_bucket = buckets<int, const char*,  compare_traits_descending<int>>;
+using most_recent_bucket  = buckets<int, const char*,  compare_traits<int>, most_recent_bucket_value_traits<const char*>>;
+using add_int_bucket      = buckets<int, int,    compare_traits<int>, bucket_value_add_traits<int>>;
+using add_double_bucket   = buckets<int, double, compare_traits<int>, bucket_value_add_traits<double>>;
 
-const std::vector<char *> words = {
+const std::vector<const char *> words = {
 	"January",
 	"February",
 	"March",
@@ -38,7 +38,7 @@ const std::vector<char *> words = {
 };
 
 void example1() {
-	CharBucket bucket(18, 72); // constrained bucket
+	char_bucket bucket(18, 72); // constrained bucket
 
 	std::cout << "============ example1 ============" << std::endl;
 
@@ -53,11 +53,11 @@ void example1() {
 	bucket.spread(15, 75, "15-75");
 
 
-	std::cout << "bucket is:" << std::endl << bucket_wrapper<CharBucket>(bucket) << std::endl;
+	std::cout << "bucket is:\n" << bucket_wrapper<char_bucket>(bucket) << std::endl;
 }
 
 void example2() {
-	MostRecentBucket bucket; // unconstrained bucket
+	most_recent_bucket bucket; // unconstrained bucket
 
 	std::cout << "============ example2 ============" << std::endl;
 
@@ -71,11 +71,11 @@ void example2() {
 	bucket.spread(80, 81, "80-81");
 	bucket.spread(15, 75, "15-75");
 
-	std::cout << "bucket is:" << std::endl << bucket_wrapper<MostRecentBucket>(bucket) << std::endl;
+	std::cout << "bucket is:\n" << bucket_wrapper<most_recent_bucket>(bucket) << std::endl;
 }
 
 void example3() {
-	DescendCharBucket bucket(72, 18); // constrained bucket
+	descend_char_bucket bucket(72, 18); // constrained bucket
 
 	std::cout << "============ example3 ============" << std::endl;
 
@@ -89,11 +89,11 @@ void example3() {
 	bucket.spread(81, 80, "80-81");
 	bucket.spread(75, 15, "15-75");
 
-	std::cout << "bucket is:" << std::endl << bucket_wrapper<DescendCharBucket>(bucket) << std::endl;
+	std::cout << "bucket is:\n" << bucket_wrapper<descend_char_bucket>(bucket) << std::endl;
 }
 
 void example4() {
-	AddIntBucket bucket(0, 100);
+	add_int_bucket bucket(0, 100);
 
 	std::cout << "============ example4 ============" << std::endl;
 
@@ -108,11 +108,11 @@ void example4() {
 	bucket.spread(80, 100, 10);
 	bucket.spread(90, 100, 10);
 
-	std::cout << "bucket is:" << std::endl << bucket_wrapper<AddIntBucket>(bucket) << std::endl;
+	std::cout << "bucket is:\n" << bucket_wrapper<add_int_bucket>(bucket) << std::endl;
 }
 
 void example5() {
-	AddDoubleBucket bucket(0, 100);
+	add_double_bucket bucket(0, 100);
 
 	std::cout << "============ example5 ============" << std::endl;
 
@@ -128,11 +128,11 @@ void example5() {
 	bucket.spread(90, 100, 10);
 	bucket.spread(15, 95, 5);
 
-	std::cout << "bucket is:" << std::endl << bucket_wrapper<AddDoubleBucket>(bucket) << std::endl;
+	std::cout << "bucket is:\n" << bucket_wrapper<add_double_bucket>(bucket) << std::endl;
 }
 
 void example6() {
-	WorkBucket bucket; // unconstrained bucket
+	work_bucket bucket; // unconstrained bucket
 
 	std::cout << "============ example6 ============" << std::endl;
 
@@ -150,11 +150,11 @@ void example6() {
 		"Lunch"
 	);
 
-	std::cout << "bucket is:" << std::endl << bucket_wrapper<WorkBucket>(bucket) << std::endl;
+	std::cout << "bucket is:\n" << bucket_wrapper<work_bucket>(bucket) << std::endl;
 }
 
 void example7() {
-	WorkBucket bucket; // unconstrained bucket
+	work_bucket bucket; // unconstrained bucket
 
 	std::cout << "============ example7 ============" << std::endl;
 
@@ -172,11 +172,11 @@ void example7() {
 		"Lunch"
 	);
 
-	std::cout << "bucket is:" << std::endl << bucket_wrapper<WorkBucket>(bucket) << std::endl;
+	std::cout << "bucket is:\n" << bucket_wrapper<work_bucket>(bucket) << std::endl;
 }
 
 void example8() {
-	WorkBucket bucket; // unconstrained bucket
+	work_bucket bucket; // unconstrained bucket
 
 	std::cout << "============ example8 ============" << std::endl;
 
@@ -206,11 +206,11 @@ void example8() {
 		"Lunch3"
 	);
 
-	std::cout << "bucket is:" << std::endl << bucket_wrapper<WorkBucket>(bucket) << std::endl;
+	std::cout << "bucket is:\n" << bucket_wrapper<work_bucket>(bucket) << std::endl;
 }
 
 void example9() {
-	Glossary<char> bucket; // unconstrained bucket
+	glossary<char> bucket; // unconstrained bucket
 
 	std::cout << "============ example9 ============" << std::endl;
 
@@ -218,11 +218,11 @@ void example9() {
 		bucket.add(*it);
 	}
 
-	std::cout << "bucket is:" << std::endl << bucket_wrapper<Glossary<char>>(bucket) << std::endl;
+	std::cout << "bucket is:\n" << bucket_wrapper<glossary<char>>(bucket) << std::endl;
 }
 
 void example10() {
-	Glossary<char> bucket('M', 'P'); // constrained bucket
+	glossary<char> bucket('M', 'P'); // constrained bucket
 
 	std::cout << "============ example10 ============" << std::endl;
 
@@ -230,11 +230,11 @@ void example10() {
 		bucket.add(*it);
 	}
 
-	std::cout << "bucket is:" << std::endl << bucket_wrapper<Glossary<char>>(bucket) << std::endl;
+	std::cout << "bucket is:\n" << bucket_wrapper<glossary<char>>(bucket) << std::endl;
 }
 
 void example11() {
-	Glossary<char, std::basic_string<char>, caseInsensitiveLess<std::basic_string<char>>> bucket; // unconstrained bucket
+	glossary<char, std::basic_string<char>, caseInsensitiveLess<std::basic_string<char>>> bucket; // unconstrained bucket
 
 	std::cout << "============ example11 ============" << std::endl;
 
@@ -242,11 +242,11 @@ void example11() {
 		bucket.add(*it);
 	}
 
-	std::cout << "bucket is:" << std::endl << bucket_wrapper<Glossary<char, std::basic_string<char>, caseInsensitiveLess<std::basic_string<char>>>>(bucket) << std::endl;
+	std::cout << "bucket is:\n" << bucket_wrapper<glossary<char, std::basic_string<char>, caseInsensitiveLess<std::basic_string<char>>>>(bucket) << std::endl;
 }
 
 void example12() {
-	Glossary<char, char*, caseInsensitiveLess<std::basic_string<char>>> bucket; // unconstrained bucket
+	glossary<char, const char*, caseInsensitiveLess<std::basic_string<char>>> bucket; // unconstrained bucket
 
 	std::cout << "============ example12 ============" << std::endl;
 
@@ -254,7 +254,7 @@ void example12() {
 		bucket.add(*it);
 	}
 
-	std::cout << "bucket is:" << std::endl << bucket_wrapper<Glossary<char, char*, caseInsensitiveLess<std::basic_string<char>>>>(bucket) << std::endl;
+	std::cout << "bucket is:\n" << bucket_wrapper<glossary<char, const char*, caseInsensitiveLess<std::basic_string<char>>>>(bucket) << std::endl;
 }
 
 int main()
@@ -274,7 +274,7 @@ int main()
 	example11();
 	example12();
 
-	std::cout << std::endl << "end timestamp: " << time_stamp() << std::endl;
+	std::cout << "\nend timestamp: " << time_stamp() << std::endl;
 
 	return 0;
 }

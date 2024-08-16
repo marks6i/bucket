@@ -23,33 +23,37 @@ namespace masutils {
 // This class can go away when there is a fix to the std::tuple class (N4387).
 // This is necessary for C++14 and before.
 
-template <typename _T1, typename _T2, typename _T3>
+template <typename T1, typename T2, typename T3>
 struct triplet
 {
-	typedef _T1 first_type;
-	typedef _T2 second_type;
-    typedef _T3 third_type;
+	typedef T1 first_type;
+	typedef T2 second_type;
+    typedef T3 third_type;
 	triplet()
-	: first (_T1()), 
-      second(_T2()),
-      third (_T3())
+	: first (T1()), 
+      second(T2()),
+      third (T3())
     {}
-	triplet( const _T1& _V1, const _T2& _V2, const _T3& _V3)
-	: first (_V1), 
-      second(_V2),
-      third (_V3)
+	triplet( const T1& v1, const T2& v2, const T3& v3)
+	: first (v1), 
+      second(v2),
+      third (v3)
     {}
 
-	~triplet() {}
+    ~triplet() = default;
+    triplet(const triplet&) = default;
+    triplet(triplet&&) noexcept = default;
+    triplet& operator=(const triplet&) = default;
+    triplet& operator=(triplet&&) noexcept = default;
 
-    _T1  first;
-    _T2  second;
-    _T3  third;
+    T1  first;
+    T2  second;
+    T3  third;
 };
 
-template <typename _T1, typename _T2, typename _T3>
-triplet<_T1, _T2, _T3> make_triplet( const _T1& _V1, const _T2& _V2, const _T3& _V3 )
-{ return triplet<_T1, _T2, _T3>( _V1, _V2, _V3 ); }
+template <typename T1, typename T2, typename T3>
+triplet<T1, T2, T3> make_triplet( const T1& v1, const T2& v2, const T3& v3 )
+{ return triplet<T1, T2, T3>( v1, v2, v3 ); }
 
 }
 

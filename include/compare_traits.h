@@ -20,33 +20,33 @@
 
 namespace masutils {
 
-template<class _E>
+template<class E>
 struct compare_traits {
 
-    typedef _E value_type;
+    typedef E value_type;
 
     // These are the only methods that need to be defined for a compare_traits
-    static bool eq(const _E& _X, const _E& _Y) { return (_X == _Y); }
-    static bool lt(const _E& _X, const _E& _Y) { return (_X <  _Y); }
-    static void assign(_E& _X, const _E& _Y)   { _X = _Y; }
+    static bool eq(const E& x_, const E& y_) noexcept { return (x_ == y_); }
+    static bool lt(const E& x_, const E& y_) noexcept { return (x_ <  y_); }
+    static void assign(E& x_, const E& y_)   noexcept { x_ = y_; }
 
-    // These are methods derived from the above methods and should not be overridden
-    static bool ne(const _E& _X, const _E& _Y) { return !eq(_X, _Y); }
-    static bool le(const _E& _X, const _E& _Y) { return !lt(_Y, _X); }
-    static bool gt(const _E& _X, const _E& _Y) { return  lt(_Y, _X); }
-    static bool ge(const _E& _X, const _E& _Y) { return !lt(_X, _Y); }
+    // These are methods derived from the above methods and should not (need to) be overridden
+    static bool ne(const E& x_, const E& y_) noexcept { return !eq(x_, y_); }
+    static bool le(const E& x_, const E& y_) noexcept { return !lt(y_, x_); }
+    static bool gt(const E& x_, const E& y_) noexcept { return  lt(y_, x_); }
+    static bool ge(const E& x_, const E& y_) noexcept { return !lt(x_, y_); }
 
 private:
     compare_traits() = delete;
 };
 
-template<class _E>
-struct compare_traits_descending : public compare_traits<_E> {
+template<class E>
+struct compare_traits_descending : public compare_traits<E> {
 
     // This might seem counterintuitive, but redefining the lt method to
     // return the opposite of the base class method will says that higher
     // values are less than lower values
-    static bool lt(const _E& _X, const _E& _Y) { return (_Y < _X); }
+    static bool lt(const E& x_, const E& y_) noexcept { return (y_ < x_); }
 };
 
 } // namespace masutils

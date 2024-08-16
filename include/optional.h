@@ -23,42 +23,42 @@ namespace masutils {
 // set. I did this to avoid the uninitialized value problem. I also added the operator<< to allow
 // for the optional to be printed; the '<?>' is printed if the optional is not set.
 
-template <typename _T>
+template <typename T>
 class optional {
 private:
-	_T default_value = {};
+	T default_value = {};
 
 public:
-	bool _hasValue;
-	_T _value;
+	bool has_value_;
+	T value_;
 
-	constexpr optional() : _hasValue(false), _value(default_value) {}
+	constexpr optional() : has_value_(false), value_(default_value) {}
 
-	optional(_T value) : _hasValue(true), _value(value) {}
+	explicit optional(T value) : has_value_(true), value_(value) {}
 
-	optional(const optional& other) : _hasValue(other._hasValue), _value(other._value) {}
+	optional(const optional& other) : has_value_(other.has_value_), value_(other.value_) {}
 
 	optional& operator=(const optional& other) {
-		_hasValue = other._hasValue;
-		_value = other._value;
+		has_value_ = other.has_value_;
+		value_ = other.value_;
 		return *this;
 	}
 
-	optional& operator=(_T value) {
-		_hasValue = true;
-		_value = value;
+	optional& operator=(T value) {
+		has_value_ = true;
+		value_ = value;
 		return *this;
 	}
 
-	_T value() const {
-		return _value;
+	T value() const {
+		return value_;
 	}
 
-	operator bool() const {
-		return _hasValue;
+	explicit operator bool() const {
+		return has_value_;
 	}
 
-	friend std::ostream& operator<<(std::ostream& os, const optional<_T>& obj) {
+	friend std::ostream& operator<<(std::ostream& os, const optional<T>& obj) {
 		if (obj) {
 			os << obj.value();
 		}
