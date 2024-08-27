@@ -10,10 +10,10 @@ using namespace masxtra;
 using char_bucket = buckets<int,    const char*>;
 using work_bucket = buckets<time_t, const char*>;
 
-using descend_char_bucket = buckets<int, const char*,  compare_traits_descending<int>>;
-using most_recent_bucket  = buckets<int, const char*,  compare_traits<int>, most_recent_bucket_value_traits<const char*>>;
-using add_int_bucket      = buckets<int, int,    compare_traits<int>, bucket_value_add_traits<int>>;
-using add_double_bucket   = buckets<int, double, compare_traits<int>, bucket_value_add_traits<double>>;
+using descend_char_bucket = buckets<int, const char*,  bucket_compare_traits_descending<int>>;
+using most_recent_bucket  = buckets<int, const char*,  bucket_compare_traits<int>, most_recent_bucket_value_traits<const char*>>;
+using add_int_bucket      = buckets<int, int,    bucket_compare_traits<int>, bucket_value_add_traits<int>>;
+using add_double_bucket   = buckets<int, double, bucket_compare_traits<int>, bucket_value_add_traits<double>>;
 
 const std::vector<const char *> words = {
 	"January",

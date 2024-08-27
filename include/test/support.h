@@ -30,17 +30,17 @@ using std::ostream;
 namespace mastest {
 
 template<typename T>
-struct bucket_compare_traits {
+struct bucket_bucket_compare_traits {
 public:
 	using compare_type = T;
 
 	static bool eq(const T& x, const T& y) { return (x == y); }
 protected:
-	~bucket_compare_traits() {}
+	~bucket_bucket_compare_traits() {}
 };
 
 template<>
-struct bucket_compare_traits<char*> {
+struct bucket_bucket_compare_traits<char*> {
 public:
 	using compare_type = char*;
 
@@ -48,7 +48,7 @@ public:
 };
 
 template<typename E>
-struct bucket_compare_case_insensitive_traits : public bucket_compare_traits<std::basic_string<E>> {
+struct bucket_compare_case_insensitive_traits : public bucket_bucket_compare_traits<std::basic_string<E>> {
 public:
 	using compare_type = std::basic_string<E>;
 
@@ -64,8 +64,8 @@ public:
 };
 
 template <class BucketType,
-	      class ValueCompare = bucket_compare_traits<typename BucketType::value_type>,
-		  class IndexCompare = bucket_compare_traits<typename BucketType::index_type> >
+	      class ValueCompare = bucket_bucket_compare_traits<typename BucketType::value_type>,
+		  class IndexCompare = bucket_bucket_compare_traits<typename BucketType::index_type> >
 class bucket_compare
 {
 public:
@@ -74,10 +74,10 @@ public:
 	using index_type    = typename BucketType::index_type;
 	using value_type    = typename BucketType::value_type;
 
-	using triplet_type  = typename masutils::triplet<index_type,
+	using bucket_type  = typename masutils::triplet<index_type,
 				                                     index_type,
 				                                     std::list<value_type> >;
-	using triplet_list  = typename std::list<triplet_type>;
+	using bucket_type_list  = typename std::list<bucket_type>;
 
 	using instance_type = typename masutils::triplet<index_type,
 						                             index_type,
@@ -94,7 +94,7 @@ public:
 	using instance_list = typename std::list<instance_pair>;
 
 
-	static bool equal(const BucketType& actual, const triplet_list& expected, instance_list& difference_list, const bool include_matches = false)
+	static bool equal(const BucketType& actual, const bucket_type_list& expected, instance_list& difference_list, const bool include_matches = false)
 	{
 		bool b_equal = true;
 

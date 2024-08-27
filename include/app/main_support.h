@@ -33,6 +33,10 @@
 #include <chrono>
 #endif // !CHRONO_H_
 
+#ifndef ARRAY_H_
+#include <array>
+#endif // !ARRAY_H_
+
 namespace masxtra {
 
 inline std::tm localtime_xp(std::time_t timer)
@@ -65,9 +69,9 @@ inline std::tm localtime_xp(std::time_t timer)
 inline std::string time_to_string(const std::time_t bt, const std::string& fmt = "%c")
 {
 	const auto timer = localtime_xp(bt);
-	char buf[64];
-	const auto len = std::strftime(buf, sizeof(buf), fmt.c_str(), &timer);
-	return { buf, len };
+	std::array<char, 64> buf;
+	const auto len = std::strftime(buf.data(), buf.size(), fmt.c_str(), &timer);
+	return std::string(buf.data(), len);
 }
 
 inline std::string time_stamp(const std::string& fmt = "%F %T")
@@ -86,19 +90,28 @@ inline std::time_t make_time(const int year, const int month, const int day, con
 
 // glossary only works because I've done a "plus 1" to the char value to create the range. This would
 // work if the char whose bucket we were trying to create was equal to maximum char value.
+// This is not production code, only for demo purposes. I wanted this to work with any "string" type.
+// I put the pragmas in to disable pointer arithmetic and unbounded char access to string types warnings
+// which in production code I would not do.  All this code should work with C++14 and above on
+// any platform as-is. Warning, the pragmas are MS-specific so the errors will be back if you compile
+// this on a different platform, but the code should work properly.
+
 template <typename T, typename V = std::basic_string<T>, typename P = std::less<V>>
 struct glossary : public masutils::buckets<
 	T,
 	V,
-	masutils::compare_traits<T>,
+	masutils::bucket_compare_traits<T>,
 	masutils::unique_bucket_value_traits<V, std::set<V, P> > > {
 
 	glossary() noexcept {}
 
+#pragma warning( push )
+#pragma warning( disable : 26481 26493 26446 )
+
 	glossary(T low, T high) : masutils::buckets<
 		T,
 		V,
-		masutils::compare_traits<T>,
+		masutils::bucket_compare_traits<T>,
 		masutils::unique_bucket_value_traits<V, std::set<V, P> > >(
 			std::toupper(low),
 			{ T(std::toupper(high) + 1) }
@@ -114,6 +127,9 @@ struct glossary : public masutils::buckets<
 			std::toupper(word[0]),
 			{ T(std::toupper(word[0]) + 1) }, word);
 	}
+
+#pragma warning( pop )
+
 };
 
 } // namespace masxtra

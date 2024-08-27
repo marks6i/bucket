@@ -91,7 +91,7 @@ TEST(BucketTest, ConstrainedWithSpread) {
 	}
 
 	{
-		bucket_compare<TestBucket>::triplet_list expected_buckets = { // using a local var here to show that the second test below does not change values
+		bucket_compare<TestBucket>::bucket_type_list expected_buckets = { // using a local var here to show that the second test below does not change values
 			{ 30, 31, { 3, 4 } },
 			{ 31, 40, { 3 } },
 			{ 50, 59, { 5 } },
@@ -305,7 +305,7 @@ TEST(BucketTest, SpreadBucketIntoAnother) {
 	TestBucket unconstrained_bucket;
 	initialize_bucket(unconstrained_bucket);
 
-	bucket_compare<TestBucket>::triplet_list expected_constrained_buckets = {
+	bucket_compare<TestBucket>::bucket_type_list expected_constrained_buckets = {
 		{ 26, 30, { 9 } },
 		{ 30, 31, { 3, 4, 9 } },
 		{ 31, 40, { 3, 9 } },
@@ -316,13 +316,13 @@ TEST(BucketTest, SpreadBucketIntoAnother) {
 		{ 70, 74, { 7, 9 } }
 	};
 
-	bucket_compare<TestBucket>::triplet_list expected_reduced_constrained_buckets = { // 33 to 55
+	bucket_compare<TestBucket>::bucket_type_list expected_reduced_constrained_buckets = { // 33 to 55
 		{ 33, 40, { 3, 9 } },
 		{ 40, 50, { 9 } },
 		{ 50, 55, { 5, 9 } },
 	};
 
-	bucket_compare<TestBucket>::triplet_list expected_unconstrained_buckets = {
+	bucket_compare<TestBucket>::bucket_type_list expected_unconstrained_buckets = {
 		{ 9, 10, { 1 } },
 		{ 10, 15, { 2 } },
 		{ 15, 25, { 2, 9 } },
