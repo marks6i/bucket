@@ -32,54 +32,54 @@ namespace masutils {
 	* @brief The bucket_value_traits struct has all static functions
 	*        that are the operations that can be performed on a
 			 bucket collection.
-	* @tparam E_ the type of the values in the bucket
-	* @tparam C_ the type of the container used to store the values
+	* @tparam ValueType the type of the values in the bucket
+	* @tparam ContainerType the type of the container used to store the values
 	*
 	* The struct only declares static functions, so it is not necessary to
 	* create an instance of this struct. All constructors are deleted to
 	* prevent instantiation.
 	*/
-template <class E_, class C_ = std::list<E_>>
+template <class ValueType, class ContainerType = std::list<ValueType>>
 struct bucket_value_traits
 {
-	typedef E_ value_type;
-	typedef C_ value_container;
+	typedef ValueType value_type;
+	typedef ContainerType value_container;
 
 	/**
 	 * @brief Add a value to a bucket.
-	 * @param x_ the bucket's value container
-	 * @param y_ the value to add to the bucket
+	 * @param x the bucket's value container
+	 * @param y the value to add to the bucket
 	 */
-	static void add(value_container& x_, const value_type& y_)
+	static void add(value_container& x, const value_type& y)
 	{
-		x_.push_back(y_);
+		x.push_back(y);
 	}
 
 	/**
 	 * @brief Append one value container into another.
 	 * @tparam other_value_container 
-	 * @param x_ The receiving value container
-	 * @param y_ The value container to append
+	 * @param x The receiving value container
+	 * @param y The value container to append
 	 */
 	template <class other_value_container>
-	static void append(value_container& x_, const other_value_container& y_)
+	static void append(value_container& x, const other_value_container& y)
 	{
-		x_.insert(x_.end(), y_.begin(), y_.end());
+		x.insert(x.end(), y.begin(), y.end());
 	}
 
 	/**
 	 * @brief Remove a value from a bucket.
-	 * @param x_ The value container
-	 * @param y_ The value to remove
+	 * @param x The value container
+	 * @param y The value to remove
 	 * @return Boolean value indicating if the value was removed
 	 */
-	static bool remove(value_container& x_, const value_type& y_)
+	static bool remove(value_container& x, const value_type& y)
 	{
-		for (auto p = x_.begin(); p != x_.end(); ++p)
+		for (auto p = x.begin(); p != x.end(); ++p)
 		{
-			if (*p == y_)
+			if (*p == y)
 			{
-				x_.erase(p);
+				x.erase(p);
 				return true;
 			}
 		}

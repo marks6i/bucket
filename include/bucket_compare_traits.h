@@ -39,81 +39,81 @@ namespace masutils {
  * create an instance of this struct. All constructors are deleted to
  * prevent instantiation.
  */
-template<class E>
+template<class ValueType>
 struct bucket_compare_traits {
 
-    typedef E value_type;
+    typedef ValueType value_type;
 
     // These are the only methods that need to be defined for a bucket_compare_traits
 
     /**
      * @brief Compare for equality.
-     * @param x_ 
-     * @param y_ 
+     * @param x 
+     * @param y
 	 * @return Boolean value indicating if the two keys are equal.
      */
-    static bool eq(const E& x_, const E& y_) noexcept { return (x_ == y_); }
+    static bool eq(const ValueType& x, const ValueType& y) noexcept { return (x == y); }
 
     /**
 	 * @brief Less than comparison.
-     * @param x_ 
-     * @param y_ 
-	 * @return Boolean value indicating if x_ is less than y_.
+     * @param x
+     * @param y
+	 * @return Boolean value indicating if x is less than y.
      */
-    static bool lt(const E& x_, const E& y_) noexcept { return (x_ <  y_); }
+    static bool lt(const ValueType& x, const ValueType& y) noexcept { return (x <  y); }
 
     /**
 	 * @brief Assignment operator.
-     * @param x_ 
-     * @param y_ 
+     * @param x 
+     * @param y 
      */
-    static void assign(E& x_, const E& y_)   noexcept { x_ = y_; }
+    static void assign(ValueType& x, const ValueType& y)   noexcept { x = y; }
 
     // These are methods derived from the above methods and should not (need to) be overridden
 
     /**
 	 * @brief Not equal comparison.
-     * @param x_ 
-     * @param y_ 
+     * @param x 
+     * @param y 
 	 * @return Boolean value indicating if the two keys are not equal.
      */
-    static bool ne(const E& x_, const E& y_) noexcept { return !eq(x_, y_); }
+    static bool ne(const ValueType& x, const ValueType& y) noexcept { return !eq(x, y); }
 
     /**
 	 * @brief Less than or equal comparison.
-     * @param x_ 
-     * @param y_ 
-	 * @return Boolean value indicating if x_ is less than or equal to y_.
+     * @param x 
+     * @param y 
+	 * @return Boolean value indicating if x is less than or equal to y.
      */
-    static bool le(const E& x_, const E& y_) noexcept { return !lt(y_, x_); }
+    static bool le(const ValueType& x, const ValueType& y) noexcept { return !lt(y, x); }
 
     /**
 	 * @brief Greater than comparison.
-     * @param x_ 
-     * @param y_ 
-	 * @return Boolean value indicating if x_ is greater than y_.
+     * @param x 
+     * @param y 
+	 * @return Boolean value indicating if x is greater than y.
      */
-    static bool gt(const E& x_, const E& y_) noexcept { return  lt(y_, x_); }
+    static bool gt(const ValueType& x, const ValueType& y) noexcept { return  lt(y, x); }
 
     /**
 	 * @brief Greater than or equal comparison.
-     * @param x_ 
-     * @param y_ 
-	 * @return Boolean value indicating if x_ is greater than or equal to y_.
+     * @param x 
+     * @param y 
+	 * @return Boolean value indicating if x is greater than or equal to y.
      */
-    static bool ge(const E& x_, const E& y_) noexcept { return !lt(x_, y_); }
+    static bool ge(const ValueType& x, const ValueType& y) noexcept { return !lt(x, y); }
 
 private:
     bucket_compare_traits() = delete;
 };
 
-template<class E>
-struct bucket_compare_traits_descending : public bucket_compare_traits<E> {
+template<class ValueType>
+struct bucket_compare_traits_descending : public bucket_compare_traits<ValueType> {
 
     // This might seem counterintuitive, but redefining the lt method to
     // return the opposite of the base class method will says that higher
     // values are less than lower values
-    static bool lt(const E& x_, const E& y_) noexcept { return (y_ < x_); }
+    static bool lt(const ValueType& x, const ValueType& y) noexcept { return (y < x); }
 };
 
 } // namespace masutils

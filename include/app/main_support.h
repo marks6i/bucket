@@ -5,6 +5,10 @@
 #error Must include buckets.h first
 #endif // !MASUTILS_BUCKETS_H_
 
+#ifndef MASUTILS_BUCKET_LIST_H_
+#error Must include bucket_list.h first
+#endif // !MASUTILS_BUCKET_LIST_H_
+
 #ifndef MASUTILS_BUCKETS_SUPP_H_
 #error Must include buckets_supp.h first
 #endif // !MASUTILS_BUCKETS_SUPP_H_
@@ -93,7 +97,7 @@ inline std::time_t make_time(const int year, const int month, const int day, con
 // This is not production code, only for demo purposes. I wanted this to work with any "string" type.
 // I put the pragmas in to disable pointer arithmetic and unbounded char access to string types warnings
 // which in production code I would not do.  All this code should work with C++14 and above on
-// any platform as-is. Warning, the pragmas are MS-specific so the errors will be back if you compile
+// any platform as-is. Warning, the pragmas are MS-specific so the warnings will be back if you compile
 // this on a different platform, but the code should work properly.
 
 template <typename T, typename V = std::basic_string<T>, typename P = std::less<V>>

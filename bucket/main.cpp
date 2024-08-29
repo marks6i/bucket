@@ -1,6 +1,7 @@
 #include "pch.h"
 
 #include "../include/buckets.h"
+#include "../include/bucket_list.h"
 #include "../include/buckets_supp.h"
 #include "../include/app/main_support.h"
 
@@ -8,6 +9,7 @@ using namespace masutils;
 using namespace masxtra;
 
 using char_bucket = buckets<int,    const char*>;
+using char_bucket_list = bucket_list<int, const char*>;
 using work_bucket = buckets<time_t, const char*>;
 
 using descend_char_bucket = buckets<int, const char*,  bucket_compare_traits_descending<int>>;
@@ -257,6 +259,25 @@ void example12() {
 	std::cout << "bucket is:\n" << bucket_wrapper<glossary<char, const char*, caseInsensitiveLess<std::basic_string<char>>>>(bucket) << std::endl;
 }
 
+void example13() {
+	char_bucket_list bucket(18, 72); // constrained bucket
+
+	std::cout << "============ example1 ============" << std::endl;
+
+	bucket.spread(9, 10, "9-10");
+	bucket.spread(10, 20, "10-20");
+	bucket.spread(30, 40, "30-40");
+	bucket.spread(30, 31, "30-31");
+	bucket.spread(50, 60, "50-60");
+	bucket.spread(59, 60, "59-60");
+	bucket.spread(70, 80, "70-80");
+	bucket.spread(80, 81, "80-81");
+	bucket.spread(15, 75, "15-75");
+
+
+	std::cout << "bucket is:\n" << bucket_wrapper<char_bucket_list>(bucket) << std::endl;
+}
+
 int main()
 {
 	std::cout << "start timestamp: " << time_stamp() << std::endl << std::endl;
@@ -273,6 +294,7 @@ int main()
 	example10();
 	example11();
 	example12();
+	example13();
 
 	std::cout << "\nend timestamp: " << time_stamp() << std::endl;
 

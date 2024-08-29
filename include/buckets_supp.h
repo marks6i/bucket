@@ -386,10 +386,10 @@ public:
 			if (!b_first) {
 				os << "," << std::endl;
 			}
-			os << "{ " << IndexWrapper(it->first) << ", " << IndexWrapper(it->second) << ", ";
+			os << "{ " << IndexWrapper(bucket_type::accessor::low(*it)) << ", " << IndexWrapper(bucket_type::accessor::high(*it)) << ", ";
 			os << "{ ";
 			bool b_first2 = true;
-			for (auto it2 = it->third.begin(); it2 != it->third.end(); ++it2) {
+			for (auto it2 = bucket_type::accessor::values(*it).begin(); it2 != bucket_type::accessor::values(*it).end(); ++it2) {
 				if (!b_first2) {
 					os << ", ";
 				}

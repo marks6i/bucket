@@ -35,7 +35,7 @@
 #include "bucket_value_traits.h"
 
 namespace masutils
-{
+{ 
 	/**
 	 * @brief The buckets class.
 	 * @tparam Indices The type of the keys in the bucket.
@@ -63,13 +63,30 @@ namespace masutils
 
 		typedef triplet<index_type,
 			index_type,
-			value_container> triplet_type;
-		typedef std::list<triplet_type> triplet_list;
+			value_container> bucket_type;
+		typedef std::list<bucket_type> bucket_type_list;
 
-		typedef typename triplet_list::iterator iterator;
-		typedef typename triplet_list::const_iterator const_iterator;
-		typedef typename triplet_list::reverse_iterator reverse_iterator;
-		typedef typename triplet_list::const_reverse_iterator const_reverse_iterator;
+		struct accessor {
+			accessor() = delete;
+
+			// Getters
+			inline static index_type& low(bucket_type& t) noexcept                     { return t.first;  }
+			inline static const index_type& low(const bucket_type& t) noexcept         { return t.first;  }
+			inline static index_type& high(bucket_type& t) noexcept                    { return t.second; }
+			inline static const index_type& high(const bucket_type& t) noexcept        { return t.second; }
+			inline static value_container& values(bucket_type& t) noexcept             { return t.third;  }
+			inline static const_value_container& values(const bucket_type& t) noexcept { return t.third;  }
+		};
+
+		static inline bucket_type make_bucket(index_type low, index_type high, const value_container& values)
+		{
+			return bucket_type(low, high, values);  // Assuming compiler is using RVO/NRVO to avoid copies
+		}
+
+		typedef typename bucket_type_list::iterator iterator;
+		typedef typename bucket_type_list::const_iterator const_iterator;
+		typedef typename bucket_type_list::reverse_iterator reverse_iterator;
+		typedef typename bucket_type_list::const_reverse_iterator const_reverse_iterator;
 
 		/**
 		 * @brief Returns an iterator to the first element of the bucket collection.
@@ -132,7 +149,7 @@ namespace masutils
 		template <bool IsConst>
 		class range_iterator
 		{
-			typedef typename std::conditional_t<IsConst, const triplet_list, triplet_list> parent_list;
+			typedef typename std::conditional_t<IsConst, const bucket_type_list, bucket_type_list> parent_list;
 			typedef typename std::conditional_t<IsConst, const_iterator, iterator> iterator_range;
 
 			iterator_range current_;
@@ -143,9 +160,9 @@ namespace masutils
 			iteration_direction direction_;
 
 		private:
-			static bool overlaps(const triplet_type& triplet, index_type start_range, index_type end_range)
+			static bool overlaps(const bucket_type& bucket, index_type start_range, index_type end_range)
 			{
-				return !(triplet.first >= end_range || triplet.second < start_range);
+				return !(accessor::low(bucket) >= end_range || accessor::high(bucket) < start_range);
 			}
 
 		public:
@@ -210,8 +227,8 @@ namespace masutils
 			bool operator==(const range_iterator& other) const { return current_ == other.current_; }
 			bool operator!=(const range_iterator& other) const { return !(*this == other); }
 
-			triplet_type& operator*() { return *current_; }
-			triplet_type* operator->() { return &(*current_); }
+			bucket_type& operator*() { return *current_; }
+			bucket_type* operator->() { return &(*current_); }
 		};
 
 	public:
@@ -292,7 +309,7 @@ namespace masutils
 		buckets(const mytype&) = default;
 		mytype& operator=(const mytype&) = default;
 
-		triplet_list buckets_;
+		bucket_type_list buckets_;
 		index_type low_;
 		index_type high_;
 		bool constrained_;
@@ -356,24 +373,24 @@ namespace masutils
 				if (Traits::lt(l, h) != true)
 					break; // all done since range is null
 
-				triplet_type& bucket = *p;
+				bucket_type& bucket = *p;
 
 				// step 1: first isolate the part of the new range which occurs
 				// before the current bucket
-				if (Traits::lt(l, bucket.first))
+				if (Traits::lt(l, accessor::low(bucket)))
 				{
 					value_container container_;
-					if (Traits::lt(bucket.first, h)) // overlap
+					if (Traits::lt(accessor::low(bucket), h)) // overlap
 					{
-						triplet_type _bucket(l, bucket.first, container_);
+						bucket_type _bucket = make_bucket(l, accessor::low(bucket), container_);
 						buckets_.insert(p, _bucket);
-						Traits::assign(l, bucket.first);
+						Traits::assign(l, accessor::low(bucket));
 					}
 					else // no overlap
 					{
-						triplet_type _bucket(l, h, container_);
+						bucket_type _bucket = make_bucket(l, h, container_);
 						buckets_.insert(p, _bucket);
-						Traits::assign(l, bucket.first);
+						Traits::assign(l, accessor::low(bucket));
 						continue; // it all ends before the current bucket
 						// so we're done
 					}
@@ -382,55 +399,55 @@ namespace masutils
 				// step 2: now isolate the part remaining which starts at
 				// the current bucket but ends before the end of the
 				// current bucket
-				if (Traits::eq(l, bucket.first))
+				if (Traits::eq(l, accessor::low(bucket)))
 				{
-					if (Traits::lt(h, bucket.second))
+					if (Traits::lt(h, accessor::high(bucket)))
 					{
-						triplet_type bucket_(bucket);
-						Traits::assign(bucket_.second, h);
+						bucket_type bucket_(bucket);
+						Traits::assign(accessor::high(bucket), h);
 						buckets_.insert(p, bucket_);
-						Traits::assign(bucket.first, h);
+						Traits::assign(accessor::low(bucket), h);
 						Traits::assign(l, h);
 						continue;
 					}
 					else
 					{
-						// already have a bucket from l to bucket.second
+						// already have a bucket from l to accessor::high(bucket)
 						// (the current bucket) so adjust l
-						Traits::assign(l, bucket.second);
+						Traits::assign(l, accessor::high(bucket));
 					}
 				}
 
 				// step 3: now isolate the part remaining which starts after
 				// the current bucket and create the two buckets which split
 				// the current bucket with _l
-				if (Traits::lt(l, bucket.second))
+				if (Traits::lt(l, accessor::high(bucket)))
 				{
 					{
 						// first create the "start of current bucket to
 						// _l" bucket
-						triplet_type bucket_(bucket);
-						Traits::assign(bucket_.second, l);
+						bucket_type bucket_(bucket);
+						Traits::assign(accessor::high(bucket_), l);
 						buckets_.insert(p, bucket_);
 						// next change current bucket to be "_l to end of
 						// current bucket"
-						Traits::assign(bucket.first, l);
+						Traits::assign(accessor::low(bucket), l);
 					}
 
 					// step 4: now isolate the part remaining which starts at
 					// _l, the new start of the current bucket and check if _h
 					// is less than the end of the current bucket
-					if (Traits::lt(h, bucket.second))
+					if (Traits::lt(h, accessor::high(bucket)))
 					{
-						triplet_type bucket_(bucket);
-						Traits::assign(bucket_.second, h);
+						bucket_type bucket_(bucket);
+						Traits::assign(accessor::high(bucket), h);
 						buckets_.insert(p, bucket_);
-						Traits::assign(bucket.first, h);
+						Traits::assign(accessor::low(bucket), h);
 					}
 
-					// already have a bucket from l to bucket.second, adjust
-					// l to after the current bucket -- bucket.second
-					Traits::assign(l, bucket.second);
+					// already have a bucket from l to accessor::high(bucket), adjust
+					// l to after the current bucket -- accessor::high(bucket)
+					Traits::assign(l, accessor::high(bucket));
 				}
 
 				// at most, only l (which should be after current bucket) to
@@ -440,7 +457,7 @@ namespace masutils
 			if (Traits::lt(l, h)) // either first bucket or after last bucket
 			{
 				value_container container_;
-				triplet_type _bucket(l, h, container_);
+				bucket_type _bucket = make_bucket(l, h, container_);
 				buckets_.push_back(_bucket);
 			}
 
@@ -449,13 +466,13 @@ namespace masutils
 			{
 				for (iterator p = buckets_.begin(); p != buckets_.end(); ++p)
 				{
-					const triplet_type& bucket = *p;
-					if (Traits::eq(lowest_, bucket.first))
+					const bucket_type& bucket = *p;
+					if (Traits::eq(lowest_, accessor::low(bucket)))
 					{
 						begin = p;
 						b_begin = true;
 					}
-					if (Traits::eq(highest_, bucket.second))
+					if (Traits::eq(highest_, accessor::high(bucket)))
 					{
 						end = p;
 						++end;
@@ -468,19 +485,19 @@ namespace masutils
 			return (b_begin && b_end);
 		}
 
-		int spread(const triplet_type& bucket_)
+		int spread(const bucket_type& bucket_)
 		{
 			int added_to_bucket = 0;
 
 			iterator begin, end;
-			const bool b_spliced = splice(bucket_.first, bucket_.second, begin, end);
+			const bool b_spliced = splice(accessor::low(bucket_), accessor::high(bucket_), begin, end);
 
 			if (!b_spliced)
 				return added_to_bucket;
 
 			index_type l, h;
-			Traits::assign(l, bucket_.first);
-			Traits::assign(h, bucket_.second);
+			Traits::assign(l, accessor::low(bucket_));
+			Traits::assign(h, accessor::high(bucket_));
 
 			if (constrained_)
 			{
@@ -498,11 +515,11 @@ namespace masutils
 
 			for (iterator p = begin; p != end; ++p)
 			{
-				triplet_type& bucket = *p;
-				if (Traits::lt(bucket.second, l)) continue; // not yet...
-				if (Traits::lt(h, bucket.first)) break; // already done...
-				value_container& ocontainer_ = bucket.third;
-				const value_container& icontainer_ = bucket_.third;
+				bucket_type& bucket = *p;
+				if (Traits::lt(accessor::high(bucket), l)) continue; // not yet...
+				if (Traits::lt(h, accessor::low(bucket))) break; // already done...
+				value_container& ocontainer_ = accessor::values(bucket);
+				const value_container& icontainer_ = accessor::values(bucket_);
 				ContainerTraits::append(ocontainer_, icontainer_);
 				added_to_bucket++;
 			}
@@ -510,19 +527,19 @@ namespace masutils
 			return added_to_bucket;
 		}
 
-		int cover(const triplet_type& bucket_)
+		int cover(const bucket_type& bucket_)
 		{
 			int added_to_bucket = 0;
 
 			iterator begin, end;
-			const bool b_spliced = splice(bucket_.first, bucket_.second, begin, end);
+			const bool b_spliced = splice(accessor::low(bucket_), accessor::high(bucket_), begin, end);
 
 			if (!b_spliced)
 				return added_to_bucket;
 
 			index_type l, h;
-			Traits::assign(l, bucket_.first);
-			Traits::assign(h, bucket_.second);
+			Traits::assign(l, accessor::low(bucket_));
+			Traits::assign(h, accessor::high(bucket_));
 
 			if (constrained_)
 			{
@@ -540,7 +557,7 @@ namespace masutils
 
 			iterator next = buckets_.erase(begin, end);
 
-			triplet_type bucket2_(l, h, bucket_.third);
+			bucket_type bucket2_ = make_bucket(l, h, accessor::values(bucket_));
 
 			buckets_.insert(next, bucket2_);
 
@@ -561,7 +578,7 @@ namespace masutils
 		{
 			value_container container_;
 			ContainerTraits::add(container_, value);
-			triplet_type bucket_(low, high, container_);
+			bucket_type bucket_ = make_bucket(low, high, container_);
 
 			return spread(bucket_);
 		}
@@ -577,7 +594,7 @@ namespace masutils
 		{
 			value_container container_;
 			ContainerTraits::add(container_, value);
-			triplet_type bucket_(low, high, container_);
+			bucket_type bucket_ = make_bucket(low, high, container_);
 
 			return cover(bucket_);
 		}
@@ -632,7 +649,7 @@ namespace masutils
 
 			for (const_iterator p = bucket_.begin(); p != bucket_.end(); ++p)
 			{
-				const triplet_type& bucket = *p;
+				const bucket_type& bucket = *p;
 				added_to_bucket += spread(bucket);
 			}
 
@@ -652,7 +669,7 @@ namespace masutils
 
 			for (const_iterator p = bucket_.begin(); p != bucket_.end(); ++p)
 			{
-				const triplet_type& bucket = *p;
+				const bucket_type& bucket = *p;
 				added_to_bucket += cover(bucket);
 			}
 
