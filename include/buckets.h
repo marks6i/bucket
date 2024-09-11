@@ -404,7 +404,7 @@ namespace masutils
 					if (Traits::lt(h, accessor::high(bucket)))
 					{
 						bucket_type bucket_(bucket);
-						Traits::assign(accessor::high(bucket), h);
+						Traits::assign(accessor::high(bucket_), h);
 						buckets_.insert(p, bucket_);
 						Traits::assign(accessor::low(bucket), h);
 						Traits::assign(l, h);

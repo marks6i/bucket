@@ -42,5 +42,8 @@
     <ClInclude Include="bucket_list.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="bucket_map.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

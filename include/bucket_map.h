@@ -1,90 +1,165 @@
-// Copyright 2024 Mark Solinski
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     https://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
-// bucket_map.h : Define the bucket_map collection class.
-//
+/**
+ * @file  bucket_map.h
+ * @copyright
+ * Copyright 2024 Mark Solinski
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ * @brief The bucket_map class.
+ *
+ * A bucket is a collection much like a Dictionary (key-value store),
+ * where the "keys" represent a non-overlapping range on an ordered axis.
+ * Gaps are allowed if there are not values in the given range. The "values"
+ * are stored in a collection as well, and can be accessed by the key.
+ */
 
 #ifndef MASUTILS_BUCKET_MAP_H_
 #define MASUTILS_BUCKET_MAP_H_
 
 #include <functional>
 #include <map>
-#include <list>
 #include <stdexcept>
+#include <utility>
 
-// #include "triplet.h"
 #include "bucket_compare_traits.h"
 #include "bucket_value_traits.h"
 
 namespace masutils
-{
+{ 
+	/**
+	 * @brief The bucket_map class.
+	 * @tparam Indices The type of the keys in the bucket.
+	 * @tparam Values The type of the values in the bucket.
+	 * @tparam Traits The operations that can be performed on the keys.
+	 * @tparam ContainerTraits The operations that can be performed on the value container.
+	 */
 	template <class Indices,
-						class Values,
-						class Traits = bucket_compare_traits<Indices>,
-						class ContainerTraits = bucket_value_traits<Values>>
+	          class Values,
+	          class Traits = bucket_compare_traits<Indices>,
+	          class ContainerTraits = bucket_value_traits<Values>>
 	class bucket_map
 	{
 	public:
 		typedef bucket_map<Indices,
-											 Values,
-											 Traits,
-											 ContainerTraits>
-				mytype;
+		                Values,
+		                Traits,
+		                ContainerTraits> mytype;
 
 		typedef Indices index_type;
 		typedef Values value_type;
 
 		typedef typename ContainerTraits::value_container value_container;
 		typedef const typename ContainerTraits::value_container const_value_container;
-		typedef std::pair<std::pair<index_type, index_type>, value_container> triplet_type;
-		typedef std::map<std::pair<index_type, index_type>, value_container> triplet_map;
 
-		typedef typename triplet_map::iterator iterator;
-		typedef typename triplet_map::const_iterator const_iterator;
-		typedef typename triplet_map::reverse_iterator reverse_iterator;
-		typedef typename triplet_map::const_reverse_iterator const_reverse_iterator;
+		typedef std::pair<const index_type,
+					std::pair< index_type,
+							   value_container> > bucket_type;
 
+		struct bucket_compare_functor
+		{
+			bool operator()(const index_type& x, const index_type& y) const noexcept
+			{
+				return Traits::lt(x, y);
+			}
+		};
+
+		typedef std::map<const index_type, std::pair<index_type, value_container>, bucket_compare_functor> bucket_type_map;
+
+		struct accessor {
+			accessor() = delete;
+
+			// Getters
+			inline static const index_type& low(const bucket_type& t) noexcept         { return t.first;         }
+			inline static index_type& high(bucket_type& t) noexcept                    { return t.second.first;  }
+			inline static const index_type& high(const bucket_type& t) noexcept        { return t.second.first;  }
+			inline static value_container& values(bucket_type& t) noexcept             { return t.second.second; }
+			inline static const_value_container& values(const bucket_type& t) noexcept { return t.second.second; }
+
+			inline static const std::pair< index_type, value_container>& data(const bucket_type& t) noexcept { return t.second; }
+		};
+
+		static inline bucket_type make_bucket(index_type low, index_type high, const value_container& values)
+		{
+			return std::make_pair(low, std::make_pair(high, values)); // Assuming compiler is using RVO/NRVO to avoid copies
+		}
+
+		typedef typename bucket_type_map::iterator iterator;
+		typedef typename bucket_type_map::const_iterator const_iterator;
+		typedef typename bucket_type_map::reverse_iterator reverse_iterator;
+		typedef typename bucket_type_map::const_reverse_iterator const_reverse_iterator;
+
+		/**
+		 * @brief Returns an iterator to the first element of the bucket collection.
+		 * @return Iterator to the first element.
+		 */
 		iterator begin() { return buckets_.begin(); }
+
+		/**
+		 * @brief Returns an iterator to the element following the last element of the bucket collection.
+		 * @return Iterator to the element following the last element.
+		 */
 		iterator end() { return buckets_.end(); }
+
+		/**
+		 * @brief Returns a const iterator to the first element of the bucket collection.
+		 * @return Const iterator to the first element.
+		 */
 		const_iterator begin() const noexcept { return const_iterator(buckets_.begin()); }
+
+		/**
+		 * @brief Returns a const iterator to the element following the last element of the bucket collection.
+		 * @return Const iterator to the element following the last element.
+		 */
 		const_iterator end() const noexcept { return const_iterator(buckets_.end()); }
 
+		/**
+		 * @brief Returns a reverse iterator to the first element of the reversed bucket collection. It corresponds to the last element of the non-reversed bucket collection.
+		 * @return Reverse iterator to the first element.
+		 */
 		reverse_iterator rbegin() { return buckets_.rbegin(); }
+
+		/**
+		 * @brief Returns a reverse iterator to the element following the last element of the reversed bucket collection. It corresponds to the element preceding the first element of the non-reversed bucket collection.
+		 * @return Reverse iterator to the element following the last element.
+		 */
 		reverse_iterator rend() { return buckets_.rend(); }
 
+		/**
+		 * @brief Returns a const reverse iterator to the first element of the reversed bucket collection. It corresponds to the last element of the non-reversed bucket collection.
+		 * @return Const reverse iterator to the first element.
+		 */
 		const_reverse_iterator rbegin() const
 		{
 			return const_reverse_iterator(buckets_.rbegin());
 		}
 
+		/**
+		 * @brief Returns a const reverse iterator to the element following the last element of the reversed bucket collection. It corresponds to the element preceding the first element of the non-reversed bucket collection.
+		 * @return Const reverse iterator to the element following the last element.
+		 */
 		const_reverse_iterator rend() const
 		{
 			return const_reverse_iterator(buckets_.rend());
 		}
 
 	private:
-		enum class iteration_direction
-		{
-			forward,
-			reverse
-		};
+		enum class iteration_direction { forward, reverse };
 
 		// Define the range_iterator
 		template <bool IsConst>
 		class range_iterator
 		{
-			typedef typename std::conditional_t<IsConst, const triplet_map, triplet_map> parent_map;
+			typedef typename std::conditional_t<IsConst, const bucket_type_map, bucket_type_map> parent_map;
 			typedef typename std::conditional_t<IsConst, const_iterator, iterator> iterator_range;
 
 			iterator_range current_;
@@ -95,15 +170,18 @@ namespace masutils
 			iteration_direction direction_;
 
 		private:
-			static bool overlaps(const triplet_type &triplet, index_type start_range, index_type end_range)
+			static bool overlaps(const bucket_type& bucket, index_type start_range, index_type end_range)
 			{
-				return !(triplet.first.first >= end_range || triplet.first.second < start_range);
+				return !(accessor::low(bucket) >= end_range || accessor::high(bucket) < start_range);
 			}
 
 		public:
-			range_iterator(parent_map &map, index_type start_range, index_type end_range, iteration_direction direction)
-					: begin_(map.begin()), end_(map.end()), start_range_(start_range), end_range_(end_range), direction_(direction)
+			range_iterator(parent_map& map, index_type start_range, index_type end_range, iteration_direction direction)
+				: begin_(map.begin()), end_(map.end()), start_range_(start_range), end_range_(end_range), direction_(direction)
 			{
+				begin_ = map.lower_bound(start_range);
+				end_ = map.upper_bound(end_range);
+
 				if (direction_ == iteration_direction::forward)
 				{
 					current_ = begin_;
@@ -130,19 +208,20 @@ namespace masutils
 				}
 			}
 
-			range_iterator &operator++()
+			range_iterator& operator++()
 			{
 				if (direction_ == iteration_direction::forward)
 				{
 					do
 					{
 						++current_;
-					} while (current_ != end_ && !overlaps(*current_, start_range_, end_range_));
+					}
+					while (current_ != end_ && !overlaps(*current_, start_range_, end_range_));
 				}
 				return *this;
 			}
 
-			range_iterator &operator--()
+			range_iterator& operator--()
 			{
 				if (direction_ == iteration_direction::reverse)
 				{
@@ -151,77 +230,136 @@ namespace masutils
 						do
 						{
 							--current_;
-						} while (current_ != begin_ && !overlaps(*current_, start_range_, end_range_));
+						}
+						while (current_ != begin_ && !overlaps(*current_, start_range_, end_range_));
 					}
 				}
 				return *this;
 			}
 
-			bool operator==(const range_iterator &other) const { return current_ == other.current_; }
-			bool operator!=(const range_iterator &other) const { return !(*this == other); }
+			bool operator==(const range_iterator& other) const { return current_ == other.current_; }
+			bool operator!=(const range_iterator& other) const { return !(*this == other); }
 
-			triplet_type &operator*() { return *current_; }
-			triplet_type *operator->() { return &(*current_); }
+			bucket_type& operator*() { return *current_; }
+			bucket_type* operator->() { return &(*current_); }
 		};
 
 	public:
+
 		// Forward iterators
+
+		/**
+		 * @brief Forward iterator over a range of buckets.
+		 * @tparam IsConst Boolean value indicating if the iterator is const.
+		 * @param start_range First bucket after or containing this index.
+		 * @param end_range First bucket after this index.
+		 * @return Iterator starting at first bucket in the range.
+		 */
 		template <bool IsConst>
 		range_iterator<IsConst> beginRange(index_type start_range, index_type end_range)
 		{
 			return range_iterator<IsConst>(buckets_, start_range, end_range, iteration_direction::forward);
 		}
 
+		/**
+		 * @brief Iterator of first bucket past the range.
+		 * @tparam IsConst Boolean value indicating if the iterator is const.
+		 * @param start_range Start index of buckets in the range.
+		 * @param end_range End index of buckets in the range.
+		 * @return Iterator to first bucket past the range.
+		 */
 		template <bool IsConst>
-		range_iterator<IsConst> endRange(index_type start_range, index_type end_range)
-		{
-			return range_iterator<IsConst>(buckets_, end_range, end_range, iteration_direction::forward);
+		range_iterator<IsConst> endRange(index_type start_range, index_type end_range) {
+			// Create an iterator starting from the end of the map
+			range_iterator<IsConst> iter(buckets_, start_range, end_range, iteration_direction::forward);
+			// Move the iterator to one-past-the-last valid element within the range
+			while (iter.current_ != iter.end_ && overlaps(*iter.current_, start_range, end_range)) {
+				++iter.current_;
+			}
+			return iter; // This will be one-past-the-last valid element
 		}
 
 		// Reverse iterators
+
+		/**
+		 * @brief Forward iterator over a range of buckets.
+		 * @tparam IsConst Boolean value indicating if the iterator is const.
+		 * @param start_range First bucket in reverse order after or containing this index.
+		 * @param end_range First bucket after this index.
+		 * @return Iterator starting at first bucket in reverse order in the range.
+		 */
 		template <bool IsConst>
 		range_iterator<IsConst> rbeginRange(index_type start_range, index_type end_range)
 		{
 			return range_iterator<IsConst>(buckets_, start_range, end_range, iteration_direction::reverse);
 		}
 
+		/**
+		 * @brief Iterator of first bucket in reverse order past the range.
+		 * @tparam IsConst Boolean value indicating if the iterator is const.
+		 * @param start_range Start index of buckets in the range.
+		 * @param end_range End index of buckets in the range.
+		 * @return Iterator to first bucket in reverse order past the range.
+		 */
 		template <bool IsConst>
-		range_iterator<IsConst> rendRange(index_type start_range, index_type end_range)
-		{
-			return range_iterator<IsConst>(buckets_, end_range, end_range, iteration_direction::reverse);
+		range_iterator<IsConst> rendRange(index_type start_range, index_type end_range) {
+			// Create an iterator starting from the end of the map (in reverse)
+			range_iterator<IsConst> iter(buckets_, start_range, end_range, iteration_direction::reverse);
+			// Move the iterator to one-past-the-first valid element within the range
+			while (iter.current_ != iter.begin_ && overlaps(*iter.current_, start_range, end_range)) {
+				--iter.current_;
+			}
+			return iter; // This will be one-past-the-first valid element
 		}
 
-		std::size_t size() const { return buckets_.size(); }
-		bool empty() const { return buckets_.empty(); }
-		index_type low() const { return low_; }
-		index_type high() const { return high_; }
-		bool constrained() const { return constrained_; }
+		std::size_t size() const { return buckets_.size(); } /**< Number of buckets in bucket_map collection */
+		bool empty() const { return buckets_.empty(); } /**< Boolean indicating if the bucket_map collection is empty */
+		index_type low() const { return low_; } /**< Lower bounds of a constrained bucket collection */
+		index_type high() const { return high_; } /**< Upper bounds of a constrained bucket collection */
+		bool constrained() const { return constrained_; } /**< Boolean indicating whether the bucket collection is constrained */
 
 	private:
-		buckets(const mytype &) = default;
-		mytype &operator=(const mytype &) = default;
+		bucket_map(const mytype&) = default;
+		mytype& operator=(const mytype&) = default;
 
-		triplet_map buckets_;
+		bucket_type_map buckets_;
 		index_type low_;
 		index_type high_;
 		bool constrained_;
 
 	public:
-		explicit buckets(index_type low, index_type high) : low_(low), high_(high), constrained_(true)
+		/**
+		 * @brief Constructor of a constrained bucket_map collection.
+		 * @param low Lower bounds of the bucket_map collection.
+		 * @param high Upper bounds of the bucket_map collection.
+		 */
+		explicit bucket_map(index_type low, index_type high) : low_(low), high_(high), constrained_(true)
 		{
 			if (Traits::lt(high_, low_))
 				throw std::invalid_argument("Arguments not in correct order.");
 		}
 
-		explicit buckets() noexcept : low_(0), high_(0), constrained_(false)
+		/**
+		 * @brief Constructor of an unconstrained bucket_map collection.
+		 */
+		explicit bucket_map() noexcept : low_(0), high_(0), constrained_(false)
 		{
 		}
 
-		~buckets() = default; // Destructor
-		buckets &operator=(buckets &&) noexcept = default;
+		/**
+		 * @brief Default destructor.
+		 */
+		~bucket_map() = default; // Destructor
+
+		/**
+		 * @brief Default move constructor.
+		 * @param  Original bucket_map collection.
+		 * @return New bucket_map collection.
+		 */
+		bucket_map& operator=(bucket_map&&) noexcept = default;
 
 	protected:
-		bool splice(index_type low, index_type high, iterator &begin, iterator &end)
+		bool splice(index_type low, index_type high, iterator& begin, iterator& end)
 		{
 			index_type l, h;
 			Traits::assign(l, low);
@@ -234,114 +372,116 @@ namespace masutils
 
 				// They now must overlap somewhere and their range can now be
 				// constricted to the bounds
-				if (Traits::lt(l, low_))
-					Traits::assign(l, low_);
-				if (Traits::lt(high_, h))
-					Traits::assign(h, high_);
+				if (Traits::lt(l, low_)) Traits::assign(l, low_);
+				if (Traits::lt(high_, h)) Traits::assign(h, high_);
 			}
 
 			index_type lowest_, highest_;
 			Traits::assign(lowest_, l);
 			Traits::assign(highest_, h);
 
-			// binary search to find the starting position for the splice
-			auto it = buckets_.lower_bound(std::make_pair(l, l));
-
-			// check for overlaps to slice buckets
-			for (auto p = it; p != buckets_.end(); ++p)
 			{
-				if (Traits::lt(l, h) != true)
-					break; // all done since range is null
 
-				triplet_type &triplet = *p;
+				iterator p = buckets_.lower_bound(lowest_);
 
-				if (Traits::lt(h, triplet.first.first))
-					break; // all done since range is null
-
-				// step 1: first isolate the part of the new range which occurs
-				// before the current bucket
-				if (Traits::lt(l, triplet.first.first))
-				{
-					value_container container_;
-					if (Traits::lt(triplet.first.first, h)) // overlap
-					{
-						// triplet_type _triplet(l, triplet.first.first, container_); // **TODO**
-						// buckets_.insert(p, _triplet);
-						Traits::assign(l, triplet.first.first);
-					}
-					else // no overlap
-					{
-						// triplet_type _triplet(l, h, container_); // **TODO**
-						// buckets_.insert(p, _triplet);
-						Traits::assign(l, triplet.first.first);
-						continue; // it all ends before the current bucket
-											// so we're done
+				if (p != buckets_.begin()) {
+					if (p == buckets_.end() || accessor::low(*p) != lowest_) {
+						--p;
 					}
 				}
 
-				// step 2: now isolate the part remaining which starts at
-				// the current bucket but ends before the end of the
-				// current bucket
-				if (Traits::eq(l, triplet.first.first))
+				// check for overlaps to slice buckets
+				for (; p != buckets_.end(); ++p)
 				{
-					if (Traits::lt(h, triplet.first.second))
+					if (Traits::lt(l, h) != true)
+						break; // all done since range is null
+
+					bucket_type& bucket = *p;
+
+					// step 1: first isolate the part of the new range which occurs
+					// before the current bucket
+					if (Traits::lt(l, accessor::low(bucket)))
 					{
-						triplet_type triplet_(triplet);
-						Traits::assign(triplet_.first.second, h);
-						// buckets_.insert(p, triplet_);  // **TODO**
-						Traits::assign(triplet.first.first, h);
-						Traits::assign(l, h);
-						continue;
+						value_container container_;
+						if (Traits::lt(accessor::low(bucket), h)) // overlap
+						{
+							bucket_type _bucket = make_bucket(l, accessor::low(bucket), container_);
+							buckets_[accessor::low(_bucket)] = accessor::data(_bucket);
+							Traits::assign(l, accessor::low(bucket));
+						}
+						else // no overlap
+						{
+							bucket_type _bucket = make_bucket(l, h, container_);
+							buckets_[accessor::low(_bucket)] = accessor::data(_bucket);
+							Traits::assign(l, accessor::low(bucket));
+							continue; // it all ends before the current bucket
+							// so we're done
+						}
 					}
-					else
+
+					// step 2: now isolate the part remaining which starts at
+					// the current bucket but ends before the end of the
+					// current bucket
+					if (Traits::eq(l, accessor::low(bucket)))
 					{
-						// already have a bucket from l to triplet.second
-						// (the current bucket) so adjust l
-						Traits::assign(l, triplet.first.second);
+						// **TODO** This is my stopping point. Need to look at buckets.cpp
+						// and bucket_list.cpp for same changes
+						if (Traits::lt(h, accessor::high(bucket)))
+						{
+							bucket_type bucket_(bucket);
+							Traits::assign(accessor::high(bucket), h);
+							buckets_[h] = std::make_pair(accessor::high(bucket_), accessor::values(bucket));
+							Traits::assign(l, h);
+							continue;
+						}
+						else
+						{
+							// already have a bucket from l to accessor::high(bucket)
+							// (the current bucket) so adjust l
+							Traits::assign(l, accessor::high(bucket));
+						}
 					}
+
+					// step 3: now isolate the part remaining which starts after
+					// the current bucket and create the two buckets which split
+					// the current bucket with l
+					if (Traits::lt(l, accessor::high(bucket)))
+					{
+						{
+							// first create the "start of current bucket to
+							// l" bucket
+							bucket_type bucket_(bucket);
+							Traits::assign(accessor::high(bucket), l);
+
+							// next change current bucket to be "l to end of
+							// current bucket
+							buckets_[l] = std::make_pair(accessor::high(bucket_), accessor::values(bucket_));
+						}
+
+						// step 4: now isolate the part remaining which starts at
+						// _l, the new start of the current bucket and check if _h
+						// is less than the end of the current bucket
+						if (Traits::lt(h, accessor::high(bucket)))
+						{
+							bucket_type bucket_(bucket);
+							Traits::assign(accessor::high(bucket_), h);
+							buckets_[h] = std::make_pair(accessor::high(bucket), accessor::values(bucket));
+						}
+
+						// already have a bucket from l to accessor::high(bucket), adjust
+						// l to after the current bucket -- accessor::high(bucket)
+						Traits::assign(l, accessor::high(bucket));
+					}
+
+					// at most, only l (which should be after current bucket) to
+					// h is remaining, so loop
 				}
-
-				// step 3: now isolate the part remaining which starts after
-				// the current bucket and create the two buckets which split
-				// the current bucket with _l
-				if (Traits::lt(l, triplet.first.second))
-				{
-					{
-						// first create the "start of current bucket to
-						// _l" bucket
-						triplet_type triplet_(triplet);
-						Traits::assign(triplet_.first.second, l);
-						// buckets_.insert(p, triplet_); // **TODO**
-						// next change current bucket to be "_l to end of
-						// current bucket"
-						Traits::assign(triplet.first.first, l);
-					}
-
-					// step 4: now isolate the part remaining which starts at
-					// _l, the new start of the current bucket and check if _h
-					// is less than the end of the current bucket
-					if (Traits::lt(h, triplet.first.second))
-					{
-						triplet_type triplet_(triplet);
-						Traits::assign(triplet_.first.second, h);
-						// buckets_.insert(p, triplet_); // **TODO**
-						Traits::assign(triplet.first.first, h);
-					}
-
-					// already have a bucket from l to triplet.second, adjust
-					// l to after the current bucket -- triplet.second
-					Traits::assign(l, triplet.first.second);
-				}
-
-				// at most, only l (which should be after current bucket) to
-				// h is remaining, so loop
 			}
 
 			if (Traits::lt(l, h)) // either first bucket or after last bucket
 			{
 				value_container container_;
-				// triplet_type _triplet(l, h, container_); // **TODO**
-				// buckets_.push_back(_triplet);
+				buckets_[l] = std::make_pair(h, container_);
 			}
 
 			bool b_begin = false, b_end = false;
@@ -349,13 +489,13 @@ namespace masutils
 			{
 				for (iterator p = buckets_.begin(); p != buckets_.end(); ++p)
 				{
-					const triplet_type &triplet = *p;
-					if (Traits::eq(lowest_, triplet.first.first))
+					const bucket_type& bucket = *p;
+					if (Traits::eq(lowest_, accessor::low(bucket)))
 					{
 						begin = p;
 						b_begin = true;
 					}
-					if (Traits::eq(highest_, triplet.first.second))
+					if (Traits::eq(highest_, accessor::high(bucket)))
 					{
 						end = p;
 						++end;
@@ -368,86 +508,81 @@ namespace masutils
 			return (b_begin && b_end);
 		}
 
-		int spread(const triplet_type &triplet_)
+		int spread(const bucket_type& bucket_)
 		{
 			int added_to_bucket = 0;
 
 			iterator begin, end;
-			const bool b_spliced = splice(triplet_.first.first, triplet_.first.second, begin, end);
+			const bool b_spliced = splice(accessor::low(bucket_), accessor::high(bucket_), begin, end);
 
 			if (!b_spliced)
 				return added_to_bucket;
 
 			index_type l, h;
-			Traits::assign(l, triplet_.first.first);
-			Traits::assign(h, triplet_.first.second);
+			Traits::assign(l, accessor::low(bucket_));
+			Traits::assign(h, accessor::high(bucket_));
 
 			if (constrained_)
 			{
 				// The call to splice above catches the condition below so it
 				// is not needed here
 
-				// if (traits::lt(h, low_) || traits::lt(high_, l))
-				//   return false;
+				//if (traits::lt(h, low_) || traits::lt(high_, l))
+				//  return false;
 
 				// They now must overlap somewhere and their range can now be
 				// constricted to the bounds
-				if (Traits::lt(l, low_))
-					Traits::assign(l, low_);
-				if (Traits::lt(high_, h))
-					Traits::assign(h, high_);
+				if (Traits::lt(l, low_)) Traits::assign(l, low_);
+				if (Traits::lt(high_, h)) Traits::assign(h, high_);
 			}
 
 			for (iterator p = begin; p != end; ++p)
 			{
-				triplet_type &triplet = *p;
-				if (Traits::lt(triplet.first.second, l))
-					continue; // not yet...
-				if (Traits::lt(h, triplet.first.first))
-					break; // already done...
-				value_container &ocontainer_ = triplet.second;
-				const value_container &icontainer_ = triplet_.second;
-				// ContainerTraits::append(ocontainer_, icontainer_);  // **TODO**
+				bucket_type& bucket(*p);
+				if (Traits::lt(accessor::high(bucket), l)) continue; // not yet...
+				if (Traits::lt(h, accessor::low(bucket))) break; // already done...
+				value_container& ocontainer_ = accessor::values(bucket);
+				const value_container& icontainer_ = accessor::values(bucket_); // Ensure icontainer_ is const
+				ContainerTraits::append(ocontainer_, icontainer_);
 				added_to_bucket++;
 			}
 
 			return added_to_bucket;
 		}
 
-		int cover(const triplet_type &triplet_)
+		int cover(const bucket_type& bucket_)
 		{
 			int added_to_bucket = 0;
 
 			iterator begin, end;
-			const bool b_spliced = splice(triplet_.first.first, triplet_.first.second, begin, end);
+			const bool b_spliced = splice(accessor::low(bucket_), accessor::high(bucket_), begin, end);
 
 			if (!b_spliced)
 				return added_to_bucket;
 
 			index_type l, h;
-			Traits::assign(l, triplet_.first.first);
-			Traits::assign(h, triplet_.first.second);
+			Traits::assign(l, accessor::low(bucket_));
+			Traits::assign(h, accessor::high(bucket_));
 
 			if (constrained_)
 			{
 				// The call to splice above catches the condition below so it
 				// is not needed here
 
-				// if (traits::lt(h, low_) || traits::lt(high_, l))
-				//   return false;
+				//if (traits::lt(h, low_) || traits::lt(high_, l))
+				//  return false;
 
 				// They now must overlap somewhere and their range can now be
 				// constricted to the bounds
-				if (Traits::lt(l, low_))
-					Traits::assign(l, low_);
-				if (Traits::lt(high_, h))
-					Traits::assign(h, high_);
+				if (Traits::lt(l, low_)) Traits::assign(l, low_);
+				if (Traits::lt(high_, h)) Traits::assign(h, high_);
 			}
 
 			iterator next = buckets_.erase(begin, end);
 
-			// triplet_type triplet2_(l, h, triplet_.second); // **TODO**
-			// buckets_.insert(next, triplet2_);
+			bucket_type bucket2_ = make_bucket(l, h, accessor::values(bucket_));
+
+			buckets_[accessor::low(bucket_)] = accessor::data(bucket_);
 
 			added_to_bucket++;
 
@@ -455,47 +590,110 @@ namespace masutils
 		}
 
 	public:
+		/**
+		 * @brief Spread \bvalue into all buckets (creating new ones as needed) in the range \blow to \bhigh.
+		 * @param low Lower bounds of the range.
+		 * @param high Upper bounds of the range.
+		 * @param value Value to be added to the value container in each bucket.
+		 * @return Number of buckets that the value was added to.
+		 */
 		int spread(index_type low, index_type high, value_type value)
 		{
 			value_container container_;
 			ContainerTraits::add(container_, value);
-			// triplet_type triplet_(low, high, container_); // **TODO**
+			bucket_type bucket_ = make_bucket(low, high, container_);
 
-			// return spread(triplet_); // **TODO**
+			return spread(bucket_);
 		}
 
+		/**
+		 * @brief Create a new bucket with the range \blow to \bhigh (replacing all previous buckets in the range) and add \bvalue to the value container.
+		 * @param low Lower bounds of the range.
+		 * @param high Upper bounds of the range.
+		 * @param value Value to be added to the value container in the bucket.
+		 * @return Number of buckets that the value was added to.
+		 */
 		int cover(index_type low, index_type high, value_type value)
 		{
 			value_container container_;
 			ContainerTraits::add(container_, value);
-			// triplet_type triplet_(low, high, container_); // **TODO**
+			bucket_type bucket_ = make_bucket(low, high, container_);
 
-			// return cover(triplet_); // **TODO**
+			return cover(bucket_);
 		}
 
+		/**
+		 * @brief Remove (or partially remove) all buckets in the range \blow to \bhigh.
+		 * @param low Lower bounds of the range.
+		 * @param high Upper bounds of the range.
+		 * @return Boolean indicating if any buckets were removed.
+		 */
+		bool erase(index_type low, index_type high)
+		{
+			iterator begin, end;
+			const bool b_spliced = splice(low, high, begin, end);
+
+			if (!b_spliced)
+				return false;
+
+			index_type l, h;
+			Traits::assign(l, low);
+			Traits::assign(h, high);
+
+			if (constrained_)
+			{
+				// The call to splice above catches the condition below so it
+				// is not needed here
+
+				//if (traits::lt(h, low_) || traits::lt(high_, l))
+				//  return false;
+
+				// They now must overlap somewhere and their range can now be
+				// constricted to the bounds
+				if (Traits::lt(l, low_)) Traits::assign(l, low_);
+				if (Traits::lt(high_, h)) Traits::assign(h, high_);
+			}
+
+			iterator next = buckets_.erase(begin, end);
+
+			return true;
+		}
+
+		/**
+		 * @brief Repeated spread each element of a bucket into another bucket.
+		 * @tparam OtherContainerTraits The container traits of the passed bucket.
+		 * @param bucket_ The bucket to spread.
+		 * @return Number of buckets that all the values were added to.
+		 */
 		template <class OtherContainerTraits>
-		int spread(const buckets<Indices, Values, Traits, OtherContainerTraits> &bucket_)
+		int spread(const bucket_map<Indices, Values, Traits, OtherContainerTraits>& bucket_)
 		{
 			int added_to_bucket = 0;
 
 			for (const_iterator p = bucket_.begin(); p != bucket_.end(); ++p)
 			{
-				const triplet_type &triplet = *p;
-				added_to_bucket += spread(triplet);
+				const bucket_type& bucket = *p;
+				added_to_bucket += spread(bucket);
 			}
 
 			return added_to_bucket;
 		}
 
+		/**
+		 * @brief Cover a bucket with the buckets in another bucket collection.
+		 * @tparam OtherContainerTraits the container traits of the passed bucket.
+		 * @param bucket_ the bucket used to cover.
+		 * @return Th number of buckets that all the values were added to.
+		 */
 		template <class OtherContainerTraits>
-		int cover(const buckets<Indices, Values, Traits, OtherContainerTraits> &bucket_)
+		int cover(const bucket_map<Indices, Values, Traits, OtherContainerTraits>& bucket_)
 		{
 			int added_to_bucket = 0;
 
 			for (const_iterator p = bucket_.begin(); p != bucket_.end(); ++p)
 			{
-				const triplet_type &triplet = *p;
-				added_to_bucket += cover(triplet);
+				const bucket_type& bucket = *p;
+				added_to_bucket += cover(bucket);
 			}
 
 			return added_to_bucket;

@@ -132,6 +132,7 @@
     <ClInclude Include="buckets_supp.h" />
     <ClInclude Include="bucket_compare_traits.h" />
     <ClInclude Include="bucket_list.h" />
+    <ClInclude Include="bucket_map.h" />
     <ClInclude Include="bucket_value_traits.h" />
     <ClInclude Include="optional.h" />
     <ClInclude Include="test\support.h" />
