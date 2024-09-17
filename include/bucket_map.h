@@ -314,9 +314,6 @@ namespace masutils
 
 		std::size_t size() const { return buckets_.size(); } /**< Number of buckets in bucket_map collection */
 		bool empty() const { return buckets_.empty(); } /**< Boolean indicating if the bucket_map collection is empty */
-		index_type low() const { return low_; } /**< Lower bounds of a constrained bucket collection */
-		index_type high() const { return high_; } /**< Upper bounds of a constrained bucket collection */
-		bool constrained() const { return constrained_; } /**< Boolean indicating whether the bucket collection is constrained */
 
 	private:
 		bucket_map(const mytype&) = default;
@@ -328,6 +325,33 @@ namespace masutils
 		bool constrained_;
 
 	public:
+		/**
+		 * @brief Returns true if bucket_map is constrained.
+		 */
+		bool is_constrained() const noexcept { return constrained_; }
+
+		/**
+		 * @brief Returns the lower bound of a constrained bucket_list
+		 * or a run-time exception if not constrained.
+		 */
+		index_type lower_bound() const {
+			if (!constrained_) {
+				throw std::runtime_error("Bounds are not constrained.");
+			}
+			return low_;
+		}
+
+		/**
+		 * @brief Returns the upper bound of a constrained bucket_list
+		 * or a run-time exception if not constrained.
+		 */
+		index_type upper_bound() const {
+			if (!constrained_) {
+				throw std::runtime_error("Bounds are not constrained.");
+			}
+			return high_;
+		}
+
 		/**
 		 * @brief Constructor of a constrained bucket_map collection.
 		 * @param low Lower bounds of the bucket_map collection.
@@ -342,7 +366,11 @@ namespace masutils
 		/**
 		 * @brief Constructor of an unconstrained bucket_map collection.
 		 */
-		explicit bucket_map() noexcept : low_(0), high_(0), constrained_(false)
+		explicit bucket_map() noexcept(
+			std::is_nothrow_default_constructible<bucket_type_map>::value&&
+			std::is_nothrow_default_constructible<index_type>::value &&
+			noexcept(false)
+			) : low_(), high_(), constrained_(false)
 		{
 		}
 
@@ -445,6 +473,7 @@ namespace masutils
 					// step 3: now isolate the part remaining which starts after
 					// the current bucket and create the two buckets which split
 					// the current bucket with l
+
 					if (Traits::lt(l, accessor::high(bucket)))
 					{
 						{

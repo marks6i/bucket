@@ -301,9 +301,6 @@ namespace masutils
 
 		std::size_t size() const { return buckets_.size(); } /**< Number of buckets in bucket_list collection */
 		bool empty() const { return buckets_.empty(); } /**< Boolean indicating if the bucket_list collection is empty */
-		index_type low() const { return low_; } /**< Lower bounds of a constrained bucket collection */
-		index_type high() const { return high_; } /**< Upper bounds of a constrained bucket collection */
-		bool constrained() const { return constrained_; } /**< Boolean indicating whether the bucket collection is constrained */
 
 	private:
 		bucket_list(const mytype&) = default;
@@ -315,6 +312,33 @@ namespace masutils
 		bool constrained_;
 
 	public:
+		/**
+		 * @brief Returns true if bucket_list is constrained.
+		 */
+		bool is_constrained() noexcept { return constrained_; }
+
+		/**
+		 * @brief Returns the lower bound of a constrained bucket_list
+		 * or a run-time exception if not constrained.
+		 */
+		index_type lower_bound() {
+			if (!constrained_) {
+				throw std::runtime_error("Bounds are not constrained.");
+			}
+			return low_;
+		}
+
+		/**
+		 * @brief Returns the upper bound of a constrained bucket_list
+		 * or a run-time exception if not constrained.
+		 */
+		index_type upper_bound() {
+			if (!constrained_) {
+				throw std::runtime_error("Bounds are not constrained.");
+			}
+			return high_;
+		}
+
 		/**
 		 * @brief Constructor of a constrained bucket_list collection.
 		 * @param low Lower bounds of the bucket_list collection.
@@ -329,7 +353,11 @@ namespace masutils
 		/**
 		 * @brief Constructor of an unconstrained bucket_list collection.
 		 */
-		explicit bucket_list() noexcept : low_(0), high_(0), constrained_(false)
+		explicit bucket_list() noexcept(
+			std::is_nothrow_default_constructible<bucket_type_list>::value&&
+			std::is_nothrow_default_constructible<index_type>::value &&
+			noexcept(false)
+			) : low_(), high_(), constrained_(false)
 		{
 		}
 
@@ -440,7 +468,7 @@ namespace masutils
 					if (Traits::lt(h, accessor::high(bucket)))
 					{
 						bucket_type bucket_(bucket);
-						Traits::assign(accessor::high(bucket), h);
+						Traits::assign(accessor::high(bucket_), h);
 						buckets_.insert(p, bucket_);
 						Traits::assign(accessor::low(bucket), h);
 					}

@@ -136,6 +136,87 @@ struct glossary : public masutils::buckets<
 
 };
 
+template <typename T, typename V = std::basic_string<T>, typename P = std::less<V>>
+struct glossary_list : public masutils::bucket_list<
+	T,
+	V,
+	masutils::bucket_compare_traits<T>,
+	masutils::unique_bucket_value_traits<V, std::set<V, P> > > {
+
+	glossary_list() noexcept {}
+
+#pragma warning( push )
+#pragma warning( disable : 26481 26493 26446 )
+
+	glossary_list(T low, T high) : masutils::bucket_list<
+		T,
+		V,
+		masutils::bucket_compare_traits<T>,
+		masutils::unique_bucket_value_traits<V, std::set<V, P> > >(
+			std::toupper(low),
+			{ T(std::toupper(high) + 1) }
+		) {};
+
+	void add(V word) {
+		const auto first_char = std::toupper(word[0]);
+		// Check if firstChar is at the maximum value for T
+		if (first_char == std::numeric_limits<T>::max()) {
+			throw std::runtime_error("Attempted to use the maximum char value. This is not production code, only for demo purposes.");
+		}
+		this->spread(
+			std::toupper(word[0]),
+			{ T(std::toupper(word[0]) + 1) }, word);
+	}
+
+#pragma warning( pop )
+
+};
+
+template <typename T, typename V = std::basic_string<T>, typename P = std::less<V>>
+struct glossary_map : public masutils::bucket_map<
+	T,
+	V,
+	masutils::bucket_compare_traits<T>,
+	masutils::unique_bucket_value_traits<V, std::set<V, P> > > {
+
+	glossary_map() noexcept {}
+
+#pragma warning( push )
+#pragma warning( disable : 26481 26493 26446 )
+
+	glossary_map(T low, T high) : masutils::bucket_map<
+		T,
+		V,
+		masutils::bucket_compare_traits<T>,
+		masutils::unique_bucket_value_traits<V, std::set<V, P> > >(
+			std::toupper(low),
+			{ T(std::toupper(high) + 1) }
+		) {};
+
+	void add(V word) {
+		const auto first_char = std::toupper(word[0]);
+		// Check if firstChar is at the maximum value for T
+		if (first_char == std::numeric_limits<T>::max()) {
+			throw std::runtime_error("Attempted to use the maximum char value. This is not production code, only for demo purposes.");
+		}
+		this->spread(
+			std::toupper(word[0]),
+			{ T(std::toupper(word[0]) + 1) }, word);
+	}
+
+#pragma warning( pop )
+
+};
+
+template <typename T, typename V = std::basic_string<T>>
+struct string_key_bucket : public masutils::buckets<std::basic_string<T>, V > {};
+
+template <typename T, typename V = std::basic_string<T>>
+struct string_key_bucket_list : public masutils::bucket_list<std::basic_string<T>, V > {};
+
+template <typename T, typename V = std::basic_string<T>>
+struct string_key_bucket_map : public masutils::bucket_map<std::basic_string<T>, V > {};
+
 } // namespace masxtra
 
 namespace masutils {

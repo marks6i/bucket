@@ -27,6 +27,10 @@
 #ifndef MASUTILS_BUCKET_COMPARE_TRAITS_H_
 #define MASUTILS_BUCKET_COMPARE_TRAITS_H_
 
+#ifndef _TYPE_TRAITS_
+#include <type_traits>
+#endif // _TYPE_TRAITS_
+
 namespace masutils {
 
 /**
@@ -39,10 +43,10 @@ namespace masutils {
  * create an instance of this struct. All constructors are deleted to
  * prevent instantiation.
  */
-template<class ValueType>
+template<class KeyType>
 struct bucket_compare_traits {
 
-    typedef ValueType value_type;
+    typedef KeyType key_type;
 
     // These are the only methods that need to be defined for a bucket_compare_traits
 
@@ -52,7 +56,11 @@ struct bucket_compare_traits {
      * @param y
 	 * @return Boolean value indicating if the two keys are equal.
      */
-    static bool eq(const ValueType& x, const ValueType& y) noexcept { return (x == y); }
+    template<typename T = KeyType>
+    static typename std::enable_if<std::is_assignable<T&, const T&>::value, bool>::type
+        eq(const T& x, const T& y) noexcept {
+        return (x == y);
+    }
 
     /**
 	 * @brief Less than comparison.
@@ -60,14 +68,22 @@ struct bucket_compare_traits {
      * @param y
 	 * @return Boolean value indicating if x is less than y.
      */
-    static bool lt(const ValueType& x, const ValueType& y) noexcept { return (x <  y); }
+    template<typename T = KeyType>
+    static typename std::enable_if<std::is_assignable<T&, const T&>::value, bool>::type
+        lt(const T& x, const T& y) noexcept {
+        return (x < y);
+    }
 
     /**
 	 * @brief Assignment operator.
      * @param x 
      * @param y 
      */
-    static void assign(ValueType& x, const ValueType& y)   noexcept { x = y; }
+    template<typename T = KeyType>
+    static typename std::enable_if<std::is_assignable<T&, const T&>::value, void>::type
+        assign(T& x, const T& y) noexcept(std::is_nothrow_assignable<T&, const T&>::value) {
+        x = y;
+    }
 
     // These are methods derived from the above methods and should not (need to) be overridden
 
@@ -77,7 +93,7 @@ struct bucket_compare_traits {
      * @param y 
 	 * @return Boolean value indicating if the two keys are not equal.
      */
-    static bool ne(const ValueType& x, const ValueType& y) noexcept { return !eq(x, y); }
+    static bool ne(const KeyType& x, const KeyType& y) noexcept { return !eq(x, y); }
 
     /**
 	 * @brief Less than or equal comparison.
@@ -85,7 +101,7 @@ struct bucket_compare_traits {
      * @param y 
 	 * @return Boolean value indicating if x is less than or equal to y.
      */
-    static bool le(const ValueType& x, const ValueType& y) noexcept { return !lt(y, x); }
+    static bool le(const KeyType& x, const KeyType& y) noexcept { return !lt(y, x); }
 
     /**
 	 * @brief Greater than comparison.
@@ -93,7 +109,7 @@ struct bucket_compare_traits {
      * @param y 
 	 * @return Boolean value indicating if x is greater than y.
      */
-    static bool gt(const ValueType& x, const ValueType& y) noexcept { return  lt(y, x); }
+    static bool gt(const KeyType& x, const KeyType& y) noexcept { return  lt(y, x); }
 
     /**
 	 * @brief Greater than or equal comparison.
@@ -101,19 +117,21 @@ struct bucket_compare_traits {
      * @param y 
 	 * @return Boolean value indicating if x is greater than or equal to y.
      */
-    static bool ge(const ValueType& x, const ValueType& y) noexcept { return !lt(x, y); }
+    static bool ge(const KeyType& x, const KeyType& y) noexcept { return !lt(x, y); }
 
 private:
     bucket_compare_traits() = delete;
 };
 
-template<class ValueType>
-struct bucket_compare_traits_descending : public bucket_compare_traits<ValueType> {
+template<class KeyType>
+struct bucket_compare_traits_descending : public bucket_compare_traits<KeyType> {
 
     // This might seem counterintuitive, but redefining the lt method to
     // return the opposite of the base class method will says that higher
     // values are less than lower values
-    static bool lt(const ValueType& x, const ValueType& y) noexcept { return (y < x); }
+    static bool lt(const KeyType& x, const KeyType& y) noexcept {
+        return bucket_compare_traits<KeyType>::lt(y, x);
+    }
 };
 
 } // namespace masutils

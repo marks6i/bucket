@@ -17,6 +17,10 @@
 #include <list>
 #include <functional>
 
+#include <array>
+#include <chrono>
+#include <limits>
+
 #if BUCKET_USING_GTEST_
 //#include "gtest/gtest.h"
 #endif // BUCKET_USING_GTEST_

@@ -301,9 +301,9 @@ namespace masutils
 
 		std::size_t size() const { return buckets_.size(); } /**< Number of buckets in buckets collection */
 		bool empty() const { return buckets_.empty(); } /**< Boolean indicating if the buckets collection is empty */
-		index_type low() const { return low_; } /**< Lower bounds of a constrained bucket collection */
-		index_type high() const { return high_; } /**< Upper bounds of a constrained bucket collection */
-		bool constrained() const { return constrained_; } /**< Boolean indicating whether the bucket collection is constrained */
+		index_type low() const { return low_; } /**< Lower bounds of a constrained buckets collection. Deprecated in favor of lower_bound.  */
+		index_type high() const { return high_; } /**< Upper bounds of a constrained buckets collection. Deprecated in favor of upper_bound. */
+		bool constrained() const { return constrained_; }/**< Return true if buckets collection is constrained. Deprecated in favor of is_constrained. */
 
 	private:
 		buckets(const mytype&) = default;
@@ -315,6 +315,33 @@ namespace masutils
 		bool constrained_;
 
 	public:
+		/**
+		 * @brief Returns true if buckets is constrained.
+		 */
+		bool is_constrained() const noexcept { return constrained_; }
+
+		/**
+		 * @brief Returns the lower bound of a constrained buckets
+		 * or a run-time exception if not constrained.
+		 */
+		index_type lower_bound() const {
+			if (!constrained_) {
+				throw std::runtime_error("Bounds are not constrained.");
+			}
+			return low_;
+		}
+
+		/**
+		 * @brief Returns the upper bound of a constrained buckets
+		 * or a run-time exception if not constrained.
+		 */
+		index_type upper_bound() const {
+			if (!constrained_) {
+				throw std::runtime_error("Bounds are not constrained.");
+			}
+			return high_;
+		}
+
 		/**
 		 * @brief Constructor of a constrained buckets collection.
 		 * @param low Lower bounds of the buckets collection.
@@ -329,7 +356,11 @@ namespace masutils
 		/**
 		 * @brief Constructor of an unconstrained buckets collection.
 		 */
-		explicit buckets() noexcept : low_(0), high_(0), constrained_(false)
+		explicit buckets() noexcept(
+			std::is_nothrow_default_constructible<bucket_type>::value&&
+			std::is_nothrow_default_constructible<index_type>::value &&
+			noexcept(false)
+			) : low_(), high_(), constrained_(false)
 		{
 		}
 
@@ -429,6 +460,7 @@ namespace masutils
 						bucket_type bucket_(bucket);
 						Traits::assign(accessor::high(bucket_), l);
 						buckets_.insert(p, bucket_);
+
 						// next change current bucket to be "_l to end of
 						// current bucket"
 						Traits::assign(accessor::low(bucket), l);
@@ -440,7 +472,7 @@ namespace masutils
 					if (Traits::lt(h, accessor::high(bucket)))
 					{
 						bucket_type bucket_(bucket);
-						Traits::assign(accessor::high(bucket), h);
+						Traits::assign(accessor::high(bucket_), h);
 						buckets_.insert(p, bucket_);
 						Traits::assign(accessor::low(bucket), h);
 					}
@@ -454,7 +486,7 @@ namespace masutils
 				// h is remaining, so loop
 			}
 
-			if (Traits::lt(l, h)) // either first bucket or after last bucket
+ 			if (Traits::lt(l, h)) // either first bucket or after last bucket
 			{
 				value_container container_;
 				bucket_type _bucket = make_bucket(l, h, container_);
