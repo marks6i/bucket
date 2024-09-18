@@ -307,21 +307,21 @@ namespace masutils
 		mytype& operator=(const mytype&) = default;
 
 		bucket_type_list buckets_;
-		index_type low_;
-		index_type high_;
-		bool constrained_;
+		const index_type low_;
+		const index_type high_;
+		const bool constrained_;
 
 	public:
 		/**
 		 * @brief Returns true if bucket_list is constrained.
 		 */
-		bool is_constrained() noexcept { return constrained_; }
+		bool is_constrained() const noexcept { return constrained_; }
 
 		/**
 		 * @brief Returns the lower bound of a constrained bucket_list
 		 * or a run-time exception if not constrained.
 		 */
-		index_type lower_bound() {
+		index_type lower_bound() const {
 			if (!constrained_) {
 				throw std::runtime_error("Bounds are not constrained.");
 			}
@@ -332,7 +332,7 @@ namespace masutils
 		 * @brief Returns the upper bound of a constrained bucket_list
 		 * or a run-time exception if not constrained.
 		 */
-		index_type upper_bound() {
+		index_type upper_bound() const {
 			if (!constrained_) {
 				throw std::runtime_error("Bounds are not constrained.");
 			}
@@ -354,7 +354,7 @@ namespace masutils
 		 * @brief Constructor of an unconstrained bucket_list collection.
 		 */
 		explicit bucket_list() noexcept(
-			std::is_nothrow_default_constructible<bucket_type_list>::value&&
+			std::is_nothrow_default_constructible<bucket_type_list>::value &&
 			std::is_nothrow_default_constructible<index_type>::value &&
 			noexcept(false)
 			) : low_(), high_(), constrained_(false)

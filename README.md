@@ -3,16 +3,24 @@
 A bucket is a collection much like a Dictionary (key-value store), where the "keys" represent a non-overlapping range on an ordered axis.
 Gaps are allowed if there are not values in the given range. The "values" are stored in a collection as well, and can be accessed by the key.
 
-## ***Coming Soon!!!***
-- Add an erase function to remove entirely or in part the buckets that overlap with a given range.
-- ***BIG NEWS!!!*** I will maintain the current bucket class implementation, but will soon add a bucket_list and a bucket_map class. The
- bucket_list class will primarily be very similar to the bucket class (using a list to store the buckets), but will share its interface
-  with the bucket_map class. The bucket map class will use a map to store the buckets, to address the performance needs for a bucket-type
-  class.
+## ***New in his Release***
+- An erase function to remove entirely or in part the buckets that overlap with a given range.
+- bucket_value_traits now has a remove function that removes a value from the bucket.
+- Two new public methods: *lower_bound* and *upper_bound*. *lower_bound* returns the lower bound of a constrained bucket; *upper_bound* returns
+the upper bound of a constrained bucket. These methods will throw a runtime error if the bucket is
+not constrained.
+- Every bucket class contains a nested class, *range_iterator*, with four methods: *beginRange*, *endRange*,
+*rbeginRange* and *rendRange*. These methods, take two arguments - the lower bound of the bucket range to be
+iterated and the upper bound of the range to be iterated. These functions will start with the first bucket that
+overlaps (or starts at) with the given range and end with the first bucket past the given range.
+- In the bucket_supp.h file, there is now a bucket_wrapper class that can be used to output the contents of a bucket
+to a standard stream. This class is useful for debugging purposes.
+
 
 ## Description
 
-One of the primary use cases for a bucket would be to provide a timeline or work schedule, where different people would be scheduled to work. In this scenario, a new bucket would be created any time a (or several) new person is added to the schedule, and the bucket would be terminated when any person is removed from the schedule.
+One of the primary use cases for a bucket would be to provide a timeline or work schedule, where different people would be scheduled to work. In this scenario, a new bucket would
+be created any time a (or several) new person is added to the schedule, and the bucket would be terminated when any person is removed from the schedule.
 
 Let's look at an example of a typical day in a bakery:
 

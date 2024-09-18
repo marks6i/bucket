@@ -383,16 +383,18 @@ public:
 	friend std::ostream& operator<<(std::ostream& os, const bucket_wrapper& wrapper) {
 		bool b_first = true;
 
-		//if (wrapper.bucket.is_constrained()) {
-		//	os  << "constrained["
-		//		<< wrapper.bucket.lower_bound() << ", "
-		//		<< wrapper.bucket.upper_bound() << ")" << std::endl;
-		//}
-		//else {
-		//	os << "unconstrained," << std::endl;
-		//}
+		auto& bucket_ = wrapper.bucket;
 
-		for (auto it = wrapper.bucket.begin(); it != wrapper.bucket.end(); ++it) {
+		if (bucket_.is_constrained()) {
+			os  << "constrained["
+				<< bucket_.lower_bound() << ", "
+				<< bucket_.upper_bound() << ")" << std::endl;
+		}
+		else {
+			os << "unconstrained," << std::endl;
+		}
+
+		for (auto it = bucket_.begin(); it != bucket_.end(); ++it) {
 			if (!b_first) {
 				os << "," << std::endl;
 			}

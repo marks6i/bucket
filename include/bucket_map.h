@@ -320,9 +320,9 @@ namespace masutils
 		mytype& operator=(const mytype&) = default;
 
 		bucket_type_map buckets_;
-		index_type low_;
-		index_type high_;
-		bool constrained_;
+		const index_type low_;
+		const index_type high_;
+		const bool constrained_;
 
 	public:
 		/**
@@ -367,7 +367,7 @@ namespace masutils
 		 * @brief Constructor of an unconstrained bucket_map collection.
 		 */
 		explicit bucket_map() noexcept(
-			std::is_nothrow_default_constructible<bucket_type_map>::value&&
+			std::is_nothrow_default_constructible<bucket_type_map>::value &&
 			std::is_nothrow_default_constructible<index_type>::value &&
 			noexcept(false)
 			) : low_(), high_(), constrained_(false)

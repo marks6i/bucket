@@ -843,62 +843,62 @@ int main()
 	example2_legacy();
 	example2_list();
 	example2_map();
-
+	
 	std::cout << std::endl;
 	example3_legacy();
 	example3_list();
 	example3_map();
-
+	
 	std::cout << std::endl;
 	example4_legacy();
 	example4_list();
 	example4_map();
-
+	
 	std::cout << std::endl;
 	example5_legacy();
 	example5_list();
 	example5_map();
-
+	
 	std::cout << std::endl;
 	example6_legacy();
 	example6_list();
 	example6_map();
-
+	
 	std::cout << std::endl;
 	example6a_legacy();
 	example6a_list();
 	example6a_map();
-
+	
 	std::cout << std::endl;
 	example6b_legacy();
 	example6b_list();
 	example6b_map();
-
+	
 	std::cout << std::endl;
 	example7_legacy();
 	example7_list();
 	example7_map();
-
+	
 	std::cout << std::endl;
 	example8_legacy();
 	example8_list();
 	example8_map();
-
+	
 	std::cout << std::endl;
 	example9_legacy();
 	example9_list();
 	example9_map();
-
+	
 	std::cout << std::endl;
 	example10_legacy();
 	example10_list();
 	example10_map();
-
+	
 	std::cout << std::endl;
 	example11_legacy();
 	example11_list();
 	example11_map();
-
+	
 	std::cout << std::endl;
 	example12_legacy();
 	example12_list();
