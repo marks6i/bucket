@@ -34,12 +34,46 @@
 namespace masutils {
 
 /**
+ * @brief The has_less_than custom trait checks that operator< is supported.
+ * @tparam IndexType the type of the keys in the bucket
+ */
+template<typename IndexType>
+class has_less_than {
+private:
+    template<typename U>
+    static auto test(int) -> decltype(std::declval<U>() < std::declval<U>(), std::true_type());
+
+    template<typename>
+    static std::false_type test(...);
+
+public:
+    static constexpr bool value = decltype(test<IndexType>(0))::value;
+};
+
+/**
+ * @brief The has_equal_to custom trait checks that operator== is supported.
+ * @tparam IndexType the type of the keys in the bucket
+ */
+template<typename IndexType>
+class has_equal_to {
+private:
+    template<typename U>
+    static auto test(int) -> decltype(std::declval<U>() == std::declval<U>(), std::true_type());
+
+    template<typename>
+    static std::false_type test(...);
+
+public:
+    static constexpr bool value = decltype(test<IndexType>(0))::value;
+};
+
+/**
  * @brief The bucket_compare_traits struct has all static functions
  *        that are used to compare the key elements of a bucket to
  *        maintain the order of the elements.
- * @tparam E the type of the keys in the bucket
+ * @tparam IndexType the type of the keys in the bucket
  * 
- * The struct nly declares static functions, so it is not necessary to
+ * The struct only declares static functions, so it is not necessary to
  * create an instance of this struct. All constructors are deleted to
  * prevent instantiation.
  */
@@ -57,7 +91,7 @@ struct bucket_compare_traits {
 	 * @return Boolean value indicating if the two keys are equal.
      */
     template<typename T = IndexType>
-    static typename std::enable_if<std::is_assignable<T&, const T&>::value, bool>::type
+    static typename std::enable_if<has_equal_to<T>::value, bool>::type
         eq(const T& x, const T& y) noexcept {
         return (x == y);
     }
@@ -69,7 +103,7 @@ struct bucket_compare_traits {
 	 * @return Boolean value indicating if x is less than y.
      */
     template<typename T = IndexType>
-    static typename std::enable_if<std::is_assignable<T&, const T&>::value, bool>::type
+    static typename std::enable_if<has_less_than<T>::value, bool>::type
         lt(const T& x, const T& y) noexcept {
         return (x < y);
     }
