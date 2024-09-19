@@ -37,6 +37,14 @@
 #include <string>
 #endif // STRING_H_
 
+#ifndef ALGORITHM_H_
+#include <algorithm>
+#endif // ALGORITHM_H_
+
+#ifndef CCTYPE_H_
+#include <cctype>
+#endif // CCTYPE_H_
+
 #ifndef MASUTILS_OPTIONAL_H_
 #include "optional.h"
 #endif // MASUTILS_OPTIONAL_H_
@@ -217,21 +225,16 @@ protected:
 template <class T>
 struct caseInsensitiveLess {
 	/**
-	 * @brief
-	 * @param lhs
-	 * @param rhs
-	 * @return
+	 * @brief Compares two strings case-insensitively.
+	 * @param lhs First string.
+	 * @param rhs Second string.
+	 * @return True if lhs is lexicographically smaller than rhs (case-insensitively).
 	 */
 	bool operator()(const T& lhs, const T& rhs) const noexcept
 	{
 		const typename T::size_type xs(lhs.size());
 		const typename T::size_type ys(rhs.size());
-		typename T::size_type bound(0);
-
-		if (xs < ys)
-			bound = xs;
-		else
-			bound = ys;
+		const typename T::size_type bound = std::min(xs, ys);
 
 		{
 			typename T::size_type i = 0;
@@ -244,7 +247,10 @@ struct caseInsensitiveLess {
 					return false;
 			}
 		}
-		return false;
+
+		// If all characters up to the length of the shorter string are equal,
+		// the shorter string is considered lexicographically smaller.
+		return xs < ys;
 	}
 };
 
@@ -388,7 +394,7 @@ public:
 		if (bucket_.is_constrained()) {
 			os  << "constrained["
 				<< bucket_.lower_bound() << ", "
-				<< bucket_.upper_bound() << ")" << std::endl;
+				<< bucket_.upper_bound() << ")," << std::endl;
 		}
 		else {
 			os << "unconstrained," << std::endl;
