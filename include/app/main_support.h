@@ -41,6 +41,10 @@
 #include <array>
 #endif // !ARRAY_H_
 
+#ifndef STDEXCEPT_H_
+#include <stdexcept>
+#endif // !STDEXCEPT_H_
+
 namespace masxtra {
 
 inline std::tm localtime_xp(std::time_t timer)
@@ -70,12 +74,25 @@ inline std::tm localtime_xp(std::time_t timer)
 	return bt;
 }
 
-inline std::string time_to_string(const std::time_t bt, const std::string& fmt = "%c")
-{
+inline std::string time_to_string(const std::time_t bt, const std::string& fmt = "%c") {
 	const auto timer = localtime_xp(bt);
-	std::array<char, 64> buf;
-	const auto len = std::strftime(buf.data(), buf.size(), fmt.c_str(), &timer);
-	return std::string(buf.data(), len);
+	std::vector<char> buf(64); // Start with a reasonably sized buffer.
+
+	while (true) {
+		const auto len = std::strftime(buf.data(), buf.size(), fmt.c_str(), &timer);
+
+		if (len > 0) {
+			// Successfully formatted the time.
+			return std::string(buf.data(), len);
+		}
+
+		// If len is 0, the buffer was likely too small. Resize and try again.
+		if (buf.size() >= 1024) { // Safety limit to prevent endless resizing.
+			throw std::runtime_error("Failed to format time: buffer size exceeded");
+		}
+
+		buf.resize(buf.size() * 2); // Double the buffer size and retry.
+	}
 }
 
 inline std::string time_stamp(const std::string& fmt = "%F %T")

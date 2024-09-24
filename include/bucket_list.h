@@ -1,3 +1,4 @@
+
 /**
  * @file  bucket_list.h
  * @copyright
@@ -311,6 +312,55 @@ namespace masutils
 		const index_type high_;
 		const bool constrained_;
 
+	private:
+		class modification_iterators {
+		public:
+			explicit modification_iterators(index_type lowest, index_type highest) 
+				noexcept(noexcept(index_type(lowest)) && noexcept(index_type(highest)))
+				: lowest_(lowest), highest_(highest) {}
+
+			~modification_iterators() = default;
+
+			void check_range(iterator p) noexcept {
+				if (b_begin_ && b_end_)
+					return;
+
+				const bucket_type& bucket = *p;
+
+				if (!b_begin_ && Traits::eq(lowest_, accessor::low(bucket))) {
+					begin_ = p;
+					b_begin_ = true;
+				}
+				if (!b_end_ && Traits::eq(highest_, accessor::high(bucket))) {
+					end_ = p;
+					b_end_ = true;
+				}
+			}
+
+			bool range(iterator& begin, iterator& end)
+			{
+				if (b_begin_ && b_end_)
+				{
+					begin = begin_;
+					end = std::next(end_);
+					return true;
+				}
+				return false;
+			}
+
+			inline const index_type& lowest() const noexcept { return lowest_; }
+			inline const index_type& highest() const noexcept { return highest_; }
+
+		private:
+			const index_type lowest_;
+			const index_type highest_;
+
+			iterator begin_;
+			iterator end_;
+			bool b_begin_ = false;
+			bool b_end_ = false;
+		};
+
 	public:
 		/**
 		 * @brief Returns true if bucket_list is constrained.
@@ -391,9 +441,7 @@ namespace masutils
 				if (Traits::lt(high_, h)) Traits::assign(h, high_);
 			}
 
-			index_type lowest_, highest_;
-			Traits::assign(lowest_, l);
-			Traits::assign(highest_, h);
+			modification_iterators iterators(l, h);
 
 			// check for overlaps to slice buckets
 			for (iterator p = buckets_.begin(); p != buckets_.end(); ++p)
@@ -411,13 +459,15 @@ namespace masutils
 					if (Traits::lt(accessor::low(bucket), h)) // overlap
 					{
 						bucket_type _bucket = make_bucket(l, accessor::low(bucket), container_);
-						buckets_.insert(p, _bucket);
+						auto inserted = buckets_.insert(p, _bucket);
+						iterators.check_range(inserted);
 						Traits::assign(l, accessor::low(bucket));
 					}
 					else // no overlap
 					{
 						bucket_type _bucket = make_bucket(l, h, container_);
-						buckets_.insert(p, _bucket);
+						auto inserted = buckets_.insert(p, _bucket);
+						iterators.check_range(inserted);
 						Traits::assign(l, accessor::low(bucket));
 						continue; // it all ends before the current bucket
 						// so we're done
@@ -433,7 +483,8 @@ namespace masutils
 					{
 						bucket_type bucket_(bucket);
 						Traits::assign(accessor::high(bucket_), h);
-						buckets_.insert(p, bucket_);
+						auto inserted = buckets_.insert(p, bucket_);
+						iterators.check_range(inserted);
 						Traits::assign(accessor::low(bucket), h);
 						Traits::assign(l, h);
 						continue;
@@ -456,7 +507,9 @@ namespace masutils
 						// _l" bucket
 						bucket_type bucket_(bucket);
 						Traits::assign(accessor::high(bucket_), l);
-						buckets_.insert(p, bucket_);
+						auto inserted = buckets_.insert(p, bucket_);
+						iterators.check_range(inserted);
+
 						// next change current bucket to be "_l to end of
 						// current bucket"
 						Traits::assign(accessor::low(bucket), l);
@@ -469,7 +522,8 @@ namespace masutils
 					{
 						bucket_type bucket_(bucket);
 						Traits::assign(accessor::high(bucket_), h);
-						buckets_.insert(p, bucket_);
+						auto inserted = buckets_.insert(p, bucket_);
+						iterators.check_range(inserted);
 						Traits::assign(accessor::low(bucket), h);
 					}
 
@@ -480,6 +534,7 @@ namespace masutils
 
 				// at most, only l (which should be after current bucket) to
 				// h is remaining, so loop
+				iterators.check_range(p);
 			}
 
 			if (Traits::lt(l, h)) // either first bucket or after last bucket
@@ -487,30 +542,10 @@ namespace masutils
 				value_container container_;
 				bucket_type _bucket = make_bucket(l, h, container_);
 				buckets_.push_back(_bucket);
+				iterators.check_range(std::prev(buckets_.end()));
 			}
 
-			bool b_begin = false, b_end = false;
-
-			{
-				for (iterator p = buckets_.begin(); p != buckets_.end(); ++p)
-				{
-					const bucket_type& bucket = *p;
-					if (Traits::eq(lowest_, accessor::low(bucket)))
-					{
-						begin = p;
-						b_begin = true;
-					}
-					if (Traits::eq(highest_, accessor::high(bucket)))
-					{
-						end = p;
-						++end;
-						b_end = true;
-						break;
-					}
-				}
-			}
-
-			return (b_begin && b_end);
+			return (iterators.range(begin, end));
 		}
 
 		int spread(const bucket_type& bucket_)
