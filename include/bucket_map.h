@@ -543,8 +543,6 @@ namespace masutils
 						// is less than the end of the current bucket
 						if (Traits::lt(h, accessor::high(bucket)))
 						{
-							// **TODO** Figure out how to do this block with modification_iterators
-
 							bucket_type bucket_(bucket);
 							Traits::assign(accessor::high(bucket), h);
 							iterators.check_range(p);
