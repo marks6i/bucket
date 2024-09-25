@@ -441,13 +441,25 @@ namespace masutils
 				if (Traits::lt(high_, h)) Traits::assign(h, high_);
 			}
 
+			// The modification_iterators keep track of the range of buckets that
+			// are between the low and high values.  This is used by the functions
+			// that call splice to determine which buckets are affected and are
+			// candidates to be further processed.
+			//
+			// The key function of modification_iterators is check_range which
+			// saves the first and last iterators of the range of buckets.
+			// There are two important patterns in its use. First, since we
+			// iterate over the buckets in order, we need to check every bucket
+			// we add (at the point we add it). Second, we should only check the
+			// "current" bucket at the end of the loop, since its values might
+			// have changed.
 			modification_iterators iterators(l, h);
 
 			// check for overlaps to slice buckets
 			for (iterator p = buckets_.begin(); p != buckets_.end(); ++p)
 			{
 				if (Traits::lt(l, h) != true)
-					break; // all done since range is null
+					break; // all done since range is null, always called since l and h change below
 
 				bucket_type& bucket = *p;
 
