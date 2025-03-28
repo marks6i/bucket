@@ -21,9 +21,6 @@ else()
     add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
-# Add include directories
-include_directories(include)
-
 # Enable testing
 enable_testing()
 
@@ -36,25 +33,35 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/google/googletest.git
     GIT_TAG v1.14.0  # Use a stable release
 )
-# For Windows: Prevent overriding the parent project's compiler/linker settings
-set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
-# Create library target
+# Add library target
 add_library(bucket INTERFACE)
 target_include_directories(bucket INTERFACE
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
 )
 
-# Add test executables
+# Add modern test executables (C++20)
 add_executable(bucket_list_test tests/bucket_list_test.cpp)
-target_link_libraries(bucket_list_test PRIVATE bucket gtest_main gmock_main)
+target_link_libraries(bucket_list_test PRIVATE bucket GTest::gtest_main GTest::gmock_main)
+target_include_directories(bucket_list_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 add_test(NAME bucket_list_test COMMAND bucket_list_test)
 
 add_executable(bucket_map_test tests/bucket_map_test.cpp)
-target_link_libraries(bucket_map_test PRIVATE bucket gtest_main gmock_main)
+target_link_libraries(bucket_map_test PRIVATE bucket GTest::gtest_main GTest::gmock_main)
+target_include_directories(bucket_map_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 add_test(NAME bucket_map_test COMMAND bucket_map_test)
+
+add_executable(bucket_compare_traits_test tests/bucket_compare_traits_test.cpp)
+target_link_libraries(bucket_compare_traits_test PRIVATE bucket GTest::gtest_main GTest::gmock_main)
+target_include_directories(bucket_compare_traits_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+add_test(NAME bucket_compare_traits_test COMMAND bucket_compare_traits_test)
+
+add_executable(bucket_value_traits_test tests/bucket_value_traits_test.cpp)
+target_link_libraries(bucket_value_traits_test PRIVATE bucket GTest::gtest_main GTest::gmock_main)
+target_include_directories(bucket_value_traits_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+add_test(NAME bucket_value_traits_test COMMAND bucket_value_traits_test)
 
 # Install targets
 include(GNUInstallDirs)
