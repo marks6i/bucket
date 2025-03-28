@@ -1,0 +1,4 @@
+@PACKAGE_INIT@
+
+include("${CMAKE_CURRENT_LIST_DIR}/bucket-targets.cmake" OPTIONAL)
+check_required_components(bucket) 
