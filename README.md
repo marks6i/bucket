@@ -1,129 +1,110 @@
-# Bucket Map Library
+# Bucket Template Library
 
-A C++ library that provides a map-like container with bucket-based range operations. This library allows you to store values associated with ranges of indices and perform operations like spreading values across ranges and covering ranges with values.
+A modern C++20 template library for managing ranges with associated values. The library provides two main components:
+
+- `bucket_map`: A map-like container for storing values associated with ranges of indices
+- `bucket_list`: A list-like container for storing ordered ranges with associated values
 
 ## Features
 
-- Range-based value storage
-- Spread operation for distributing values across ranges
-- Cover operation for setting values across ranges
-- Erase operation for removing values from ranges
-- Automatic range ordering
-- Constrained range operations
+Common features for both components:
+- Range-based operations (spread, cover, erase)
+- Efficient storage and retrieval of values associated with ranges
+- Support for custom index and value types
 - Thread-safe operations
+- Modern C++20 design
+
+### bucket_map
+- Map-like interface for range-value associations
+- Efficient lookup of values at specific indices
+- Support for overlapping ranges
+- Automatic range splitting and merging
+
+### bucket_list
+- List-like interface for ordered ranges
+- Optimized for range-based operations
+- Maintains sorted order of ranges
+- Support for multiple values per range
 
 ## Prerequisites
 
 - C++20 compliant compiler
 - CMake 3.15 or higher
-- Git (for cloning the repository)
+- Google Test (automatically downloaded by CMake)
 
-### Windows-Specific Requirements
+## Building
 
-- Visual Studio 2022 with C++ development tools (recommended)
-- Windows SDK 10.0 or higher
-- PowerShell 7 or higher (recommended for better command-line experience)
-
-## Building the Project
-
-1. Clone the repository:
-```bash
-git clone https://github.com/yourusername/bucket.git
-cd bucket
-```
-
-2. Create a build directory and configure the project:
 ```bash
 mkdir build
 cd build
 cmake ..
-```
-
-3. Build the project:
-```bash
 cmake --build .
 ```
 
-### Building Tests
-
-The project includes Google Test for unit testing. Tests are built automatically with the main project. To run the tests:
+## Running Tests
 
 ```bash
-# From the build directory
-ctest --output-on-failure
-```
-
-Or run individual test executables:
-```bash
-# On Windows
-.\Debug\bucket_map_test.exe
+# Windows
 .\Debug\bucket_list_test.exe
+.\Debug\bucket_map_test.exe
+.\Debug\bucket_compare_traits_test.exe
+.\Debug\bucket_value_traits_test.exe
 
-# On Unix-like systems
-./Debug/bucket_map_test
-./Debug/bucket_list_test
+# Unix-like systems
+./bucket_list_test
+./bucket_map_test
+./bucket_compare_traits_test
+./bucket_value_traits_test
 ```
 
-### Continuous Integration
+## Continuous Integration
 
-This project uses GitHub Actions for continuous integration. The CI pipeline:
-- Runs on push to main branch and pull requests
-- Tests on multiple platforms (Ubuntu, Windows, macOS)
-- Builds and tests both Debug and Release configurations
-- Automatically downloads and builds dependencies (like Google Test)
-
-To run the same tests locally as the CI pipeline:
-```bash
-# Configure with the same build type as CI
-cmake -B build -DCMAKE_BUILD_TYPE=Debug
-# or
-cmake -B build -DCMAKE_BUILD_TYPE=Release
-
-# Build and test
-cmake --build build
-ctest --test-dir build --output-on-failure
-```
+The project uses GitHub Actions for CI. The pipeline:
+- Builds on Windows and Linux
+- Runs all tests
+- Checks for C++20 compliance
+- Validates CMake configuration
 
 ## Usage
 
-Include the header files in your project:
+### bucket_map
 
 ```cpp
 #include <bucket/bucket_map.h>
-#include <bucket/bucket_list.h>
+
+masutils::bucket_map<int, std::string> map;
+
+// Spread a value across a range
+map.spread(0, 5, "test1");
+
+// Cover a range with a value
+map.cover(2, 4, "test2");
+
+// Query values at a point
+auto values = map.query(3);  // Returns both "test1" and "test2"
+
+// Erase values from a range
+map.erase(1, 3);
 ```
 
-Example usage:
+### bucket_list
 
 ```cpp
-#include <bucket/bucket_map.h>
-#include <string>
-#include <iostream>
+#include <bucket/bucket_list.h>
 
-int main() {
-    masutils::bucket_map<int, std::string> map;
-    
-    // Spread a value across a range
-    map.spread(0, 10, "test");
-    
-    // Cover a range with a value
-    map.cover(5, 15, "new_value");
-    
-    // Erase values from a range
-    map.erase(3, 7);
-    
-    // Iterate over buckets
-    for (const auto& bucket : map) {
-        std::cout << "Range [" << bucket.first << ", " << bucket.second.first 
-                  << ") contains: ";
-        for (const auto& value : bucket.second.second) {
-            std::cout << value << " ";
-        }
-        std::cout << std::endl;
-    }
-    
-    return 0;
-}
+masutils::bucket_list<int, std::string> list;
+
+// Add a range with a value
+list.spread(0, 5, "test1");
+
+// Cover a range with a value
+list.cover(2, 4, "test2");
+
+// Query values at a point
+auto values = list.query(3);  // Returns both "test1" and "test2"
+
+// Erase values from a range
+list.erase(1, 3);
 ```
 
 ## Project Structure
@@ -134,23 +115,34 @@ bucket/
 │   └── bucket/
 │       ├── bucket_map.h
 │       ├── bucket_list.h
-│       └── buckets.h
+│       ├── bucket_compare_traits.h
+│       └── bucket_value_traits.h
 ├── tests/
 │   ├── bucket_map_test.cpp
-│   └── bucket_list_test.cpp
-├── external/
-│   └── googletest/    # Google Test library
+│   ├── bucket_list_test.cpp
+│   ├── bucket_compare_traits_test.cpp
+│   └── bucket_value_traits_test.cpp
+├── docs/
+│   ├── bucket_map_api.md
+│   ├── bucket_list_api.md
+│   └── support_files.md
 ├── CMakeLists.txt
 └── README.md
 ```
 
+## Documentation
+
+- [bucket_map API Documentation](docs/bucket_map_api.md)
+- [bucket_list API Documentation](docs/bucket_list_api.md)
+- [Support Files Documentation](docs/support_files.md)
+
 ## Contributing
 
 1. Fork the repository
-2. Create a feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a Pull Request
+2. Create a feature branch from `develop`
+3. Make your changes
+4. Run tests and ensure they pass
+5. Submit a pull request to `develop`
 
 ## License
 

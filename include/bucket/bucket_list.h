@@ -54,9 +54,12 @@ namespace masutils
 	class bucket_list
 	{
 	public:
+		// Add friend declaration for test class
+		friend class BucketListInternalTest;
+
 		using mytype = bucket_list<Indices,
-		                          Values,
-		                          Traits,
+		                Values,
+		                Traits,
 		                          ContainerTraits>;
 
 		using index_type = Indices;

@@ -23,15 +23,16 @@
  * container type. Currently, the operations are \badd, \bappend, and \bremove.
  */
 
-#ifndef MASUTILS_BUCKET_VALUE_TRAITS_H_
-#define MASUTILS_BUCKET_VALUE_TRAITS_H_
+#pragma once
 
 #include <list>
 #include <type_traits>
+#include <vector>
+#include <algorithm>
+#include <unordered_map>
 
 #if __cplusplus >= 202002L
 #include <concepts>
-#include <ranges>
 #endif // __cplusplus >= 202002L
 
 namespace masutils {
@@ -55,29 +56,37 @@ concept forward_iterable = requires(C c) {
 #endif // __cplusplus >= 202002L
 
 /**
- * @brief The bucket_value_traits struct has all static functions
- *        that are the operations that can be performed on a
- *        bucket collection.
- * @tparam ValueType the type of the values in the bucket
- * @tparam ContainerType the type of the container used to store the values
- *
- * The struct only declares static functions, so it is not necessary to
- * create an instance of this struct. All constructors are deleted to
- * prevent instantiation.
+ * @brief Traits class for bucket value operations.
+ * 
+ * This traits class provides operations for working with bucket values,
+ * including container type definitions and value containment checks.
+ * 
+ * @tparam ValueType The type of values stored in the bucket
+ * @tparam ContainerType The container type used to store values (defaults to std::list<ValueType>)
  */
-template <class ValueType, class ContainerType = std::list<ValueType>>
-struct bucket_value_traits
-{
-    typedef ValueType value_type;
-    typedef ContainerType value_container;
+template<typename ValueType, typename ContainerType = std::list<ValueType>>
+struct bucket_value_traits {
+    using value_type = ValueType;
+    using value_container = ContainerType;
+    using container_type = ContainerType;
+
+    /**
+     * @brief Check if a value exists in the container.
+     * 
+     * @param container The container to search in
+     * @param value The value to search for
+     * @return true if the value exists in the container
+     */
+    static bool contains(const container_type& container, const value_type& value) {
+        return std::find(container.begin(), container.end(), value) != container.end();
+    }
 
     /**
      * @brief Add a value to a bucket.
      * @param x the bucket's value container
      * @param y the value to add to the bucket
      */
-    static constexpr void add(value_container& x, const value_type& y)
-    {
+    static constexpr void add(value_container& x, const value_type& y) {
         x.push_back(y);
     }
 
@@ -88,8 +97,7 @@ struct bucket_value_traits
      * @param y The value container to append
      */
     template <class other_value_container>
-    static constexpr void append(value_container& x, const other_value_container& y)
-    {
+    static constexpr void append(value_container& x, const other_value_container& y) {
         x.insert(x.end(), y.begin(), y.end());
     }
 
@@ -99,12 +107,9 @@ struct bucket_value_traits
      * @param y The value to remove
      * @return Boolean value indicating if the value was removed
      */
-    [[nodiscard]] static constexpr bool remove(value_container& x, const value_type& y)
-    {
-        for (auto p = x.begin(); p != x.end(); ++p)
-        {
-            if (*p == y)
-            {
+    [[nodiscard]] static constexpr bool remove(value_container& x, const value_type& y) {
+        for (auto p = x.begin(); p != x.end(); ++p) {
+            if (*p == y) {
                 x.erase(p);
                 return true;
             }
@@ -118,8 +123,7 @@ struct bucket_value_traits
      * @param x the bucket's value container
      * @param y the value to add to the bucket
      */
-    static constexpr void add(value_container& x, value_type&& y)
-    {
+    static constexpr void add(value_container& x, value_type&& y) {
         x.push_back(std::move(y));
     }
 
@@ -128,8 +132,7 @@ struct bucket_value_traits
      * @param x The receiving value container
      * @param y The value container to append
      */
-    static constexpr void append(value_container& x, value_container&& y)
-    {
+    static constexpr void append(value_container& x, value_container&& y) {
         x.splice(x.end(), std::move(y));
     }
 #endif // __cplusplus >= 202002L
@@ -139,5 +142,3 @@ protected:
 };
 
 } // namespace masutils
-
-#endif // MASUTILS_BUCKET_VALUE_TRAITS_H_

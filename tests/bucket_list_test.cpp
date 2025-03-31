@@ -1,15 +1,24 @@
-#include "../external/googletest/googletest/include/gtest/gtest.h"
+#include "gtest/gtest.h"
 #include "../include/bucket/bucket_list.h"
-#include "../include/bucket/bucket_map.h"
 #include <vector>
 #include <string>
 
 using namespace masutils;
 
+// Test-specific derived class that exposes protected members
+class TestBucketListExposed : public bucket_list<int, std::string> {
+public:
+    using bucket_list<int, std::string>::splice;
+    
+    // Expose constructors
+    TestBucketListExposed() : bucket_list<int, std::string>() {}
+    explicit TestBucketListExposed(int low, int high) : bucket_list<int, std::string>(low, high) {}
+};
+
 // Test fixture for bucket_list tests
 class BucketListTest : public ::testing::Test {
 protected:
-    using TestBucketList = bucket_list<int, std::string>;
+    using TestBucketList = TestBucketListExposed;
     using TestBucket = TestBucketList::bucket_type;
     using TestValueContainer = TestBucketList::value_container;
 
@@ -155,6 +164,110 @@ TEST_F(BucketListTest, ConstrainedRangeOperations) {
     ++it;
     EXPECT_EQ(TestBucketList::accessor::low(*it), 90);
     EXPECT_EQ(TestBucketList::accessor::high(*it), 100);
+}
+
+// ============================================================================
+// INTERNAL IMPLEMENTATION TESTS
+// These tests verify internal implementation details of bucket_list.
+// They may be removed or modified if the internal implementation changes.
+// ============================================================================
+
+/**
+ * @brief Test class for internal bucket_list implementation details.
+ * This class is used to test protected/internal methods that are not part of the public API.
+ * These tests may be removed or modified if the internal implementation changes.
+ */
+class BucketListSpliceTest : public BucketListTest {
+protected:
+    // No need for wrapper method since we're using TestBucketListExposed
+};
+
+TEST_F(BucketListSpliceTest, InternalSpliceOperation) {
+    // Create two lists for testing splice
+    TestBucketList list1;
+    TestBucketList list2;
+    [[maybe_unused]] auto spread1 = list1.spread(0, 10, "test1");
+    [[maybe_unused]] auto spread2 = list2.spread(5, 15, "test2");
+
+    // Get iterators for splicing
+    TestBucketList::iterator it1 = list1.begin();
+    TestBucketList::iterator it2 = list2.begin();
+    TestBucketList::iterator end2 = list2.end();
+
+    // Test the internal splice operation
+    EXPECT_TRUE(list1.splice(5, 15, it2, end2));
+    EXPECT_EQ(list1.size(), 2);
+
+    // Verify the results
+    auto it = list1.begin();
+    EXPECT_EQ(TestBucketList::accessor::low(*it), 0);
+    EXPECT_EQ(TestBucketList::accessor::high(*it), 5);
+    EXPECT_EQ(TestBucketList::accessor::values(*it), TestValueContainer{"test1"});
+
+    ++it;
+    EXPECT_EQ(TestBucketList::accessor::low(*it), 5);
+    EXPECT_EQ(TestBucketList::accessor::high(*it), 15);
+    EXPECT_EQ(TestBucketList::accessor::values(*it), TestValueContainer{"test2"});
+}
+
+TEST_F(BucketListSpliceTest, InternalSpliceConstrainedBounds) {
+    // Create a constrained list
+    TestBucketList list(0, 100);
+    
+    // Test splicing with out-of-bounds values
+    TestBucketList::iterator begin = list.begin();
+    TestBucketList::iterator end = list.end();
+    
+    // Should succeed but be constrained to [0, 100]
+    EXPECT_TRUE(list.splice(-10, 110, begin, end));
+    
+    // Verify the results are constrained
+    auto it = list.begin();
+    EXPECT_EQ(TestBucketList::accessor::low(*it), 0);
+    EXPECT_EQ(TestBucketList::accessor::high(*it), 100);
+}
+
+TEST_F(BucketListSpliceTest, InternalSpliceEmptyRange) {
+    TestBucketList list;
+    TestBucketList::iterator begin = list.begin();
+    TestBucketList::iterator end = list.end();
+    
+    // Should fail for empty range
+    EXPECT_FALSE(list.splice(10, 10, begin, end));
+}
+
+TEST_F(BucketListSpliceTest, InternalSpliceOverlappingRanges) {
+    TestBucketList list;
+    [[maybe_unused]] auto spread1 = list.spread(0, 10, "test1");
+    [[maybe_unused]] auto spread2 = list.spread(5, 15, "test2");
+
+    TestBucketList::iterator begin = list.begin();
+    TestBucketList::iterator end = list.end();
+
+    // Test splicing with overlapping ranges
+    EXPECT_TRUE(list.splice(3, 7, begin, end));
+    
+    // Verify the results show proper splitting
+    auto it = list.begin();
+    EXPECT_EQ(TestBucketList::accessor::low(*it), 0);
+    EXPECT_EQ(TestBucketList::accessor::high(*it), 3);
+    EXPECT_EQ(TestBucketList::accessor::values(*it), TestValueContainer{"test1"});
+
+    ++it;
+    EXPECT_EQ(TestBucketList::accessor::low(*it), 3);
+    EXPECT_EQ(TestBucketList::accessor::high(*it), 7);
+    TestValueContainer expected_values = {"test1", "test2"};
+    EXPECT_EQ(TestBucketList::accessor::values(*it), expected_values);
+
+    ++it;
+    EXPECT_EQ(TestBucketList::accessor::low(*it), 7);
+    EXPECT_EQ(TestBucketList::accessor::high(*it), 10);
+    EXPECT_EQ(TestBucketList::accessor::values(*it), TestValueContainer{"test1"});
+
+    ++it;
+    EXPECT_EQ(TestBucketList::accessor::low(*it), 10);
+    EXPECT_EQ(TestBucketList::accessor::high(*it), 15);
+    EXPECT_EQ(TestBucketList::accessor::values(*it), TestValueContainer{"test2"});
 }
 
 int main(int argc, char** argv) {

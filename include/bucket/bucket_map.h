@@ -55,8 +55,8 @@ namespace masutils
 	{
 	public:
 		using mytype = bucket_map<Indices,
-		                         Values,
-		                         Traits,
+		                Values,
+		                Traits,
 		                         ContainerTraits>;
 
 		using index_type = Indices;
@@ -153,23 +153,18 @@ namespace masutils
 		template <bool IsConst>
 		class range_iterator
 		{
+			friend class bucket_map;  // Make bucket_map a friend to access private members
+
 			using parent_map = typename std::conditional_t<IsConst, const bucket_type_map, bucket_type_map>;
 			using iterator_range = typename std::conditional_t<IsConst, const_iterator, iterator>;
 
-			iterator_range current_;
-			iterator_range begin_;
-			iterator_range end_;
-			index_type start_range_;
-			index_type end_range_;
-			iteration_direction direction_;
-
-		private:
-			[[nodiscard]] static constexpr bool overlaps(const bucket_type& bucket, index_type start_range, index_type end_range)
-			{
-				return !(accessor::low(bucket) >= end_range || accessor::high(bucket) < start_range);
-			}
-
 		public:
+			using iterator_category = std::bidirectional_iterator_tag;
+			using value_type = typename std::conditional<IsConst, const bucket_type, bucket_type>::type;
+			using difference_type = typename std::iterator_traits<iterator>::difference_type;
+			using pointer = value_type*;
+			using reference = value_type&;
+
 			constexpr range_iterator(parent_map& map, index_type start_range, index_type end_range, iteration_direction direction)
 				: begin_(map.begin()), end_(map.end()), start_range_(start_range), end_range_(end_range), direction_(direction)
 			{
@@ -233,6 +228,19 @@ namespace masutils
 
 			[[nodiscard]] constexpr bucket_type& operator*() noexcept { return current_->second; }
 			[[nodiscard]] constexpr bucket_type* operator->() noexcept { return &(current_->second); }
+
+			// Make overlaps a public static member function
+			[[nodiscard]] static constexpr bool overlaps(const bucket_type& bucket, index_type start_range, index_type end_range) {
+				return !(accessor::low(bucket) >= end_range || accessor::high(bucket) < start_range);
+			}
+
+		private:
+			iterator_range current_;
+			iterator_range begin_;
+			iterator_range end_;
+			index_type start_range_;
+			index_type end_range_;
+			iteration_direction direction_;
 		};
 
 	public:
@@ -261,7 +269,7 @@ namespace masutils
 		template <bool IsConst>
 		[[nodiscard]] range_iterator<IsConst> endRange(index_type start_range, index_type end_range) {
 			range_iterator<IsConst> iter(buckets_, start_range, end_range, iteration_direction::forward);
-			while (iter.current_ != iter.end_ && overlaps(iter.current_->second, start_range, end_range)) {
+			while (iter.current_ != iter.end_ && iter.overlaps(iter.current_->second, start_range, end_range)) {
 				++iter.current_;
 			}
 			return iter;
@@ -292,7 +300,7 @@ namespace masutils
 		template <bool IsConst>
 		[[nodiscard]] range_iterator<IsConst> rendRange(index_type start_range, index_type end_range) {
 			range_iterator<IsConst> iter(buckets_, start_range, end_range, iteration_direction::reverse);
-			while (iter.current_ != iter.begin_ && overlaps(iter.current_->second, start_range, end_range)) {
+			while (iter.current_ != iter.begin_ && iter.overlaps(iter.current_->second, start_range, end_range)) {
 				--iter.current_;
 			}
 			return iter;
@@ -397,77 +405,77 @@ namespace masutils
 
 			// First, handle any existing buckets that overlap with our range
 			for (iterator p = buckets_.begin(); p != buckets_.end(); ++p)
-			{
-				if (Traits::lt(l, h) != true)
+				{
+					if (Traits::lt(l, h) != true)
 					break;
 
-				bucket_type& bucket = p->second;
+				bucket_type& current_bucket = p->second;
 
 				// If we have a gap before the current bucket
-				if (Traits::lt(l, accessor::low(bucket)))
-				{
-					value_container container_;
-					if (Traits::lt(accessor::low(bucket), h))
+					if (Traits::lt(l, accessor::low(current_bucket)))
 					{
+						value_container container_;
+					if (Traits::lt(accessor::low(current_bucket), h))
+						{
 						// Create a new bucket for the gap
-						bucket_type _bucket = make_bucket(l, accessor::low(bucket), container_);
-						buckets_.insert(p, std::make_pair(l, _bucket));
-						Traits::assign(l, accessor::low(bucket));
-					}
+							bucket_type new_bucket = make_bucket(l, accessor::low(current_bucket), container_);
+						buckets_.insert(p, std::make_pair(l, new_bucket));
+							Traits::assign(l, accessor::low(current_bucket));
+						}
 					else
-					{
+						{
 						// Create a new bucket that covers the entire range
-						bucket_type _bucket = make_bucket(l, h, container_);
-						buckets_.insert(p, std::make_pair(l, _bucket));
-						Traits::assign(l, accessor::low(bucket));
+							bucket_type new_bucket = make_bucket(l, h, container_);
+						buckets_.insert(p, std::make_pair(l, new_bucket));
+							Traits::assign(l, accessor::low(current_bucket));
 						continue;
+						}
 					}
-				}
 
 				// If we're at the start of a bucket
-				if (Traits::eq(l, accessor::low(bucket)))
-				{
-					if (Traits::lt(h, accessor::high(bucket)))
+					if (Traits::eq(l, accessor::low(current_bucket)))
 					{
+						if (Traits::lt(h, accessor::high(current_bucket)))
+						{
 						// Split the bucket at h
-						bucket_type bucket_(bucket);
-						Traits::assign(accessor::high(bucket_), h);
+							bucket_type split_bucket(current_bucket);
+						Traits::assign(accessor::high(split_bucket), h);
 						// Copy values from original bucket
-						ContainerTraits::append(accessor::values(bucket_), accessor::values(bucket));
-						buckets_.insert(p, std::make_pair(l, bucket_));
-						Traits::assign(accessor::low(bucket), h);
-						Traits::assign(l, h);
-						continue;
+						ContainerTraits::append(accessor::values(split_bucket), accessor::values(current_bucket));
+						buckets_.insert(p, std::make_pair(l, split_bucket));
+						Traits::assign(accessor::low(current_bucket), h);
+							Traits::assign(l, h);
+							continue;
+						}
+						else
+						{
+							Traits::assign(l, accessor::high(current_bucket));
+						}
 					}
-					else
-					{
-						Traits::assign(l, accessor::high(bucket));
-					}
-				}
 
 				// If we're in the middle of a bucket
-				if (Traits::lt(l, accessor::high(bucket)))
-				{
-					// Split the bucket at l
-					bucket_type bucket_(bucket);
-					Traits::assign(accessor::high(bucket_), l);
-					// Copy values from original bucket
-					ContainerTraits::append(accessor::values(bucket_), accessor::values(bucket));
-					buckets_.insert(p, std::make_pair(accessor::low(bucket), bucket_));
-					Traits::assign(accessor::low(bucket), l);
-
-					if (Traits::lt(h, accessor::high(bucket)))
+					if (Traits::lt(l, accessor::high(current_bucket)))
 					{
-						// Split the bucket at h
-						bucket_type bucket_(bucket);
-						Traits::assign(accessor::high(bucket_), h);
-						// Copy values from original bucket
-						ContainerTraits::append(accessor::values(bucket_), accessor::values(bucket));
-						buckets_.insert(p, std::make_pair(l, bucket_));
-						Traits::assign(accessor::low(bucket), h);
-					}
+					// Split the bucket at l
+							bucket_type split_bucket(current_bucket);
+					Traits::assign(accessor::high(split_bucket), l);
+					// Copy values from original bucket
+					ContainerTraits::append(accessor::values(split_bucket), accessor::values(current_bucket));
+					buckets_.insert(p, std::make_pair(accessor::low(current_bucket), split_bucket));
+					Traits::assign(accessor::low(current_bucket), l);
 
-					Traits::assign(l, accessor::high(bucket));
+						if (Traits::lt(h, accessor::high(current_bucket)))
+						{
+						// Split the bucket at h
+							bucket_type split_bucket2(current_bucket);
+							Traits::assign(accessor::high(split_bucket2), h);
+							// Copy values from original bucket
+							ContainerTraits::append(accessor::values(split_bucket2), accessor::values(current_bucket));
+							buckets_.insert(p, std::make_pair(l, split_bucket2));
+							Traits::assign(accessor::low(current_bucket), h);
+						}
+
+					Traits::assign(l, accessor::high(current_bucket));
 				}
 			}
 
@@ -529,7 +537,7 @@ namespace masutils
 				if (Traits::lt(h, accessor::low(bucket))) break;
 				value_container& ocontainer_ = accessor::values(bucket);
 				const value_container& icontainer_ = accessor::values(bucket_);
-				ContainerTraits::append(ocontainer_, icontainer_); 
+				ContainerTraits::append(ocontainer_, icontainer_);
 				added_to_bucket++;
 			}
 
