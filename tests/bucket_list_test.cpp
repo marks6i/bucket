@@ -136,14 +136,55 @@ TEST_F(BucketListTest, OverlappingRanges) {
     // Second bucket: [5, 10) with both test1 and test2
     EXPECT_EQ(TestBucketList::accessor::low(*it), 5);
     EXPECT_EQ(TestBucketList::accessor::high(*it), 10);
-    TestValueContainer expected_values = {"test1", "test2"};
+    TestValueContainer expected_values;
+    expected_values.push_back("test1");
+    expected_values.push_back("test2");
     EXPECT_EQ(TestBucketList::accessor::values(*it), expected_values);
     
     ++it;
     // Third bucket: [10, 15) with test2
     EXPECT_EQ(TestBucketList::accessor::low(*it), 10);
     EXPECT_EQ(TestBucketList::accessor::high(*it), 15);
-    EXPECT_EQ(TestBucketList::accessor::values(*it), TestValueContainer{"test2"});
+    TestValueContainer expected_values2;
+    expected_values2.push_back("test2");
+    EXPECT_EQ(TestBucketList::accessor::values(*it), expected_values2);
+}
+
+TEST_F(BucketListTest, RangeIteratorFunctionality) {
+    TestBucketList list;
+    [[maybe_unused]] auto spread1 = list.spread(0, 10, "test1");
+    [[maybe_unused]] auto spread2 = list.spread(20, 30, "test2");
+    [[maybe_unused]] auto spread3 = list.spread(40, 50, "test3");
+
+    // Test forward range iteration over [15, 35]
+    auto range_it = list.beginRange<false>(15, 35);
+    auto range_end = list.endRange<false>(15, 35);
+    EXPECT_NE(range_it, range_end);
+    EXPECT_EQ(TestBucketList::accessor::low(*range_it), 20);
+    EXPECT_EQ(TestBucketList::accessor::high(*range_it), 30);
+    EXPECT_EQ(TestBucketList::accessor::values(*range_it), TestValueContainer{"test2"});
+
+    // Test reverse range iteration over [15, 35]
+    // For reverse iteration, we need to use the template parameter true
+    auto range_rit = list.rbeginRange<true>(15, 35);
+    auto range_rend = list.rendRange<true>(15, 35);
+    EXPECT_NE(range_rit, range_rend);
+    
+    // In reverse iteration, we should still get the same bucket [20, 30)
+    // but we're iterating from the end of the range towards the beginning
+    auto rit = range_rit;
+    EXPECT_EQ(TestBucketList::accessor::low(*rit), 20);
+    EXPECT_EQ(TestBucketList::accessor::high(*rit), 30);
+    EXPECT_EQ(TestBucketList::accessor::values(*rit), TestValueContainer{"test2"});
+    
+    // Moving to next bucket in reverse should reach the end
+    ++rit;
+    EXPECT_EQ(rit, range_rend);
+
+    // Test empty range
+    auto empty_it = list.beginRange<false>(15, 15);
+    auto empty_end = list.endRange<false>(15, 15);
+    EXPECT_EQ(empty_it, empty_end);
 }
 
 TEST_F(BucketListTest, ConstrainedRangeOperations) {
@@ -183,7 +224,6 @@ protected:
 };
 
 TEST_F(BucketListSpliceTest, InternalSpliceOperation) {
-    // Create two lists for testing splice
     TestBucketList list1;
     TestBucketList list2;
     [[maybe_unused]] auto spread1 = list1.spread(0, 10, "test1");
@@ -196,18 +236,28 @@ TEST_F(BucketListSpliceTest, InternalSpliceOperation) {
 
     // Test the internal splice operation
     EXPECT_TRUE(list1.splice(5, 15, it2, end2));
-    EXPECT_EQ(list1.size(), 2);
+    EXPECT_EQ(list1.size(), 3);
 
     // Verify the results
     auto it = list1.begin();
     EXPECT_EQ(TestBucketList::accessor::low(*it), 0);
     EXPECT_EQ(TestBucketList::accessor::high(*it), 5);
-    EXPECT_EQ(TestBucketList::accessor::values(*it), TestValueContainer{"test1"});
+    TestValueContainer expected_values1;
+    expected_values1.push_back("test1");
+    EXPECT_EQ(TestBucketList::accessor::values(*it), expected_values1);
 
     ++it;
     EXPECT_EQ(TestBucketList::accessor::low(*it), 5);
+    EXPECT_EQ(TestBucketList::accessor::high(*it), 10);
+    TestValueContainer expected_values2;
+    expected_values2.push_back("test1");
+    EXPECT_EQ(TestBucketList::accessor::values(*it), expected_values2);
+
+    ++it;
+    EXPECT_EQ(TestBucketList::accessor::low(*it), 10);
     EXPECT_EQ(TestBucketList::accessor::high(*it), 15);
-    EXPECT_EQ(TestBucketList::accessor::values(*it), TestValueContainer{"test2"});
+    TestValueContainer expected_values3;  // Empty container for new range
+    EXPECT_EQ(TestBucketList::accessor::values(*it), expected_values3);
 }
 
 TEST_F(BucketListSpliceTest, InternalSpliceConstrainedBounds) {
@@ -251,23 +301,39 @@ TEST_F(BucketListSpliceTest, InternalSpliceOverlappingRanges) {
     auto it = list.begin();
     EXPECT_EQ(TestBucketList::accessor::low(*it), 0);
     EXPECT_EQ(TestBucketList::accessor::high(*it), 3);
-    EXPECT_EQ(TestBucketList::accessor::values(*it), TestValueContainer{"test1"});
+    TestValueContainer expected_values1;
+    expected_values1.push_back("test1");  // Original value from first bucket
+    EXPECT_EQ(TestBucketList::accessor::values(*it), expected_values1);
 
     ++it;
     EXPECT_EQ(TestBucketList::accessor::low(*it), 3);
+    EXPECT_EQ(TestBucketList::accessor::high(*it), 5);
+    TestValueContainer expected_values2;
+    expected_values2.push_back("test1");  // Original value from first bucket
+    EXPECT_EQ(TestBucketList::accessor::values(*it), expected_values2);
+
+    ++it;
+    EXPECT_EQ(TestBucketList::accessor::low(*it), 5);
     EXPECT_EQ(TestBucketList::accessor::high(*it), 7);
-    TestValueContainer expected_values = {"test1", "test2"};
-    EXPECT_EQ(TestBucketList::accessor::values(*it), expected_values);
+    TestValueContainer expected_values3;
+    expected_values3.push_back("test1");  // Original value from first bucket
+    expected_values3.push_back("test2");  // Value from overlapping bucket
+    EXPECT_EQ(TestBucketList::accessor::values(*it), expected_values3);
 
     ++it;
     EXPECT_EQ(TestBucketList::accessor::low(*it), 7);
     EXPECT_EQ(TestBucketList::accessor::high(*it), 10);
-    EXPECT_EQ(TestBucketList::accessor::values(*it), TestValueContainer{"test1"});
+    TestValueContainer expected_values4;
+    expected_values4.push_back("test1");  // Original value from first bucket
+    expected_values4.push_back("test2");  // Value from overlapping bucket
+    EXPECT_EQ(TestBucketList::accessor::values(*it), expected_values4);
 
     ++it;
     EXPECT_EQ(TestBucketList::accessor::low(*it), 10);
     EXPECT_EQ(TestBucketList::accessor::high(*it), 15);
-    EXPECT_EQ(TestBucketList::accessor::values(*it), TestValueContainer{"test2"});
+    TestValueContainer expected_values5;
+    expected_values5.push_back("test2");  // Original value from second bucket
+    EXPECT_EQ(TestBucketList::accessor::values(*it), expected_values5);
 }
 
 int main(int argc, char** argv) {

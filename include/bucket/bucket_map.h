@@ -153,8 +153,6 @@ namespace masutils
 		template <bool IsConst>
 		class range_iterator
 		{
-			friend class bucket_map;  // Make bucket_map a friend to access private members
-
 			using parent_map = typename std::conditional_t<IsConst, const bucket_type_map, bucket_type_map>;
 			using iterator_range = typename std::conditional_t<IsConst, const_iterator, iterator>;
 
@@ -226,8 +224,10 @@ namespace masutils
 			[[nodiscard]] constexpr bool operator==(const range_iterator& other) const noexcept { return current_ == other.current_; }
 			[[nodiscard]] constexpr bool operator!=(const range_iterator& other) const noexcept { return !(*this == other); }
 
-			[[nodiscard]] constexpr bucket_type& operator*() noexcept { return current_->second; }
-			[[nodiscard]] constexpr bucket_type* operator->() noexcept { return &(current_->second); }
+			[[nodiscard]] constexpr bucket_type& operator*() noexcept requires (!IsConst) { return current_->second; }
+			[[nodiscard]] constexpr bucket_type* operator->() noexcept requires (!IsConst) { return &(current_->second); }
+			[[nodiscard]] constexpr const bucket_type& operator*() const noexcept requires IsConst { return std::as_const(current_)->second; }
+			[[nodiscard]] constexpr const bucket_type* operator->() const noexcept requires IsConst { return &(std::as_const(current_)->second); }
 
 			// Make overlaps a public static member function
 			[[nodiscard]] static constexpr bool overlaps(const bucket_type& bucket, index_type start_range, index_type end_range) {
@@ -269,8 +269,8 @@ namespace masutils
 		template <bool IsConst>
 		[[nodiscard]] range_iterator<IsConst> endRange(index_type start_range, index_type end_range) {
 			range_iterator<IsConst> iter(buckets_, start_range, end_range, iteration_direction::forward);
-			while (iter.current_ != iter.end_ && iter.overlaps(iter.current_->second, start_range, end_range)) {
-				++iter.current_;
+			while (iter != range_iterator<IsConst>(buckets_, start_range, end_range, iteration_direction::forward)) {
+				++iter;
 			}
 			return iter;
 		}
@@ -300,8 +300,8 @@ namespace masutils
 		template <bool IsConst>
 		[[nodiscard]] range_iterator<IsConst> rendRange(index_type start_range, index_type end_range) {
 			range_iterator<IsConst> iter(buckets_, start_range, end_range, iteration_direction::reverse);
-			while (iter.current_ != iter.begin_ && iter.overlaps(iter.current_->second, start_range, end_range)) {
-				--iter.current_;
+			while (iter != range_iterator<IsConst>(buckets_, start_range, end_range, iteration_direction::reverse)) {
+				--iter;
 			}
 			return iter;
 		}
