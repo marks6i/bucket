@@ -50,7 +50,7 @@ jobs:
       if: matrix.os == 'windows-latest'
       run: |
         echo "Setting up MSVC environment..."
-        call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
+        & "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
         echo "MSVC environment setup complete"
 
     - name: Configure CMake
