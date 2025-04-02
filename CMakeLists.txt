@@ -14,8 +14,9 @@ endif()
 
 # Set compiler options and runtime library
 if(MSVC)
-    add_compile_options(/W4 /Zc:__cplusplus /std:c++20)
-    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
+    add_compile_options(/W4)
+    # Use the same runtime library for all targets
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
     set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 else()
     add_compile_options(-Wall -Wextra -Wpedantic)
@@ -47,19 +48,23 @@ function(add_gtest_executable TEST_NAME)
     target_link_libraries(${TEST_NAME} PRIVATE bucket GTest::gtest_main GTest::gmock_main)
     target_include_directories(${TEST_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
     
-    # Add test and set properties for VS 2022
+    # Add test
     add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
-    set_target_properties(${TEST_NAME} PROPERTIES
-        VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
-        VS_DEBUGGER_ENVIRONMENT "PATH=${CMAKE_CURRENT_BINARY_DIR}"
-    )
     
-    # Enable Google Test discovery for VS 2022
-    gtest_discover_tests(${TEST_NAME}
-        PROPERTIES
+    # Set VS-specific properties only when using Visual Studio
+    if(MSVC)
+        set_target_properties(${TEST_NAME} PROPERTIES
             VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
             VS_DEBUGGER_ENVIRONMENT "PATH=${CMAKE_CURRENT_BINARY_DIR}"
-    )
+        )
+        
+        # Enable Google Test discovery for VS
+        gtest_discover_tests(${TEST_NAME}
+            PROPERTIES
+                VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+                VS_DEBUGGER_ENVIRONMENT "PATH=${CMAKE_CURRENT_BINARY_DIR}"
+        )
+    endif()
 endfunction()
 
 # Add library target

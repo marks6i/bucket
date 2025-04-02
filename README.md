@@ -34,11 +34,51 @@ Common features for both components:
 
 ## Building
 
+### Clean Build Process
+
+To perform a clean build with all the correct settings:
+
 ```bash
-mkdir build
+# Remove existing build directory if it exists
+rm -rf build    # On Unix-like systems
+# OR
+rmdir /s /q build    # On Windows
+
+# Create new build directory with correct settings
+cmake -B build \
+    -DCMAKE_BUILD_TYPE=Debug \
+    -DCMAKE_CXX_STANDARD=20 \
+    -DCMAKE_CXX_STANDARD_REQUIRED=ON \
+    -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreadedDebug
+
+# Build the project
+cmake --build build --config Debug
+
+# Run tests
 cd build
-cmake ..
-cmake --build .
+ctest -C Debug --output-on-failure
+```
+
+### Build Options
+
+- `CMAKE_BUILD_TYPE`: Set to `Debug` for development, `Release` for production
+- `CMAKE_CXX_STANDARD`: Set to `20` for C++20 features
+- `CMAKE_CXX_STANDARD_REQUIRED`: Set to `ON` to enforce C++20
+- `CMAKE_MSVC_RUNTIME_LIBRARY`: 
+  - `MultiThreadedDebug` for Debug builds
+  - `MultiThreaded` for Release builds
+
+### Quick Build (for development)
+
+For quick rebuilds during development, you can use:
+
+```bash
+# If build directory already exists with correct settings
+cmake --build build --config Debug
+
+# Run tests
+cd build
+ctest -C Debug --output-on-failure
 ```
 
 ## Running Tests
