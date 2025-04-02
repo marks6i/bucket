@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [ master, rel20 ]
 
+# Add permissions configuration
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   build:
     runs-on: ${{ matrix.os }}
