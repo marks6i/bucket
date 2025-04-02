@@ -14,7 +14,7 @@ endif()
 
 # Set compiler options and runtime library
 if(MSVC)
-    add_compile_options(/W4)
+    add_compile_options(/W4 /Zc:__cplusplus /std:c++20)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
     set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 else()
@@ -35,6 +35,33 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(googletest)
 
+# Include Google Test CMake module
+include(GoogleTest)
+
+# Configure test directory
+set(TEST_DIR ${CMAKE_CURRENT_SOURCE_DIR}/tests)
+
+# Add helper function for creating tests
+function(add_gtest_executable TEST_NAME)
+    add_executable(${TEST_NAME} ${TEST_DIR}/${TEST_NAME}.cpp)
+    target_link_libraries(${TEST_NAME} PRIVATE bucket GTest::gtest_main GTest::gmock_main)
+    target_include_directories(${TEST_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+    
+    # Add test and set properties for VS 2022
+    add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
+    set_target_properties(${TEST_NAME} PROPERTIES
+        VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+        VS_DEBUGGER_ENVIRONMENT "PATH=${CMAKE_CURRENT_BINARY_DIR}"
+    )
+    
+    # Enable Google Test discovery for VS 2022
+    gtest_discover_tests(${TEST_NAME}
+        PROPERTIES
+            VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+            VS_DEBUGGER_ENVIRONMENT "PATH=${CMAKE_CURRENT_BINARY_DIR}"
+    )
+endfunction()
+
 # Add library target
 add_library(bucket INTERFACE)
 target_include_directories(bucket INTERFACE
@@ -42,26 +69,11 @@ target_include_directories(bucket INTERFACE
     $<INSTALL_INTERFACE:include>
 )
 
-# Add modern test executables (C++20)
-add_executable(bucket_list_test tests/bucket_list_test.cpp)
-target_link_libraries(bucket_list_test PRIVATE bucket GTest::gtest_main GTest::gmock_main)
-target_include_directories(bucket_list_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
-add_test(NAME bucket_list_test COMMAND bucket_list_test)
-
-add_executable(bucket_map_test tests/bucket_map_test.cpp)
-target_link_libraries(bucket_map_test PRIVATE bucket GTest::gtest_main GTest::gmock_main)
-target_include_directories(bucket_map_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
-add_test(NAME bucket_map_test COMMAND bucket_map_test)
-
-add_executable(bucket_compare_traits_test tests/bucket_compare_traits_test.cpp)
-target_link_libraries(bucket_compare_traits_test PRIVATE bucket GTest::gtest_main GTest::gmock_main)
-target_include_directories(bucket_compare_traits_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
-add_test(NAME bucket_compare_traits_test COMMAND bucket_compare_traits_test)
-
-add_executable(bucket_value_traits_test tests/bucket_value_traits_test.cpp)
-target_link_libraries(bucket_value_traits_test PRIVATE bucket GTest::gtest_main GTest::gmock_main)
-target_include_directories(bucket_value_traits_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
-add_test(NAME bucket_value_traits_test COMMAND bucket_value_traits_test)
+# Add test executables using the helper function
+add_gtest_executable(bucket_list_test)
+add_gtest_executable(bucket_map_test)
+add_gtest_executable(bucket_compare_traits_test)
+add_gtest_executable(bucket_value_traits_test)
 
 # Install targets
 include(GNUInstallDirs)

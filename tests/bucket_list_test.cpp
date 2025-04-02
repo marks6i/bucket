@@ -207,6 +207,45 @@ TEST_F(BucketListTest, ConstrainedRangeOperations) {
     EXPECT_EQ(TestBucketList::accessor::high(*it), 100);
 }
 
+// Bound tests
+TEST_F(BucketListTest, UnconstrainedBoundOperations) {
+    TestBucketList list;
+    [[maybe_unused]] auto spread1 = list.spread(0, 10, "test1");
+    [[maybe_unused]] auto spread2 = list.spread(20, 30, "test2");
+    [[maybe_unused]] auto spread3 = list.spread(40, 50, "test3");
+
+    // Should throw when called on unconstrained bucket_list
+    bool lower_threw = false;
+    bool upper_threw = false;
+    
+    try {
+        [[maybe_unused]] auto lower = list.lower_bound();
+    } catch (const std::runtime_error&) {
+        lower_threw = true;
+    }
+    EXPECT_TRUE(lower_threw);
+
+    try {
+        [[maybe_unused]] auto upper = list.upper_bound();
+    } catch (const std::runtime_error&) {
+        upper_threw = true;
+    }
+    EXPECT_TRUE(upper_threw);
+}
+
+TEST_F(BucketListTest, ConstrainedBoundOperations) {
+    TestBucketList list(0, 100);
+    [[maybe_unused]] auto spread1 = list.spread(10, 20, "test1");
+    [[maybe_unused]] auto spread2 = list.spread(30, 40, "test2");
+    [[maybe_unused]] auto spread3 = list.spread(50, 60, "test3");
+
+    // Should return the constraints, not the bucket bounds
+    [[maybe_unused]] auto lower = list.lower_bound();
+    [[maybe_unused]] auto upper = list.upper_bound();
+    EXPECT_EQ(lower, 0);
+    EXPECT_EQ(upper, 100);
+}
+
 // ============================================================================
 // INTERNAL IMPLEMENTATION TESTS
 // These tests verify internal implementation details of bucket_list.

@@ -177,17 +177,13 @@ namespace masutils
 				else
 				{
 					current_ = end_;
-					if (current_ != begin_)
+					while (current_ != begin_)
 					{
-						do
+						--current_;
+						if (overlaps(*current_, start_range_, end_range_))
 						{
-							--current_;
-							if (overlaps(*current_, start_range_, end_range_))
-							{
-								++current_;
-								break;
-							}
-						} while (current_ != begin_);
+							break;
+						}
 					}
 				}
 			}
@@ -196,26 +192,45 @@ namespace masutils
 			{
 				if (direction_ == iteration_direction::forward)
 				{
-					do
+					++current_;
+					while (current_ != end_ && !overlaps(*current_, start_range_, end_range_))
 					{
 						++current_;
 					}
-					while (current_ != end_ && !overlaps(*current_, start_range_, end_range_));
+				}
+				else
+				{
+					if (current_ != begin_)
+					{
+						--current_;
+						while (current_ != begin_ && !overlaps(*current_, start_range_, end_range_))
+						{
+							--current_;
+						}
+					}
 				}
 				return *this;
 			}
 
 			constexpr range_iterator& operator--()
 			{
-				if (direction_ == iteration_direction::reverse)
+				if (direction_ == iteration_direction::forward)
 				{
 					if (current_ != begin_)
 					{
-						do
+						--current_;
+						while (current_ != begin_ && !overlaps(*current_, start_range_, end_range_))
 						{
 							--current_;
 						}
-						while (current_ != begin_ && !overlaps(*current_, start_range_, end_range_));
+					}
+				}
+				else
+				{
+					--current_;
+					while (current_ != begin_ && !overlaps(*current_, start_range_, end_range_))
+					{
+						--current_;
 					}
 				}
 				return *this;
@@ -224,17 +239,28 @@ namespace masutils
 			[[nodiscard]] constexpr bool operator==(const range_iterator& other) const noexcept { return current_ == other.current_; }
 			[[nodiscard]] constexpr bool operator!=(const range_iterator& other) const noexcept { return !(*this == other); }
 
+			// Add comparison operators for the underlying iterator type
+			[[nodiscard]] constexpr bool operator==(const iterator_range& other) const noexcept { return current_ == other; }
+			[[nodiscard]] constexpr bool operator!=(const iterator_range& other) const noexcept { return !(*this == other); }
+
+			// Add friend operators for reverse comparison
+			[[nodiscard]] friend constexpr bool operator==(const iterator_range& lhs, const range_iterator& rhs) noexcept { return rhs == lhs; }
+			[[nodiscard]] friend constexpr bool operator!=(const iterator_range& lhs, const range_iterator& rhs) noexcept { return rhs != lhs; }
+
+			// Add getter for current position
+			[[nodiscard]] constexpr iterator_range current() const noexcept { return current_; }
+
 			[[nodiscard]] constexpr bucket_type& operator*() noexcept requires (!IsConst) { return *current_; }
 			[[nodiscard]] constexpr bucket_type* operator->() noexcept requires (!IsConst) { return &(*current_); }
 			[[nodiscard]] constexpr const bucket_type& operator*() const noexcept requires IsConst { return *std::as_const(current_); }
 			[[nodiscard]] constexpr const bucket_type* operator->() const noexcept requires IsConst { return &(*std::as_const(current_)); }
 
-		private:
 			[[nodiscard]] static constexpr bool overlaps(const bucket_type& bucket, index_type start_range, index_type end_range)
 			{
 				return !(accessor::low(bucket) >= end_range || accessor::high(bucket) < start_range);
 			}
 
+		private:
 			iterator_range current_;
 			iterator_range begin_;
 			iterator_range end_;
@@ -269,7 +295,7 @@ namespace masutils
 		template <bool IsConst>
 		[[nodiscard]] range_iterator<IsConst> endRange(index_type start_range, index_type end_range) {
 			range_iterator<IsConst> iter(buckets_, start_range, end_range, iteration_direction::forward);
-			while (iter != range_iterator<IsConst>(buckets_, start_range, end_range, iteration_direction::forward)) {
+			while (iter != buckets_.end() && range_iterator<IsConst>::overlaps(*iter, start_range, end_range)) {
 				++iter;
 			}
 			return iter;
@@ -300,10 +326,21 @@ namespace masutils
 		template <bool IsConst>
 		[[nodiscard]] range_iterator<IsConst> rendRange(index_type start_range, index_type end_range) {
 			range_iterator<IsConst> iter(buckets_, start_range, end_range, iteration_direction::reverse);
-			while (iter != range_iterator<IsConst>(buckets_, start_range, end_range, iteration_direction::reverse)) {
+			while (iter.current() != buckets_.begin() && range_iterator<IsConst>::overlaps(*iter, start_range, end_range)) {
 				--iter;
 			}
 			return iter;
+		}
+
+		// Add comparison operators for range_iterator
+		template <bool IsConst>
+		[[nodiscard]] friend constexpr bool operator==(const range_iterator<IsConst>& lhs, const range_iterator<IsConst>& rhs) noexcept {
+			return lhs.current_ == rhs.current_;
+		}
+
+		template <bool IsConst>
+		[[nodiscard]] friend constexpr bool operator!=(const range_iterator<IsConst>& lhs, const range_iterator<IsConst>& rhs) noexcept {
+			return !(lhs == rhs);
 		}
 
 		[[nodiscard]] constexpr std::size_t size() const noexcept { return buckets_.size(); }

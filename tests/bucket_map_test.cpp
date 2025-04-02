@@ -205,14 +205,42 @@ TEST_F(BucketMapTest, SpliceOperation) {
 }
 
 // Bound tests
-TEST_F(BucketMapTest, BoundOperations) {
+TEST_F(BucketMapTest, UnconstrainedBoundOperations) {
     TestBucketMap test_map;
     [[maybe_unused]] auto spread1 = test_map.spread(0, 10, "test1");
     [[maybe_unused]] auto spread2 = test_map.spread(20, 30, "test2");
     [[maybe_unused]] auto spread3 = test_map.spread(40, 50, "test3");
 
-    EXPECT_EQ(test_map.lower_bound(), 0);
-    EXPECT_EQ(test_map.upper_bound(), 50);
+    // Should throw when called on unconstrained bucket_map
+    bool lower_threw = false;
+    bool upper_threw = false;
+    
+    try {
+        [[maybe_unused]] auto lower = test_map.lower_bound();
+    } catch (const std::runtime_error&) {
+        lower_threw = true;
+    }
+    EXPECT_TRUE(lower_threw);
+
+    try {
+        [[maybe_unused]] auto upper = test_map.upper_bound();
+    } catch (const std::runtime_error&) {
+        upper_threw = true;
+    }
+    EXPECT_TRUE(upper_threw);
+}
+
+TEST_F(BucketMapTest, ConstrainedBoundOperations) {
+    TestBucketMap test_map(0, 100);
+    [[maybe_unused]] auto spread1 = test_map.spread(10, 20, "test1");
+    [[maybe_unused]] auto spread2 = test_map.spread(30, 40, "test2");
+    [[maybe_unused]] auto spread3 = test_map.spread(50, 60, "test3");
+
+    // Should return the constraints, not the bucket bounds
+    [[maybe_unused]] auto lower = test_map.lower_bound();
+    [[maybe_unused]] auto upper = test_map.upper_bound();
+    EXPECT_EQ(lower, 0);
+    EXPECT_EQ(upper, 100);
 }
 
 // Edge cases and error conditions
