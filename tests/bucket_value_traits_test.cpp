@@ -40,6 +40,7 @@ TEST(BucketValueTraitsTest, DefaultContainer) {
 }
 
 // Test set-based container
+namespace masutils {
 template<>
 struct bucket_value_traits<std::string, std::set<std::string> > {
     using container_type = std::set<std::string>;
@@ -64,6 +65,7 @@ struct bucket_value_traits<std::string, std::set<std::string> > {
 protected:
     ~bucket_value_traits() = default;
 };
+} // namespace masutils
 
 TEST(BucketValueTraitsTest, SetContainer) {
     using traits = bucket_value_traits<std::string, std::set<std::string>>;
