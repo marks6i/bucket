@@ -84,7 +84,7 @@ jobs:
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: build-${{ matrix.os }}-${{ matrix.compiler }}-${{ matrix.build_type }}
+        name: build-${{ matrix.os }}-${{ matrix.compiler }}-${{ matrix.arch || 'x64' }}-${{ matrix.build_type }}
         path: ${{github.workspace}}/build/
         retention-days: 5
         if-no-files-found: warn 
