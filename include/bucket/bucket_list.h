@@ -36,6 +36,7 @@
 
 #include "bucket_compare_traits.h"
 #include "bucket_value_traits.h"
+#include "bucket_range.h"
 
 namespace masutils
 { 
@@ -62,24 +63,33 @@ namespace masutils
 		using index_type = Indices;
 		using value_type = Values;
 
+		// Public container type that represents the actual values
 		using value_container = typename ContainerTraits::value_container;
 		using const_value_container = const typename ContainerTraits::value_container;
 
-		using bucket_type = std::pair<index_type,
-		                             std::pair<index_type,
-		                                      value_container>>;
+		// Internal container type (protected)
+		using internal_value = std::pair<index_type, value_container>;
+		using const_internal_value = const std::pair<index_type, value_container>;
+
+		using bucket_type = std::pair<index_type, internal_value>;
 		using bucket_type_list = std::list<bucket_type>;
 
 		struct accessor {
 			accessor() = delete;
 
 			// Getters
-			[[nodiscard]] static constexpr index_type& low(bucket_type& t) noexcept                     { return t.first;         }
-			[[nodiscard]] static constexpr const index_type& low(const bucket_type& t) noexcept         { return t.first;         }
-			[[nodiscard]] static constexpr index_type& high(bucket_type& t) noexcept                    { return t.second.first;  }
-			[[nodiscard]] static constexpr const index_type& high(const bucket_type& t) noexcept        { return t.second.first;  }
-			[[nodiscard]] static constexpr value_container& values(bucket_type& t) noexcept             { return t.second.second; }
-			[[nodiscard]] static constexpr const_value_container& values(const bucket_type& t) noexcept { return t.second.second; }
+			template<typename T>
+			[[nodiscard]] static constexpr auto& low(T& t) noexcept                     { return t.first;         }
+			template<typename T>
+			[[nodiscard]] static constexpr const auto& low(const T& t) noexcept         { return t.first;         }
+			template<typename T>
+			[[nodiscard]] static constexpr auto& high(T& t) noexcept                    { return t.second.first;  }
+			template<typename T>
+			[[nodiscard]] static constexpr const auto& high(const T& t) noexcept        { return t.second.first;  }
+			template<typename T>
+			[[nodiscard]] static constexpr auto& values(T& t) noexcept             { return t.second.second; }
+			template<typename T>
+			[[nodiscard]] static constexpr const auto& values(const T& t) noexcept { return t.second.second; }
 		};
 
 		[[nodiscard]] static constexpr bucket_type make_bucket(index_type low, index_type high, const value_container& values)
@@ -699,6 +709,16 @@ namespace masutils
 			}
 
 			return added_to_bucket;
+		}
+
+		// Add a method to create a bucket_range
+		bucket_range<bucket_list<Indices, Values, Traits, ContainerTraits>, false> range(Indices start, Indices end) {
+			return bucket_range<bucket_list<Indices, Values, Traits, ContainerTraits>, false>(*this, start, end);
+		}
+
+		// Add a const method to create a bucket_range
+		bucket_range<bucket_list<Indices, Values, Traits, ContainerTraits>, true> range(Indices start, Indices end) const {
+			return bucket_range<bucket_list<Indices, Values, Traits, ContainerTraits>, true>(*this, start, end);
 		}
 	};
 }

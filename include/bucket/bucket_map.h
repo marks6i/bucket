@@ -35,15 +35,10 @@
 
 #include "bucket_compare_traits.h"
 #include "bucket_value_traits.h"
+#include "bucket_range.h"
 
 namespace masutils
 { 
-	template<typename T>
-	concept totally_ordered = std::totally_ordered<T>;
-
-	template<typename T>
-	concept equality_comparable = std::equality_comparable<T>;
-
 	/**
 	 * @brief The bucket_map class.
 	 * @tparam Indices The type of the keys in the bucket.
@@ -67,24 +62,33 @@ namespace masutils
 		using index_type = Indices;
 		using value_type = Values;
 
+		// Public container type that represents the actual values
 		using value_container = typename ContainerTraits::value_container;
 		using const_value_container = const typename ContainerTraits::value_container;
 
-		using bucket_type = std::pair<index_type,
-		                             std::pair<index_type,
-		                                      value_container>>;
+		// Internal container type (protected)
+		using internal_value = std::pair<index_type, value_container>;
+		using const_internal_value = const std::pair<index_type, value_container>;
+
+		using bucket_type = std::pair<index_type, internal_value>;
 		using bucket_type_map = std::map<index_type, bucket_type>;
 
 		struct accessor {
 			accessor() = delete;
 
 			// Getters
-			[[nodiscard]] static constexpr index_type& low(bucket_type& t) noexcept                     { return t.first;         }
-			[[nodiscard]] static constexpr const index_type& low(const bucket_type& t) noexcept         { return t.first;         }
-			[[nodiscard]] static constexpr index_type& high(bucket_type& t) noexcept                    { return t.second.first;  }
-			[[nodiscard]] static constexpr const index_type& high(const bucket_type& t) noexcept        { return t.second.first;  }
-			[[nodiscard]] static constexpr value_container& values(bucket_type& t) noexcept             { return t.second.second; }
-			[[nodiscard]] static constexpr const_value_container& values(const bucket_type& t) noexcept { return t.second.second; }
+			template<typename T>
+			[[nodiscard]] static constexpr auto& low(T& t) noexcept                     { return t.first;         }
+			template<typename T>
+			[[nodiscard]] static constexpr const auto& low(const T& t) noexcept         { return t.first;         }
+			template<typename T>
+			[[nodiscard]] static constexpr auto& high(T& t) noexcept                    { return t.second.first;  }
+			template<typename T>
+			[[nodiscard]] static constexpr const auto& high(const T& t) noexcept        { return t.second.first;  }
+			template<typename T>
+			[[nodiscard]] static constexpr auto& values(T& t) noexcept             { return t.second.second; }
+			template<typename T>
+			[[nodiscard]] static constexpr const auto& values(const T& t) noexcept { return t.second.second; }
 		};
 
 		[[nodiscard]] static constexpr bucket_type make_bucket(index_type low, index_type high, const value_container& values)
@@ -150,198 +154,6 @@ namespace masutils
 		{
 			return const_reverse_iterator(buckets_.rend());
 		}
-
-	private:
-		enum class iteration_direction { forward, reverse };
-
-		// Define the range_iterator
-		template <bool IsConst>
-		class range_iterator
-		{
-			using parent_map = typename std::conditional_t<IsConst, const bucket_type_map, bucket_type_map>;
-			using iterator_range = typename std::conditional_t<IsConst, const_iterator, iterator>;
-
-		public:
-			using iterator_category = std::bidirectional_iterator_tag;
-			using value_type = typename std::conditional<IsConst, const bucket_type, bucket_type>::type;
-			using difference_type = typename std::iterator_traits<iterator>::difference_type;
-			using pointer = value_type*;
-			using reference = value_type&;
-
-			constexpr range_iterator(parent_map& map, index_type start_range, index_type end_range, iteration_direction direction)
-				: begin_(map.begin()), end_(map.end()), start_range_(start_range), end_range_(end_range), direction_(direction)
-			{
-				if (direction_ == iteration_direction::forward)
-				{
-					current_ = begin_;
-					while (current_ != end_ && !overlaps(current_->second, start_range_, end_range_))
-					{
-						++current_;
-					}
-				}
-				else
-				{
-					current_ = end_;
-					while (current_ != begin_)
-					{
-						--current_;
-						if (overlaps(current_->second, start_range_, end_range_))
-						{
-							break;
-						}
-					}
-				}
-			}
-
-			constexpr range_iterator& operator++()
-			{
-				if (direction_ == iteration_direction::forward)
-				{
-					++current_;
-					while (current_ != end_ && !overlaps(current_->second, start_range_, end_range_))
-					{
-						++current_;
-					}
-				}
-				else
-				{
-					if (current_ != begin_)
-					{
-						--current_;
-						while (current_ != begin_ && !overlaps(current_->second, start_range_, end_range_))
-						{
-							--current_;
-						}
-					}
-				}
-				return *this;
-			}
-
-			constexpr range_iterator& operator--()
-			{
-				if (direction_ == iteration_direction::forward)
-				{
-					if (current_ != begin_)
-					{
-						--current_;
-						while (current_ != begin_ && !overlaps(current_->second, start_range_, end_range_))
-						{
-							--current_;
-						}
-					}
-				}
-				else
-				{
-					--current_;
-					while (current_ != begin_ && !overlaps(current_->second, start_range_, end_range_))
-					{
-						--current_;
-					}
-				}
-				return *this;
-			}
-
-			[[nodiscard]] constexpr bool operator==(const range_iterator& other) const noexcept { return current_ == other.current_; }
-			[[nodiscard]] constexpr bool operator!=(const range_iterator& other) const noexcept { return !(*this == other); }
-
-			// Add comparison operators for the underlying iterator type
-			[[nodiscard]] constexpr bool operator==(const iterator_range& other) const noexcept { return current_ == other; }
-			[[nodiscard]] constexpr bool operator!=(const iterator_range& other) const noexcept { return !(*this == other); }
-
-			// Add friend operators for reverse comparison
-			[[nodiscard]] friend constexpr bool operator==(const iterator_range& lhs, const range_iterator& rhs) noexcept { return rhs == lhs; }
-			[[nodiscard]] friend constexpr bool operator!=(const iterator_range& lhs, const range_iterator& rhs) noexcept { return rhs != lhs; }
-
-			// Add getter for current position
-			[[nodiscard]] constexpr iterator_range current() const noexcept { return current_; }
-
-			[[nodiscard]] constexpr bucket_type& operator*() noexcept requires (!IsConst) { return current_->second; }
-			[[nodiscard]] constexpr bucket_type* operator->() noexcept requires (!IsConst) { return &(current_->second); }
-			[[nodiscard]] constexpr const bucket_type& operator*() const noexcept requires IsConst { return std::as_const(current_)->second; }
-			[[nodiscard]] constexpr const bucket_type* operator->() const noexcept requires IsConst { return &(std::as_const(current_)->second); }
-
-			// Make overlaps a public static member function
-			[[nodiscard]] static constexpr bool overlaps(const bucket_type& bucket, index_type start_range, index_type end_range) {
-				return !(accessor::low(bucket) >= end_range || accessor::high(bucket) < start_range);
-			}
-
-		private:
-			iterator_range current_;
-			iterator_range begin_;
-			iterator_range end_;
-			index_type start_range_;
-			index_type end_range_;
-			iteration_direction direction_;
-		};
-
-	public:
-		// Forward iterators
-
-		/**
-		 * @brief Forward iterator over a range of buckets.
-		 * @tparam IsConst Boolean value indicating if the iterator is const.
-		 * @param start_range First bucket after or containing this index.
-		 * @param end_range First bucket after this index.
-		 * @return Iterator starting at first bucket in the range.
-		 */
-		template <bool IsConst>
-		[[nodiscard]] range_iterator<IsConst> beginRange(index_type start_range, index_type end_range)
-		{
-			return range_iterator<IsConst>(buckets_, start_range, end_range, iteration_direction::forward);
-		}
-
-		/**
-		 * @brief Iterator of first bucket past the range.
-		 * @tparam IsConst Boolean value indicating if the iterator is const.
-		 * @param start_range Start index of buckets in the range.
-		 * @param end_range End index of buckets in the range.
-		 * @return Iterator to first bucket past the range.
-		 */
-		template <bool IsConst>
-		[[nodiscard]] range_iterator<IsConst> endRange(index_type start_range, index_type end_range) {
-			range_iterator<IsConst> iter(buckets_, start_range, end_range, iteration_direction::forward);
-			while (iter != buckets_.end() && range_iterator<IsConst>::overlaps(*iter, start_range, end_range)) {
-				++iter;
-			}
-			return iter;
-		}
-
-		// Reverse iterators
-
-		/**
-		 * @brief Forward iterator over a range of buckets.
-		 * @tparam IsConst Boolean value indicating if the iterator is const.
-		 * @param start_range First bucket in reverse order after or containing this index.
-		 * @param end_range First bucket after this index.
-		 * @return Iterator starting at first bucket in reverse order in the range.
-		 */
-		template <bool IsConst>
-		[[nodiscard]] range_iterator<IsConst> rbeginRange(index_type start_range, index_type end_range)
-		{
-			return range_iterator<IsConst>(buckets_, start_range, end_range, iteration_direction::reverse);
-		}
-
-		/**
-		 * @brief Iterator of first bucket in reverse order past the range.
-		 * @tparam IsConst Boolean value indicating if the iterator is const.
-		 * @param start_range Start index of buckets in the range.
-		 * @param end_range End index of buckets in the range.
-		 * @return Iterator to first bucket in reverse order past the range.
-		 */
-		template <bool IsConst>
-		[[nodiscard]] range_iterator<IsConst> rendRange(index_type start_range, index_type end_range) {
-			range_iterator<IsConst> iter(buckets_, start_range, end_range, iteration_direction::reverse);
-			while (iter.current() != buckets_.begin() && range_iterator<IsConst>::overlaps(*iter, start_range, end_range)) {
-				--iter;
-			}
-			return iter;
-		}
-
-		[[nodiscard]] constexpr std::size_t size() const noexcept { return buckets_.size(); }
-		[[nodiscard]] constexpr bool empty() const noexcept { return buckets_.empty(); }
-		[[nodiscard]] constexpr index_type low() const noexcept { return low_; }
-		[[nodiscard]] constexpr index_type high() const noexcept { return high_; }
-		[[nodiscard]] constexpr bool constrained() const noexcept { return constrained_; }
 
 	private:
 		bucket_map(const mytype&) = default;
@@ -708,14 +520,14 @@ namespace masutils
 			return added_to_bucket;
 		}
 
-		template <bool IsConst>
-		[[nodiscard]] friend constexpr bool operator==(const range_iterator<IsConst>& lhs, const range_iterator<IsConst>& rhs) noexcept {
-			return lhs.current_ == rhs.current_;
+		// Add a method to create a bucket_range
+		bucket_range<bucket_map<Indices, Values, Traits, ContainerTraits>, false> range(Indices start, Indices end) {
+			return bucket_range<bucket_map<Indices, Values, Traits, ContainerTraits>, false>(*this, start, end);
 		}
 
-		template <bool IsConst>
-		[[nodiscard]] friend constexpr bool operator!=(const range_iterator<IsConst>& lhs, const range_iterator<IsConst>& rhs) noexcept {
-			return !(lhs == rhs);
+		// Add a const method to create a bucket_range
+		bucket_range<bucket_map<Indices, Values, Traits, ContainerTraits>, true> range(Indices start, Indices end) const {
+			return bucket_range<bucket_map<Indices, Values, Traits, ContainerTraits>, true>(*this, start, end);
 		}
 	};
 }
