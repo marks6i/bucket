@@ -37,6 +37,7 @@
 #include "bucket_compare_traits.h"
 #include "bucket_value_traits.h"
 #include "bucket_range.h"
+#include "bucket_object.h"
 
 namespace masutils
 { 
@@ -67,11 +68,10 @@ namespace masutils
 		using value_container = typename ContainerTraits::value_container;
 		using const_value_container = const typename ContainerTraits::value_container;
 
-		// Internal container type (protected)
-		using internal_value = std::pair<index_type, value_container>;
-		using const_internal_value = const std::pair<index_type, value_container>;
-
-		using bucket_type = std::pair<index_type, internal_value>;
+		// Define the bucket type using the new bucket_object class
+		using bucket_type = bucket_object<index_type, value_container>;
+		
+		// Use a list to store the buckets
 		using bucket_type_list = std::list<bucket_type>;
 
 		struct accessor {
@@ -79,22 +79,22 @@ namespace masutils
 
 			// Getters
 			template<typename T>
-			[[nodiscard]] static constexpr auto& low(T& t) noexcept                     { return t.first;         }
+			[[nodiscard]] static constexpr auto& low(T& t) noexcept                     { return t.low(); }
 			template<typename T>
-			[[nodiscard]] static constexpr const auto& low(const T& t) noexcept         { return t.first;         }
+			[[nodiscard]] static constexpr const auto& low(const T& t) noexcept         { return t.low(); }
 			template<typename T>
-			[[nodiscard]] static constexpr auto& high(T& t) noexcept                    { return t.second.first;  }
+			[[nodiscard]] static constexpr auto& high(T& t) noexcept                    { return t.high(); }
 			template<typename T>
-			[[nodiscard]] static constexpr const auto& high(const T& t) noexcept        { return t.second.first;  }
+			[[nodiscard]] static constexpr const auto& high(const T& t) noexcept        { return t.high(); }
 			template<typename T>
-			[[nodiscard]] static constexpr auto& values(T& t) noexcept             { return t.second.second; }
+			[[nodiscard]] static constexpr auto& values(T& t) noexcept                  { return t.values(); }
 			template<typename T>
-			[[nodiscard]] static constexpr const auto& values(const T& t) noexcept { return t.second.second; }
+			[[nodiscard]] static constexpr const auto& values(const T& t) noexcept      { return t.values(); }
 		};
 
 		[[nodiscard]] static constexpr bucket_type make_bucket(index_type low, index_type high, const value_container& values)
 		{
-			return std::make_pair(low, std::make_pair(high, values));
+			return bucket_type(low, high, values);
 		}
 
 		using iterator = typename bucket_type_list::iterator;

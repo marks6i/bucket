@@ -94,6 +94,16 @@ namespace masutils {
             x = y;
         }
 
+        /**
+         * @brief Assign a value to a reference
+         * @param x The target to assign to
+         * @param y The value to assign
+         */
+        template<typename T = IndexType>
+        static constexpr void assign(T& x, T&& y) noexcept {
+            x = std::move(y);
+        }
+
     private:
         bucket_compare_traits() = delete;
     };

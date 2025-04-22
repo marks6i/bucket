@@ -83,15 +83,25 @@ namespace masutils
 				}
 				else
 				{
-					current_ = container_.end();
-					while (current_ != container_.begin())
+					current_ = container_.begin();
+					// Find the first overlapping bucket
+					while (current_ != container_.end() && !overlaps(*current_, start_range_, end_range_))
 					{
-						--current_;
-						if (overlaps(*current_, start_range_, end_range_))
-						{
-							break;
-						}
+						++current_;
 					}
+					// If no overlapping bucket found, set to end
+					if (current_ == container_.end())
+					{
+						return;
+					}
+					// Find the last overlapping bucket
+					auto next = current_;
+					++next;
+					while (next != container_.end() && overlaps(*next, start_range_, end_range_))
+					{
+						++next;
+					}
+					current_ = next;
 				}
 			}
 
@@ -202,8 +212,8 @@ namespace masutils
 				index_type start_range, 
 				index_type end_range)
 			{
-				return !(container_type::accessor::low(bucket) >= end_range || 
-					container_type::accessor::high(bucket) < start_range);
+				return container_type::accessor::low(bucket) < end_range && 
+					container_type::accessor::high(bucket) > start_range;
 			}
 
 			container_type& container_;
@@ -252,7 +262,7 @@ namespace masutils
 		 */
 		[[nodiscard]] constexpr iterator rbegin() const noexcept 
 		{ 
-			return iterator(container_, start_range_, end_range_, false); 
+			return iterator(container_, start_range_, end_range_, true); 
 		}
 
 		/**
@@ -261,7 +271,7 @@ namespace masutils
 		 */
 		[[nodiscard]] constexpr iterator rend() const noexcept 
 		{ 
-			return iterator(container_, start_range_, end_range_, true); 
+			return iterator(container_, start_range_, end_range_, false); 
 		}
 
 	private:

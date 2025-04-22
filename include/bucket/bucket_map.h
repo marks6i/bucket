@@ -36,6 +36,7 @@
 #include "bucket_compare_traits.h"
 #include "bucket_value_traits.h"
 #include "bucket_range.h"
+#include "bucket_object.h"
 
 namespace masutils
 { 
@@ -66,34 +67,48 @@ namespace masutils
 		using value_container = typename ContainerTraits::value_container;
 		using const_value_container = const typename ContainerTraits::value_container;
 
-		// Internal container type (protected)
-		using internal_value = std::pair<index_type, value_container>;
-		using const_internal_value = const std::pair<index_type, value_container>;
-
-		using bucket_type = std::pair<index_type, internal_value>;
+		// Define the bucket type using the new bucket_object class
+		using bucket_type = bucket_object<index_type, value_container>;
+		
+		// Use a map with index_type as key and bucket_type as value
 		using bucket_type_map = std::map<index_type, bucket_type>;
 
 		struct accessor {
 			accessor() = delete;
 
-			// Getters
+			// Getters for direct bucket objects
 			template<typename T>
-			[[nodiscard]] static constexpr auto& low(T& t) noexcept                     { return t.first;         }
+			[[nodiscard]] static constexpr auto& low(T& t) noexcept                     { return t.low(); }
 			template<typename T>
-			[[nodiscard]] static constexpr const auto& low(const T& t) noexcept         { return t.first;         }
+			[[nodiscard]] static constexpr const auto& low(const T& t) noexcept         { return t.low(); }
 			template<typename T>
-			[[nodiscard]] static constexpr auto& high(T& t) noexcept                    { return t.second.first;  }
+			[[nodiscard]] static constexpr auto& high(T& t) noexcept                    { return t.high(); }
 			template<typename T>
-			[[nodiscard]] static constexpr const auto& high(const T& t) noexcept        { return t.second.first;  }
+			[[nodiscard]] static constexpr const auto& high(const T& t) noexcept        { return t.high(); }
 			template<typename T>
-			[[nodiscard]] static constexpr auto& values(T& t) noexcept             { return t.second.second; }
+			[[nodiscard]] static constexpr auto& values(T& t) noexcept                  { return t.values(); }
 			template<typename T>
-			[[nodiscard]] static constexpr const auto& values(const T& t) noexcept { return t.second.second; }
+			[[nodiscard]] static constexpr const auto& values(const T& t) noexcept      { return t.values(); }
+
+			// Getters for map pairs
+			template<typename T>
+			[[nodiscard]] static constexpr auto& low(std::pair<T, bucket_type>& t) noexcept                     { return t.second.low(); }
+			template<typename T>
+			[[nodiscard]] static constexpr const auto& low(const std::pair<T, bucket_type>& t) noexcept         { return t.second.low(); }
+			template<typename T>
+			[[nodiscard]] static constexpr auto& high(std::pair<T, bucket_type>& t) noexcept                    { return t.second.high(); }
+			template<typename T>
+			[[nodiscard]] static constexpr const auto& high(const std::pair<T, bucket_type>& t) noexcept        { return t.second.high(); }
+			template<typename T>
+			[[nodiscard]] static constexpr auto& values(std::pair<T, bucket_type>& t) noexcept                  { return t.second.values(); }
+			template<typename T>
+			[[nodiscard]] static constexpr const auto& values(const std::pair<T, bucket_type>& t) noexcept      { return t.second.values(); }
 		};
 
+		// Helper to create a bucket
 		[[nodiscard]] static constexpr bucket_type make_bucket(index_type low, index_type high, const value_container& values)
 		{
-			return std::make_pair(low, std::make_pair(high, values));
+			return bucket_type(low, high, values);
 		}
 
 		using iterator = typename bucket_type_map::iterator;
@@ -153,6 +168,14 @@ namespace masutils
 		[[nodiscard]] const_reverse_iterator rend() const noexcept
 		{
 			return const_reverse_iterator(buckets_.rend());
+		}
+
+		/**
+		 * @brief Returns the number of buckets in the map.
+		 * @return The number of buckets.
+		 */
+		[[nodiscard]] size_t size() const noexcept {
+			return buckets_.size();
 		}
 
 	private:
