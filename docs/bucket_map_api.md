@@ -7,20 +7,20 @@
 ## Template Parameters
 
 ```cpp
-template<typename Indices, typename Values, typename CompareTraits = bucket_compare_traits<Indices>, typename ValueTraits = bucket_value_traits<Values>>
+template<typename Indices, typename Values, typename Traits = bucket_compare_traits<Indices>, typename ContainerTraits = bucket_value_traits<Values>>
 ```
 
 - `Indices`: The type used for range indices (e.g., int, size_t)
 - `Values`: The type of values to store (e.g., std::string)
-- `CompareTraits`: Traits for index comparison (default: bucket_compare_traits<Indices>)
-- `ValueTraits`: Traits for value container (default: bucket_value_traits<Values>)
+- `Traits`: Traits for index comparison (default: bucket_compare_traits<Indices>)
+- `ContainerTraits`: Traits for value container (default: bucket_value_traits<Values>)
 
 ## Public Interface
 
 ### Constructors
 
 ```cpp
-// Default constructor
+// Default constructor (unconstrained)
 bucket_map();
 
 // Constructor with range constraints
@@ -31,58 +31,82 @@ bucket_map(Indices low, Indices high);
 
 ```cpp
 // Spread a value across a range
-int spread(Indices low, Indices high, const Values& value);
+[[nodiscard]] int spread(Indices low, Indices high, const Values& value);
 
 // Cover a range with a value
-void cover(Indices low, Indices high, const Values& value);
+[[nodiscard]] int cover(Indices low, Indices high, const Values& value);
 
 // Erase values from a range
-void erase(Indices low, Indices high);
+[[nodiscard]] bool erase(Indices low, Indices high);
 ```
 
 ### Accessors
 
 ```cpp
 // Get the number of buckets
-size_t size() const;
+[[nodiscard]] size_t size() const noexcept;
 
-// Check if the map is empty
-bool empty() const;
+// Check if the map is constrained
+[[nodiscard]] constexpr bool is_constrained() const noexcept;
 
-// Get the lower bound of the first bucket
-Indices low() const;
+// Get the lower bound of a constrained map
+[[nodiscard]] index_type lower_bound() const;
 
-// Get the upper bound of the last bucket
-Indices high() const;
+// Get the upper bound of a constrained map
+[[nodiscard]] index_type upper_bound() const;
 ```
 
 ### Iteration
 
 ```cpp
 // Iterator types
-using iterator = typename bucket_map_type::iterator;
-using const_iterator = typename bucket_map_type::const_iterator;
+using iterator = typename bucket_type_map::iterator;
+using const_iterator = typename bucket_type_map::const_iterator;
+using reverse_iterator = typename bucket_type_map::reverse_iterator;
+using const_reverse_iterator = typename bucket_type_map::const_reverse_iterator;
 
-// Begin/End iterators
-iterator begin();
-iterator end();
-const_iterator begin() const;
-const_iterator end() const;
-const_iterator cbegin() const;
-const_iterator cend() const;
+// Forward iteration
+iterator begin() noexcept;
+iterator end() noexcept;
+const_iterator begin() const noexcept;
+const_iterator end() const noexcept;
+const_iterator cbegin() const noexcept;
+const_iterator cend() const noexcept;
+
+// Reverse iteration
+reverse_iterator rbegin() noexcept;
+reverse_iterator rend() noexcept;
+const_reverse_iterator rbegin() const noexcept;
+const_reverse_iterator rend() const noexcept;
+const_reverse_iterator crbegin() const noexcept;
+const_reverse_iterator crend() const noexcept;
+```
+
+### Range View
+
+```cpp
+// Create a range view over buckets in [start, end)
+bucket_range<bucket_map<Indices, Values, Traits, ContainerTraits>, false> range(Indices start, Indices end);
 ```
 
 ### Accessor Functions
 
 ```cpp
-// Get the lower bound of a bucket
-static Indices low(const bucket_type& bucket);
-
-// Get the upper bound of a bucket
-static Indices high(const bucket_type& bucket);
-
-// Get the values in a bucket
-static const value_container_type& values(const bucket_type& bucket);
+struct accessor {
+    // Getters for bucket objects
+    template<typename T>
+    [[nodiscard]] static constexpr auto& low(T& t) noexcept;
+    template<typename T>
+    [[nodiscard]] static constexpr const auto& low(const T& t) noexcept;
+    template<typename T>
+    [[nodiscard]] static constexpr auto& high(T& t) noexcept;
+    template<typename T>
+    [[nodiscard]] static constexpr const auto& high(const T& t) noexcept;
+    template<typename T>
+    [[nodiscard]] static constexpr auto& values(T& t) noexcept;
+    template<typename T>
+    [[nodiscard]] static constexpr const auto& values(const T& t) noexcept;
+};
 ```
 
 ## Example Usage
@@ -105,10 +129,21 @@ int main() {
     map.erase(3, 7);
     
     // Iterate over buckets
-    for (const auto& bucket : map) {
-        std::cout << "Range [" << bucket.first << ", " << bucket.second.first 
+    for (const auto& [index, bucket] : map) {
+        std::cout << "Range [" << bucket.low() << ", " << bucket.high() 
                   << ") contains: ";
-        for (const auto& value : bucket.second.second) {
+        for (const auto& value : bucket.values()) {
+            std::cout << value << " ";
+        }
+        std::cout << std::endl;
+    }
+    
+    // Use range view
+    auto range = map.range(5, 15);
+    for (const auto& bucket : range) {
+        std::cout << "Range [" << bucket.low() << ", " << bucket.high() 
+                  << ") contains: ";
+        for (const auto& value : bucket.values()) {
             std::cout << value << " ";
         }
         std::cout << std::endl;
@@ -127,11 +162,13 @@ All public member functions are thread-safe. The container uses internal synchro
 - Range operations (spread, cover, erase) have O(log n) complexity
 - Iteration is O(n) where n is the number of buckets
 - Memory usage is O(n) where n is the number of buckets
+- Range views provide efficient iteration over overlapping buckets
 
 ## Error Handling
 
 - Range operations with invalid ranges (low > high) will throw std::invalid_argument
 - Constrained constructors will throw std::invalid_argument if the range is invalid
+- Calling lower_bound() or upper_bound() on an unconstrained map will throw std::runtime_error
 - Iterator operations follow standard container iterator rules
 
 ## See Also
