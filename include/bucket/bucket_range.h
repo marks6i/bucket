@@ -18,7 +18,10 @@
  * @brief The bucket_range class.
  *
  * A bucket_range provides iterators for iterating over a range of buckets
- * in a bucket collection (bucket_list or bucket_map).
+ * in a bucket collection (bucket_list or bucket_map). The iterators support
+ * both forward and reverse iteration, with proper handling of end conditions
+ * and range boundaries. When iterating, only buckets that overlap with the
+ * specified range are included in the iteration.
  */
 
 #ifndef MASUTILS_BUCKET_RANGE_H_
@@ -47,6 +50,17 @@ namespace masutils
 		
 		/**
 		 * @brief Iterator for iterating over a range of buckets.
+		 * 
+		 * The iterator supports both forward and reverse iteration over buckets
+		 * that overlap with the specified range. When iterating forward, buckets
+		 * are visited in ascending order of their low values. When iterating in
+		 * reverse, buckets are visited in descending order of their high values.
+		 * 
+		 * End conditions are handled consistently: an iterator is considered at
+		 * the end when either:
+		 * 1. It has reached the end of the container
+		 * 2. No more buckets overlap with the specified range
+		 * 3. For reverse iteration, it has reached the beginning of the container
 		 */
 		class iterator
 		{
@@ -57,12 +71,15 @@ namespace masutils
 			using pointer = value_type*;
 			using reference = typename std::iterator_traits<iterator_type>::reference;
 
+			friend class bucket_range;
+
 			/**
 			 * @brief Constructor.
 			 * @param container The container to iterate over.
 			 * @param start_range The start of the range.
 			 * @param end_range The end of the range.
-			 * @param direction The direction to iterate (forward or reverse).
+			 * @param forward If true, iterate forward (ascending order);
+			 *              if false, iterate in reverse (descending order).
 			 */
 			constexpr iterator(container_type& container, 
 				index_type start_range, 
@@ -83,31 +100,29 @@ namespace masutils
 				}
 				else
 				{
-					current_ = container_.begin();
-					// Find the first overlapping bucket
-					while (current_ != container_.end() && !overlaps(*current_, start_range_, end_range_))
+					current_ = container_.end();
+					if (current_ != container_.begin())
 					{
-						++current_;
+						--current_;
+						while (current_ != container_.begin() && !overlaps(*current_, start_range_, end_range_))
+						{
+							--current_;
+						}
+						if (!overlaps(*current_, start_range_, end_range_))
+						{
+							current_ = container_.end();
+						}
 					}
-					// If no overlapping bucket found, set to end
-					if (current_ == container_.end())
-					{
-						return;
-					}
-					// Find the last overlapping bucket
-					auto next = current_;
-					++next;
-					while (next != container_.end() && overlaps(*next, start_range_, end_range_))
-					{
-						++next;
-					}
-					current_ = next;
 				}
 			}
 
 			/**
 			 * @brief Pre-increment operator.
 			 * @return Reference to this iterator.
+			 * 
+			 * For forward iteration, moves to the next overlapping bucket.
+			 * For reverse iteration, moves to the previous overlapping bucket.
+			 * Sets the iterator to the end if no more overlapping buckets are found.
 			 */
 			constexpr iterator& operator++()
 			{
@@ -128,6 +143,14 @@ namespace masutils
 						{
 							--current_;
 						}
+						if (!overlaps(*current_, start_range_, end_range_))
+						{
+							current_ = container_.end();
+						}
+					}
+					else
+					{
+						current_ = container_.end();
 					}
 				}
 				return *this;
@@ -136,6 +159,10 @@ namespace masutils
 			/**
 			 * @brief Pre-decrement operator.
 			 * @return Reference to this iterator.
+			 * 
+			 * For forward iteration, moves to the previous overlapping bucket.
+			 * For reverse iteration, moves to the next overlapping bucket.
+			 * Sets the iterator to the end if no more overlapping buckets are found.
 			 */
 			constexpr iterator& operator--()
 			{
@@ -148,14 +175,18 @@ namespace masutils
 						{
 							--current_;
 						}
+						if (!overlaps(*current_, start_range_, end_range_))
+						{
+							current_ = container_.end();
+						}
 					}
 				}
 				else
 				{
-					--current_;
-					while (current_ != container_.begin() && !overlaps(*current_, start_range_, end_range_))
+					++current_;
+					while (current_ != container_.end() && !overlaps(*current_, start_range_, end_range_))
 					{
-						--current_;
+						++current_;
 					}
 				}
 				return *this;
@@ -165,10 +196,22 @@ namespace masutils
 			 * @brief Equality operator.
 			 * @param other The other iterator to compare with.
 			 * @return True if the iterators are equal, false otherwise.
+			 * 
+			 * Two iterators are considered equal if:
+			 * 1. Both are at the end (current_ == container_.end())
+			 * 2. Both point to the same bucket and have the same iteration direction
 			 */
 			[[nodiscard]] constexpr bool operator==(const iterator& other) const noexcept 
 			{ 
-				return current_ == other.current_; 
+				if (current_ == container_.end() && other.current_ == container_.end())
+				{
+					return true;
+				}
+				if (current_ == container_.end() || other.current_ == container_.end())
+				{
+					return false;
+				}
+				return current_ == other.current_ && forward_ == other.forward_;
 			}
 
 			/**
@@ -199,7 +242,7 @@ namespace masutils
 				return &(*current_); 
 			}
 
-		private:
+		protected:
 			/**
 			 * @brief Check if a bucket overlaps with a range.
 			 * @param bucket The bucket to check.
@@ -240,7 +283,7 @@ namespace masutils
 
 		/**
 		 * @brief Get the beginning iterator.
-		 * @return Iterator to the beginning of the range.
+		 * @return Iterator to the first overlapping bucket in ascending order.
 		 */
 		[[nodiscard]] constexpr iterator begin() const noexcept 
 		{ 
@@ -249,29 +292,33 @@ namespace masutils
 
 		/**
 		 * @brief Get the end iterator.
-		 * @return Iterator to the end of the range.
+		 * @return Iterator marking the end of forward iteration.
 		 */
 		[[nodiscard]] constexpr iterator end() const noexcept 
 		{ 
-			return iterator(container_, start_range_, end_range_, false); 
+			iterator it(container_, start_range_, end_range_, true);
+			it.current_ = container_.end();
+			return it;
 		}
 
 		/**
 		 * @brief Get the reverse beginning iterator.
-		 * @return Iterator to the beginning of the reversed range.
+		 * @return Iterator to the first overlapping bucket in descending order.
 		 */
 		[[nodiscard]] constexpr iterator rbegin() const noexcept 
 		{ 
-			return iterator(container_, start_range_, end_range_, true); 
+			return iterator(container_, start_range_, end_range_, false); 
 		}
 
 		/**
 		 * @brief Get the reverse end iterator.
-		 * @return Iterator to the end of the reversed range.
+		 * @return Iterator marking the end of reverse iteration.
 		 */
 		[[nodiscard]] constexpr iterator rend() const noexcept 
 		{ 
-			return iterator(container_, start_range_, end_range_, false); 
+			iterator it(container_, start_range_, end_range_, false);
+			it.current_ = container_.end();
+			return it;
 		}
 
 	private:

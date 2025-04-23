@@ -79,6 +79,8 @@ add_gtest_executable(bucket_list_test)
 add_gtest_executable(bucket_map_test)
 add_gtest_executable(bucket_compare_traits_test)
 add_gtest_executable(bucket_value_traits_test)
+add_gtest_executable(bucket_range_test)
+add_gtest_executable(bucket_object_test)
 
 # Install targets
 include(GNUInstallDirs)

@@ -45,28 +45,28 @@ namespace masutils
 	 * @brief The bucket_list class.
 	 * @tparam Indices The type of the keys in the bucket.
 	 * @tparam Values The type of the values in the bucket.
-	 * @tparam Traits The operations that can be performed on the keys.
-	 * @tparam ContainerTraits The operations that can be performed on the value container.
+	 * @tparam CompareTraits The operations that can be performed on the keys.
+	 * @tparam ValueTraits The operations that can be performed on the value container.
 	 */
 	template <class Indices,
 	          class Values,
-	          class Traits = bucket_compare_traits<Indices>,
-	          class ContainerTraits = bucket_value_traits<Values>>
+	          class CompareTraits = bucket_compare_traits<Indices>,
+	          class ValueTraits = bucket_value_traits<Values>>
 	requires std::totally_ordered<Indices> && std::equality_comparable<Indices>
 	class bucket_list
 	{
 	public:
 		using mytype = bucket_list<Indices,
 		                Values,
-		                Traits,
-		                          ContainerTraits>;
+		                CompareTraits,
+		                          ValueTraits>;
 
 		using index_type = Indices;
 		using value_type = Values;
 
 		// Public container type that represents the actual values
-		using value_container = typename ContainerTraits::value_container;
-		using const_value_container = const typename ContainerTraits::value_container;
+		using value_container = typename ValueTraits::value_container;
+		using const_value_container = const typename ValueTraits::value_container;
 
 		// Define the bucket type using the new bucket_object class
 		using bucket_type = bucket_object<index_type, value_container>;
@@ -403,7 +403,7 @@ namespace masutils
 		 */
 		explicit bucket_list(index_type low, index_type high) : low_(low), high_(high), constrained_(true)
 		{
-			if (Traits::lt(high_, low_))
+			if (CompareTraits::lt(high_, low_))
 				throw std::invalid_argument("Arguments not in correct order.");
 		}
 
@@ -434,86 +434,86 @@ namespace masutils
 		[[nodiscard]] bool splice(index_type low, index_type high, iterator& begin, iterator& end)
 		{
 			index_type l, h;
-			Traits::assign(l, low);
-			Traits::assign(h, high);
+			CompareTraits::assign(l, low);
+			CompareTraits::assign(h, high);
 
 			if (constrained_)
 			{
-				if (Traits::lt(h, low_) || Traits::lt(high_, l))
+				if (CompareTraits::lt(h, low_) || CompareTraits::lt(high_, l))
 					return false;
 
-				if (Traits::lt(l, low_)) Traits::assign(l, low_);
-				if (Traits::lt(high_, h)) Traits::assign(h, high_);
+				if (CompareTraits::lt(l, low_)) CompareTraits::assign(l, low_);
+				if (CompareTraits::lt(high_, h)) CompareTraits::assign(h, high_);
 			}
 
 			index_type lowest_, highest_;
-			Traits::assign(lowest_, l);
-			Traits::assign(highest_, h);
+			CompareTraits::assign(lowest_, l);
+			CompareTraits::assign(highest_, h);
 
 			for (iterator p = buckets_.begin(); p != buckets_.end(); ++p)
 			{
-				if (Traits::lt(l, h) != true)
+				if (CompareTraits::lt(l, h) != true)
 					break;
 
 				bucket_type& bucket = *p;
 
-				if (Traits::lt(l, accessor::low(bucket)))
+				if (CompareTraits::lt(l, accessor::low(bucket)))
 				{
 					value_container container_;
-					if (Traits::lt(accessor::low(bucket), h))
+					if (CompareTraits::lt(accessor::low(bucket), h))
 					{
 						bucket_type _bucket = make_bucket(l, accessor::low(bucket), container_);
 						buckets_.insert(p, _bucket);
-						Traits::assign(l, accessor::low(bucket));
+						CompareTraits::assign(l, accessor::low(bucket));
 					}
 					else
 					{
 						bucket_type _bucket = make_bucket(l, h, container_);
 						buckets_.insert(p, _bucket);
-						Traits::assign(l, accessor::low(bucket));
+						CompareTraits::assign(l, accessor::low(bucket));
 						continue;
 					}
 				}
 
-				if (Traits::eq(l, accessor::low(bucket)))
+				if (CompareTraits::eq(l, accessor::low(bucket)))
 				{
-					if (Traits::lt(h, accessor::high(bucket)))
+					if (CompareTraits::lt(h, accessor::high(bucket)))
 					{
 						bucket_type bucket_(bucket);
-						Traits::assign(accessor::high(bucket_), h);
+						CompareTraits::assign(accessor::high(bucket_), h);
 						buckets_.insert(p, bucket_);
-						Traits::assign(accessor::low(bucket), h);
-						Traits::assign(l, h);
+						CompareTraits::assign(accessor::low(bucket), h);
+						CompareTraits::assign(l, h);
 						continue;
 					}
 					else
 					{
-						Traits::assign(l, accessor::high(bucket));
+						CompareTraits::assign(l, accessor::high(bucket));
 					}
 				}
 
-				if (Traits::lt(l, accessor::high(bucket)))
+				if (CompareTraits::lt(l, accessor::high(bucket)))
 				{
 					{
 						bucket_type bucket_(bucket);
-						Traits::assign(accessor::high(bucket_), l);
+						CompareTraits::assign(accessor::high(bucket_), l);
 						buckets_.insert(p, bucket_);
-						Traits::assign(accessor::low(bucket), l);
+						CompareTraits::assign(accessor::low(bucket), l);
 					}
 
-					if (Traits::lt(h, accessor::high(bucket)))
+					if (CompareTraits::lt(h, accessor::high(bucket)))
 					{
 						bucket_type bucket_(bucket);
-						Traits::assign(accessor::high(bucket_), h);
+						CompareTraits::assign(accessor::high(bucket_), h);
 						buckets_.insert(p, bucket_);
-						Traits::assign(accessor::low(bucket), h);
+						CompareTraits::assign(accessor::low(bucket), h);
 					}
 
-					Traits::assign(l, accessor::high(bucket));
+					CompareTraits::assign(l, accessor::high(bucket));
 				}
 			}
 
-			if (Traits::lt(l, h))
+			if (CompareTraits::lt(l, h))
 			{
 				value_container container_;
 				bucket_type _bucket = make_bucket(l, h, container_);
@@ -526,12 +526,12 @@ namespace masutils
 				for (iterator p = buckets_.begin(); p != buckets_.end(); ++p)
 				{
 					const bucket_type& bucket = *p;
-					if (Traits::eq(lowest_, accessor::low(bucket)))
+					if (CompareTraits::eq(lowest_, accessor::low(bucket)))
 					{
 						begin = p;
 						b_begin = true;
 					}
-					if (Traits::eq(highest_, accessor::high(bucket)))
+					if (CompareTraits::eq(highest_, accessor::high(bucket)))
 					{
 						end = p;
 						++end;
@@ -555,23 +555,23 @@ namespace masutils
 				return added_to_bucket;
 
 			index_type l, h;
-			Traits::assign(l, accessor::low(bucket_));
-			Traits::assign(h, accessor::high(bucket_));
+			CompareTraits::assign(l, accessor::low(bucket_));
+			CompareTraits::assign(h, accessor::high(bucket_));
 
 			if (constrained_)
 			{
-				if (Traits::lt(l, low_)) Traits::assign(l, low_);
-				if (Traits::lt(high_, h)) Traits::assign(h, high_);
+				if (CompareTraits::lt(l, low_)) CompareTraits::assign(l, low_);
+				if (CompareTraits::lt(high_, h)) CompareTraits::assign(h, high_);
 			}
 
 			for (iterator p = begin; p != end; ++p)
 			{
 				bucket_type& bucket = *p;
-				if (Traits::lt(accessor::high(bucket), l)) continue;
-				if (Traits::lt(h, accessor::low(bucket))) break;
+				if (CompareTraits::lt(accessor::high(bucket), l)) continue;
+				if (CompareTraits::lt(h, accessor::low(bucket))) break;
 				value_container& ocontainer_ = accessor::values(bucket);
 				const value_container& icontainer_ = accessor::values(bucket_);
-				ContainerTraits::append(ocontainer_, icontainer_);
+				ValueTraits::append(ocontainer_, icontainer_);
 				added_to_bucket++;
 			}
 
@@ -589,13 +589,13 @@ namespace masutils
 				return added_to_bucket;
 
 			index_type l, h;
-			Traits::assign(l, accessor::low(bucket_));
-			Traits::assign(h, accessor::high(bucket_));
+			CompareTraits::assign(l, accessor::low(bucket_));
+			CompareTraits::assign(h, accessor::high(bucket_));
 
 			if (constrained_)
 			{
-				if (Traits::lt(l, low_)) Traits::assign(l, low_);
-				if (Traits::lt(high_, h)) Traits::assign(h, high_);
+				if (CompareTraits::lt(l, low_)) CompareTraits::assign(l, low_);
+				if (CompareTraits::lt(high_, h)) CompareTraits::assign(h, high_);
 			}
 
 			iterator next = buckets_.erase(begin, end);
@@ -620,7 +620,7 @@ namespace masutils
 		[[nodiscard]] int spread(index_type low, index_type high, value_type value)
 		{
 			value_container container_;
-			ContainerTraits::add(container_, value);
+			ValueTraits::add(container_, value);
 			bucket_type bucket_ = make_bucket(low, high, container_);
 
 			return spread(bucket_);
@@ -636,7 +636,7 @@ namespace masutils
 		[[nodiscard]] int cover(index_type low, index_type high, value_type value)
 		{
 			value_container container_;
-			ContainerTraits::add(container_, value);
+			ValueTraits::add(container_, value);
 			bucket_type bucket_ = make_bucket(low, high, container_);
 
 			return cover(bucket_);
@@ -657,13 +657,13 @@ namespace masutils
 				return false;
 
 			index_type l, h;
-			Traits::assign(l, low);
-			Traits::assign(h, high);
+			CompareTraits::assign(l, low);
+			CompareTraits::assign(h, high);
 
 			if (constrained_)
 			{
-				if (Traits::lt(l, low_)) Traits::assign(l, low_);
-				if (Traits::lt(high_, h)) Traits::assign(h, high_);
+				if (CompareTraits::lt(l, low_)) CompareTraits::assign(l, low_);
+				if (CompareTraits::lt(high_, h)) CompareTraits::assign(h, high_);
 			}
 
 			iterator next = buckets_.erase(begin, end);
@@ -673,12 +673,12 @@ namespace masutils
 
 		/**
 		 * @brief Repeated spread each element of a bucket into another bucket.
-		 * @tparam OtherContainerTraits The container traits of the passed bucket.
+		 * @tparam OtherValueTraits The container traits of the passed bucket.
 		 * @param bucket_ The bucket to spread.
 		 * @return Number of buckets that all the values were added to.
 		 */
-		template <class OtherContainerTraits>
-		[[nodiscard]] int spread(const bucket_list<Indices, Values, Traits, OtherContainerTraits>& bucket_)
+		template <class OtherValueTraits>
+		[[nodiscard]] int spread(const bucket_list<Indices, Values, CompareTraits, OtherValueTraits>& bucket_)
 		{
 			int added_to_bucket = 0;
 
@@ -693,12 +693,12 @@ namespace masutils
 
 		/**
 		 * @brief Cover a bucket with the buckets in another bucket collection.
-		 * @tparam OtherContainerTraits the container traits of the passed bucket.
+		 * @tparam OtherValueTraits the container traits of the passed bucket.
 		 * @param bucket_ the bucket used to cover.
 		 * @return Th number of buckets that all the values were added to.
 		 */
-		template <class OtherContainerTraits>
-		[[nodiscard]] int cover(const bucket_list<Indices, Values, Traits, OtherContainerTraits>& bucket_)
+		template <class OtherValueTraits>
+		[[nodiscard]] int cover(const bucket_list<Indices, Values, CompareTraits, OtherValueTraits>& bucket_)
 		{
 			int added_to_bucket = 0;
 
@@ -712,13 +712,13 @@ namespace masutils
 		}
 
 		// Add a method to create a bucket_range
-		bucket_range<bucket_list<Indices, Values, Traits, ContainerTraits>, false> range(Indices start, Indices end) {
-			return bucket_range<bucket_list<Indices, Values, Traits, ContainerTraits>, false>(*this, start, end);
+		bucket_range<bucket_list<Indices, Values, CompareTraits, ValueTraits>, false> range(Indices start, Indices end) {
+			return bucket_range<bucket_list<Indices, Values, CompareTraits, ValueTraits>, false>(*this, start, end);
 		}
 
 		// Add a const method to create a bucket_range
-		bucket_range<bucket_list<Indices, Values, Traits, ContainerTraits>, true> range(Indices start, Indices end) const {
-			return bucket_range<bucket_list<Indices, Values, Traits, ContainerTraits>, true>(*this, start, end);
+		bucket_range<bucket_list<Indices, Values, CompareTraits, ValueTraits>, true> range(Indices start, Indices end) const {
+			return bucket_range<bucket_list<Indices, Values, CompareTraits, ValueTraits>, true>(*this, start, end);
 		}
 	};
 }

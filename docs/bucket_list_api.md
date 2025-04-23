@@ -7,13 +7,13 @@
 ## Template Parameters
 
 ```cpp
-template<typename Indices, typename Values, typename Traits = bucket_compare_traits<Indices>, typename ContainerTraits = bucket_value_traits<Values>>
-```
+template<typename Indices, typename Values, typename CompareTraits = bucket_compare_traits<Indices>, typename ValueTraits = bucket_value_traits<Values>>
+ere```
 
 - `Indices`: The type used for range indices (e.g., int, size_t)
 - `Values`: The type of values to store (e.g., std::string)
-- `Traits`: Traits for index comparison (default: bucket_compare_traits<Indices>)
-- `ContainerTraits`: Traits for value container (default: bucket_value_traits<Values>)
+- `CompareTraits`: Traits for index comparison (default: bucket_compare_traits<Indices>)
+- `ValueTraits`: Traits for value container (default: bucket_value_traits<Values>)
 
 ## Public Interface
 
@@ -86,92 +86,5 @@ const_reverse_iterator crend() const noexcept;
 
 ```cpp
 // Create a range view over buckets in [start, end)
-bucket_range<bucket_list<Indices, Values, Traits, ContainerTraits>, false> range(Indices start, Indices end);
+bucket_range<bucket_list<Indices, Values, CompareTraits, ValueTraits>, false> range(Indices start, Indices end);
 ```
-
-### Accessor Functions
-
-```cpp
-struct accessor {
-    // Getters for bucket objects
-    template<typename T>
-    [[nodiscard]] static constexpr auto& low(T& t) noexcept;
-    template<typename T>
-    [[nodiscard]] static constexpr const auto& low(const T& t) noexcept;
-    template<typename T>
-    [[nodiscard]] static constexpr auto& high(T& t) noexcept;
-    template<typename T>
-    [[nodiscard]] static constexpr const auto& high(const T& t) noexcept;
-    template<typename T>
-    [[nodiscard]] static constexpr auto& values(T& t) noexcept;
-    template<typename T>
-    [[nodiscard]] static constexpr const auto& values(const T& t) noexcept;
-};
-```
-
-## Example Usage
-
-```cpp
-#include <bucket/bucket_list.h>
-#include <string>
-#include <iostream>
-
-int main() {
-    masutils::bucket_list<int, std::string> list;
-    
-    // Spread a value across a range
-    list.spread(0, 10, "test");
-    
-    // Cover a range with a value
-    list.cover(5, 15, "new_value");
-    
-    // Erase values from a range
-    list.erase(3, 7);
-    
-    // Iterate over buckets
-    for (const auto& bucket : list) {
-        std::cout << "Range [" << bucket.low() << ", " << bucket.high() 
-                  << ") contains: ";
-        for (const auto& value : bucket.values()) {
-            std::cout << value << " ";
-        }
-        std::cout << std::endl;
-    }
-    
-    // Use range view
-    auto range = list.range(5, 15);
-    for (const auto& bucket : range) {
-        std::cout << "Range [" << bucket.low() << ", " << bucket.high() 
-                  << ") contains: ";
-        for (const auto& value : bucket.values()) {
-            std::cout << value << " ";
-        }
-        std::cout << std::endl;
-    }
-    
-    return 0;
-}
-```
-
-## Thread Safety
-
-All public member functions are thread-safe. The container uses internal synchronization to ensure safe concurrent access.
-
-## Performance Considerations
-
-- Range operations (spread, cover, erase) have O(log n) complexity
-- Iteration is O(n) where n is the number of buckets
-- Memory usage is O(n) where n is the number of buckets
-- Range views provide efficient iteration over overlapping buckets
-
-## Error Handling
-
-- Range operations with invalid ranges (low > high) will throw std::invalid_argument
-- Constrained constructors will throw std::invalid_argument if the range is invalid
-- Calling lower_bound() or upper_bound() on an unconstrained list will throw std::runtime_error
-- Iterator operations follow standard container iterator rules
-
-## See Also
-
-- [bucket_map API Documentation](bucket_map_api.md)
-- [Support Files Documentation](support_files.md) 
