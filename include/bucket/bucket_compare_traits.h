@@ -18,43 +18,26 @@
  * @brief Traits for comparing key elements in a bucket container.
  * 
  * The bucket_compare_traits provides a unified interface for comparing and
- * assigning key elements in a bucket container. It uses SFINAE to ensure
- * type safety and provides sensible defaults for common types.
+ * assigning key elements in a bucket container. It allows for custom
+ * specializations to define comparison and assignment operations for types
+ * that cannot be modified directly.
  */
 
 #pragma once
 
 #include <type_traits>
 #include <chrono>
-#include <concepts>
 
 namespace masutils {
-
-    /**
-     * @brief Concept for types that support less-than comparison
-     * @tparam T The type to check
-     */
-    template<typename T>
-    concept LessThanComparable = requires(T a, T b) {
-        { a < b } -> std::convertible_to<bool>;
-    };
-
-    /**
-     * @brief Concept for types that support equality comparison
-     * @tparam T The type to check
-     */
-    template<typename T>
-    concept EqualityComparable = requires(T a, T b) {
-        { a == b } -> std::convertible_to<bool>;
-    };
 
     /**
      * @brief Traits class for comparing and assigning bucket key elements
      * @tparam IndexType The type of the keys in the bucket
      * 
      * This class provides a unified interface for comparing and assigning
-     * key elements in a bucket container. It uses C++20 concepts to ensure
-     * type safety and provides sensible defaults for common types.
+     * key elements in a bucket container. Specializations can be defined
+     * to provide custom comparison and assignment logic for types that
+     * cannot be modified directly.
      */
     template<class IndexType>
     struct bucket_compare_traits {
@@ -66,9 +49,7 @@ namespace masutils {
          * @param y Second element to compare
          * @return true if elements are equal, false otherwise
          */
-        template<typename T = IndexType>
-        requires EqualityComparable<T>
-        static constexpr bool eq(const T& x, const T& y) noexcept {
+        static constexpr bool eq(const IndexType& x, const IndexType& y) noexcept {
             return (x == y);
         }
 
@@ -78,9 +59,7 @@ namespace masutils {
          * @param y Second element to compare
          * @return true if x is less than y, false otherwise
          */
-        template<typename T = IndexType>
-        requires LessThanComparable<T>
-        static constexpr bool lt(const T& x, const T& y) noexcept {
+        static constexpr bool lt(const IndexType& x, const IndexType& y) noexcept {
             return (x < y);
         }
 
@@ -89,18 +68,16 @@ namespace masutils {
          * @param x The target to assign to
          * @param y The value to assign
          */
-        template<typename T = IndexType>
-        static constexpr void assign(T& x, const T& y) noexcept {
+        static constexpr void assign(IndexType& x, const IndexType& y) noexcept {
             x = y;
         }
 
         /**
          * @brief Assign a value to a reference
          * @param x The target to assign to
-         * @param y The value to assign
+         * @param y The source value (rvalue)
          */
-        template<typename T = IndexType>
-        static constexpr void assign(T& x, T&& y) noexcept {
+        static constexpr void assign(IndexType& x, IndexType&& y) noexcept {
             x = std::move(y);
         }
 

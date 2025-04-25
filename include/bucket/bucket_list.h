@@ -30,9 +30,9 @@
 #include <list>
 #include <stdexcept>
 #include <type_traits>
-#include <concepts>
 #include <ranges>
 #include <span>
+#include <concepts>
 
 #include "bucket_compare_traits.h"
 #include "bucket_value_traits.h"
@@ -40,26 +40,33 @@
 #include "bucket_object.h"
 
 namespace masutils
-{ 
+{
 	/**
-	 * @brief The bucket_list class.
-	 * @tparam Indices The type of the keys in the bucket.
-	 * @tparam Values The type of the values in the bucket.
-	 * @tparam CompareTraits The operations that can be performed on the keys.
-	 * @tparam ValueTraits The operations that can be performed on the value container.
+	 * @brief A bucket_list is a collection of buckets, where each bucket
+	 * represents a non-overlapping range on an ordered axis.
+	 *
+	 * @tparam Indices The type of the indices used to define the ranges.
+	 * @tparam Values The type of the values stored in the buckets.
+	 * @tparam CompareTraits The traits class used to define the comparison operations.
+	 * @tparam ValueTraits The traits class used to define the value type and its
+	 * operations.
 	 */
-	template <class Indices,
-	          class Values,
-	          class CompareTraits = bucket_compare_traits<Indices>,
-	          class ValueTraits = bucket_value_traits<Values>>
-	requires std::totally_ordered<Indices> && std::equality_comparable<Indices>
+	template <typename Indices, typename Values, 
+						typename CompareTraits = bucket_compare_traits<Indices>,
+						typename ValueTraits = bucket_value_traits<Values>>
 	class bucket_list
 	{
+		static_assert(std::is_arithmetic_v<Indices> || 
+						(std::is_class_v<Indices> && 
+						 std::is_convertible_v<decltype(CompareTraits::lt(std::declval<Indices>(), std::declval<Indices>())), bool> &&
+						 std::is_convertible_v<decltype(CompareTraits::eq(std::declval<Indices>(), std::declval<Indices>())), bool>),
+						"Indices must be either an arithmetic type or a class type that supports CompareTraits operations");
+
 	public:
 		using mytype = bucket_list<Indices,
-		                Values,
-		                CompareTraits,
-		                          ValueTraits>;
+															 Values,
+															 CompareTraits,
+															 ValueTraits>;
 
 		using index_type = Indices;
 		using value_type = Values;
@@ -70,29 +77,11 @@ namespace masutils
 
 		// Define the bucket type using the new bucket_object class
 		using bucket_type = bucket_object<index_type, value_container>;
-		
+
 		// Use a list to store the buckets
 		using bucket_type_list = std::list<bucket_type>;
 
-		struct accessor {
-			accessor() = delete;
-
-			// Getters
-			template<typename T>
-			[[nodiscard]] static constexpr auto& low(T& t) noexcept                     { return t.low(); }
-			template<typename T>
-			[[nodiscard]] static constexpr const auto& low(const T& t) noexcept         { return t.low(); }
-			template<typename T>
-			[[nodiscard]] static constexpr auto& high(T& t) noexcept                    { return t.high(); }
-			template<typename T>
-			[[nodiscard]] static constexpr const auto& high(const T& t) noexcept        { return t.high(); }
-			template<typename T>
-			[[nodiscard]] static constexpr auto& values(T& t) noexcept                  { return t.values(); }
-			template<typename T>
-			[[nodiscard]] static constexpr const auto& values(const T& t) noexcept      { return t.values(); }
-		};
-
-		[[nodiscard]] static constexpr bucket_type make_bucket(index_type low, index_type high, const value_container& values)
+		[[nodiscard]] static constexpr bucket_type make_bucket(index_type low, index_type high, const value_container &values)
 		{
 			return bucket_type(low, high, values);
 		}
@@ -156,203 +145,7 @@ namespace masutils
 			return const_reverse_iterator(buckets_.rend());
 		}
 
-	private:
-		enum class iteration_direction { forward, reverse };
-
-		// Define the range_iterator
-		template <bool IsConst>
-		class range_iterator
-		{
-			using parent_list = typename std::conditional_t<IsConst, const bucket_type_list, bucket_type_list>;
-			using iterator_range = typename std::conditional_t<IsConst, const_iterator, iterator>;
-
-		public:
-			using iterator_category = std::bidirectional_iterator_tag;
-			using value_type = typename std::conditional<IsConst, const bucket_type, bucket_type>::type;
-			using difference_type = typename std::iterator_traits<iterator>::difference_type;
-			using pointer = value_type*;
-			using reference = value_type&;
-
-			constexpr range_iterator(parent_list& list, index_type start_range, index_type end_range, iteration_direction direction)
-				: begin_(list.begin()), end_(list.end()), start_range_(start_range), end_range_(end_range), direction_(direction)
-			{
-				if (direction_ == iteration_direction::forward)
-				{
-					current_ = begin_;
-					while (current_ != end_ && !overlaps(*current_, start_range_, end_range_))
-					{
-						++current_;
-					}
-				}
-				else
-				{
-					current_ = end_;
-					while (current_ != begin_)
-					{
-						--current_;
-						if (overlaps(*current_, start_range_, end_range_))
-						{
-							break;
-						}
-					}
-				}
-			}
-
-			constexpr range_iterator& operator++()
-			{
-				if (direction_ == iteration_direction::forward)
-				{
-					++current_;
-					while (current_ != end_ && !overlaps(*current_, start_range_, end_range_))
-					{
-						++current_;
-					}
-				}
-				else
-				{
-					if (current_ != begin_)
-					{
-						--current_;
-						while (current_ != begin_ && !overlaps(*current_, start_range_, end_range_))
-						{
-							--current_;
-						}
-					}
-				}
-				return *this;
-			}
-
-			constexpr range_iterator& operator--()
-			{
-				if (direction_ == iteration_direction::forward)
-				{
-					if (current_ != begin_)
-					{
-						--current_;
-						while (current_ != begin_ && !overlaps(*current_, start_range_, end_range_))
-						{
-							--current_;
-						}
-					}
-				}
-				else
-				{
-					--current_;
-					while (current_ != begin_ && !overlaps(*current_, start_range_, end_range_))
-					{
-						--current_;
-					}
-				}
-				return *this;
-			}
-
-			[[nodiscard]] constexpr bool operator==(const range_iterator& other) const noexcept { return current_ == other.current_; }
-			[[nodiscard]] constexpr bool operator!=(const range_iterator& other) const noexcept { return !(*this == other); }
-
-			// Add comparison operators for the underlying iterator type
-			[[nodiscard]] constexpr bool operator==(const iterator_range& other) const noexcept { return current_ == other; }
-			[[nodiscard]] constexpr bool operator!=(const iterator_range& other) const noexcept { return !(*this == other); }
-
-			// Add friend operators for reverse comparison
-			[[nodiscard]] friend constexpr bool operator==(const iterator_range& lhs, const range_iterator& rhs) noexcept { return rhs == lhs; }
-			[[nodiscard]] friend constexpr bool operator!=(const iterator_range& lhs, const range_iterator& rhs) noexcept { return rhs != lhs; }
-
-			// Add getter for current position
-			[[nodiscard]] constexpr iterator_range current() const noexcept { return current_; }
-
-			[[nodiscard]] constexpr bucket_type& operator*() noexcept requires (!IsConst) { return *current_; }
-			[[nodiscard]] constexpr bucket_type* operator->() noexcept requires (!IsConst) { return &(*current_); }
-			[[nodiscard]] constexpr const bucket_type& operator*() const noexcept requires IsConst { return *std::as_const(current_); }
-			[[nodiscard]] constexpr const bucket_type* operator->() const noexcept requires IsConst { return &(*std::as_const(current_)); }
-
-			[[nodiscard]] static constexpr bool overlaps(const bucket_type& bucket, index_type start_range, index_type end_range)
-			{
-				return !(accessor::low(bucket) >= end_range || accessor::high(bucket) < start_range);
-			}
-
-		private:
-			iterator_range current_;
-			iterator_range begin_;
-			iterator_range end_;
-			index_type start_range_;
-			index_type end_range_;
-			iteration_direction direction_;
-		};
-
 	public:
-		// Forward iterators
-
-		/**
-		 * @brief Forward iterator over a range of buckets.
-		 * @tparam IsConst Boolean value indicating if the iterator is const.
-		 * @param start_range First bucket after or containing this index.
-		 * @param end_range First bucket after this index.
-		 * @return Iterator starting at first bucket in the range.
-		 */
-		template <bool IsConst>
-		[[nodiscard]] range_iterator<IsConst> beginRange(index_type start_range, index_type end_range)
-		{
-			return range_iterator<IsConst>(buckets_, start_range, end_range, iteration_direction::forward);
-		}
-
-		/**
-		 * @brief Iterator of first bucket past the range.
-		 * @tparam IsConst Boolean value indicating if the iterator is const.
-		 * @param start_range Start index of buckets in the range.
-		 * @param end_range End index of buckets in the range.
-		 * @return Iterator to first bucket past the range.
-		 */
-		template <bool IsConst>
-		[[nodiscard]] range_iterator<IsConst> endRange(index_type start_range, index_type end_range) {
-			range_iterator<IsConst> iter(buckets_, start_range, end_range, iteration_direction::forward);
-			while (iter != buckets_.end() && range_iterator<IsConst>::overlaps(*iter, start_range, end_range)) {
-				++iter;
-			}
-			return iter;
-		}
-
-		// Reverse iterators
-
-		/**
-		 * @brief Forward iterator over a range of buckets.
-		 * @tparam IsConst Boolean value indicating if the iterator is const.
-		 * @param start_range First bucket in reverse order after or containing this index.
-		 * @param end_range First bucket after this index.
-		 * @return Iterator starting at first bucket in reverse order in the range.
-		 */
-		template <bool IsConst>
-		[[nodiscard]] range_iterator<IsConst> rbeginRange(index_type start_range, index_type end_range)
-		{
-			return range_iterator<IsConst>(buckets_, start_range, end_range, iteration_direction::reverse);
-		}
-
-		/**
-		 * @brief Iterator of first bucket in reverse order past the range.
-		 * @tparam IsConst Boolean value indicating if the iterator is const.
-		 * @param start_range Start index of buckets in the range.
-		 * @param end_range End index of buckets in the range.
-		 * @return Iterator to first bucket in reverse order past the range.
-		 */
-		template <bool IsConst>
-		[[nodiscard]] range_iterator<IsConst> rendRange(index_type start_range, index_type end_range) {
-			range_iterator<IsConst> iter(buckets_, start_range, end_range, iteration_direction::reverse);
-			while (iter.current() != buckets_.begin() && range_iterator<IsConst>::overlaps(*iter, start_range, end_range)) {
-				--iter;
-			}
-			return iter;
-		}
-
-		// Add comparison operators for range_iterator
-		template <bool IsConst>
-		[[nodiscard]] friend constexpr bool operator==(const range_iterator<IsConst>& lhs, const range_iterator<IsConst>& rhs) noexcept {
-			return lhs.current_ == rhs.current_;
-		}
-
-		template <bool IsConst>
-		[[nodiscard]] friend constexpr bool operator!=(const range_iterator<IsConst>& lhs, const range_iterator<IsConst>& rhs) noexcept {
-			return !(lhs == rhs);
-		}
-
 		[[nodiscard]] constexpr std::size_t size() const noexcept { return buckets_.size(); }
 		[[nodiscard]] constexpr bool empty() const noexcept { return buckets_.empty(); }
 		[[nodiscard]] constexpr index_type low() const noexcept { return low_; }
@@ -360,8 +153,8 @@ namespace masutils
 		[[nodiscard]] constexpr bool constrained() const noexcept { return constrained_; }
 
 	private:
-		bucket_list(const mytype&) = default;
-		mytype& operator=(const mytype&) = default;
+		bucket_list(const mytype &) = default;
+		mytype &operator=(const mytype &) = default;
 
 		bucket_type_list buckets_;
 		const index_type low_;
@@ -378,8 +171,10 @@ namespace masutils
 		 * @brief Returns the lower bound of a constrained buckets
 		 * or a run-time exception if not constrained.
 		 */
-		[[nodiscard]] index_type lower_bound() const {
-			if (!constrained_) {
+		[[nodiscard]] index_type lower_bound() const
+		{
+			if (!constrained_)
+			{
 				throw std::runtime_error("Bounds are not constrained.");
 			}
 			return low_;
@@ -389,8 +184,10 @@ namespace masutils
 		 * @brief Returns the upper bound of a constrained buckets
 		 * or a run-time exception if not constrained.
 		 */
-		[[nodiscard]] index_type upper_bound() const {
-			if (!constrained_) {
+		[[nodiscard]] index_type upper_bound() const
+		{
+			if (!constrained_)
+			{
 				throw std::runtime_error("Bounds are not constrained.");
 			}
 			return high_;
@@ -411,10 +208,9 @@ namespace masutils
 		 * @brief Constructor of an unconstrained buckets collection.
 		 */
 		explicit bucket_list() noexcept(
-			std::is_nothrow_default_constructible<bucket_type>::value &&
-			std::is_nothrow_default_constructible<index_type>::value &&
-			noexcept(false)
-			) : low_(), high_(), constrained_(false)
+				std::is_nothrow_default_constructible<bucket_type>::value &&
+				std::is_nothrow_default_constructible<index_type>::value &&
+				noexcept(false)) : low_(), high_(), constrained_(false)
 		{
 		}
 
@@ -428,10 +224,10 @@ namespace masutils
 		 * @param  Original buckets collection.
 		 * @return New buckets collection.
 		 */
-		bucket_list& operator=(bucket_list&&) noexcept = default;
+		bucket_list &operator=(bucket_list &&) noexcept = default;
 
 	protected:
-		[[nodiscard]] bool splice(index_type low, index_type high, iterator& begin, iterator& end)
+		[[nodiscard]] bool splice(index_type low, index_type high, iterator &begin, iterator &end)
 		{
 			index_type l, h;
 			CompareTraits::assign(l, low);
@@ -442,8 +238,10 @@ namespace masutils
 				if (CompareTraits::lt(h, low_) || CompareTraits::lt(high_, l))
 					return false;
 
-				if (CompareTraits::lt(l, low_)) CompareTraits::assign(l, low_);
-				if (CompareTraits::lt(high_, h)) CompareTraits::assign(h, high_);
+				if (CompareTraits::lt(l, low_))
+					CompareTraits::assign(l, low_);
+				if (CompareTraits::lt(high_, h))
+					CompareTraits::assign(h, high_);
 			}
 
 			index_type lowest_, highest_;
@@ -455,61 +253,61 @@ namespace masutils
 				if (CompareTraits::lt(l, h) != true)
 					break;
 
-				bucket_type& bucket = *p;
+				bucket_type &bucket = *p;
 
-				if (CompareTraits::lt(l, accessor::low(bucket)))
+				if (CompareTraits::lt(l, bucket.low()))
 				{
 					value_container container_;
-					if (CompareTraits::lt(accessor::low(bucket), h))
+					if (CompareTraits::lt(bucket.low(), h))
 					{
-						bucket_type _bucket = make_bucket(l, accessor::low(bucket), container_);
+						bucket_type _bucket = make_bucket(l, bucket.low(), container_);
 						buckets_.insert(p, _bucket);
-						CompareTraits::assign(l, accessor::low(bucket));
+						CompareTraits::assign(l, bucket.low());
 					}
 					else
 					{
 						bucket_type _bucket = make_bucket(l, h, container_);
 						buckets_.insert(p, _bucket);
-						CompareTraits::assign(l, accessor::low(bucket));
+						CompareTraits::assign(l, bucket.low());
 						continue;
 					}
 				}
 
-				if (CompareTraits::eq(l, accessor::low(bucket)))
+				if (CompareTraits::lt(l, bucket.low()))
 				{
-					if (CompareTraits::lt(h, accessor::high(bucket)))
+					if (CompareTraits::lt(h, bucket.high()))
 					{
 						bucket_type bucket_(bucket);
-						CompareTraits::assign(accessor::high(bucket_), h);
+						bucket_.set_high(h);
 						buckets_.insert(p, bucket_);
-						CompareTraits::assign(accessor::low(bucket), h);
+						bucket.set_low(h);
 						CompareTraits::assign(l, h);
 						continue;
 					}
 					else
 					{
-						CompareTraits::assign(l, accessor::high(bucket));
+						CompareTraits::assign(l, bucket.high());
 					}
 				}
 
-				if (CompareTraits::lt(l, accessor::high(bucket)))
+				if (CompareTraits::lt(l, bucket.high()))
 				{
 					{
 						bucket_type bucket_(bucket);
-						CompareTraits::assign(accessor::high(bucket_), l);
+						bucket_.set_high(l);
 						buckets_.insert(p, bucket_);
-						CompareTraits::assign(accessor::low(bucket), l);
+						bucket.set_low(l);
 					}
 
-					if (CompareTraits::lt(h, accessor::high(bucket)))
+					if (CompareTraits::lt(h, bucket.high()))
 					{
 						bucket_type bucket_(bucket);
-						CompareTraits::assign(accessor::high(bucket_), h);
+						bucket_.set_high(h);
 						buckets_.insert(p, bucket_);
-						CompareTraits::assign(accessor::low(bucket), h);
+						bucket.set_low(h);
 					}
 
-					CompareTraits::assign(l, accessor::high(bucket));
+					CompareTraits::assign(l, bucket.high());
 				}
 			}
 
@@ -525,13 +323,13 @@ namespace masutils
 			{
 				for (iterator p = buckets_.begin(); p != buckets_.end(); ++p)
 				{
-					const bucket_type& bucket = *p;
-					if (CompareTraits::eq(lowest_, accessor::low(bucket)))
+					const bucket_type &bucket = *p;
+					if (CompareTraits::lt(lowest_, bucket.low()))
 					{
 						begin = p;
 						b_begin = true;
 					}
-					if (CompareTraits::eq(highest_, accessor::high(bucket)))
+					if (CompareTraits::lt(highest_, bucket.high()))
 					{
 						end = p;
 						++end;
@@ -544,33 +342,37 @@ namespace masutils
 			return (b_begin && b_end);
 		}
 
-		[[nodiscard]] int spread(const bucket_type& bucket_)
+		[[nodiscard]] int spread(const bucket_type &bucket_)
 		{
 			int added_to_bucket = 0;
 
 			iterator begin, end;
-			const bool b_spliced = splice(accessor::low(bucket_), accessor::high(bucket_), begin, end);
+			const bool b_spliced = splice(bucket_.low(), bucket_.high(), begin, end);
 
 			if (!b_spliced)
 				return added_to_bucket;
 
 			index_type l, h;
-			CompareTraits::assign(l, accessor::low(bucket_));
-			CompareTraits::assign(h, accessor::high(bucket_));
+			CompareTraits::assign(l, bucket_.low());
+			CompareTraits::assign(h, bucket_.high());
 
 			if (constrained_)
 			{
-				if (CompareTraits::lt(l, low_)) CompareTraits::assign(l, low_);
-				if (CompareTraits::lt(high_, h)) CompareTraits::assign(h, high_);
+				if (CompareTraits::lt(l, low_))
+					CompareTraits::assign(l, low_);
+				if (CompareTraits::lt(high_, h))
+					CompareTraits::assign(h, high_);
 			}
 
 			for (iterator p = begin; p != end; ++p)
 			{
-				bucket_type& bucket = *p;
-				if (CompareTraits::lt(accessor::high(bucket), l)) continue;
-				if (CompareTraits::lt(h, accessor::low(bucket))) break;
-				value_container& ocontainer_ = accessor::values(bucket);
-				const value_container& icontainer_ = accessor::values(bucket_);
+				bucket_type &bucket = *p;
+				if (CompareTraits::lt(bucket.high(), l))
+					continue;
+				if (CompareTraits::lt(h, bucket.low()))
+					break;
+				value_container &ocontainer_ = bucket.values();
+				const value_container &icontainer_ = bucket_.values();
 				ValueTraits::append(ocontainer_, icontainer_);
 				added_to_bucket++;
 			}
@@ -578,29 +380,31 @@ namespace masutils
 			return added_to_bucket;
 		}
 
-		[[nodiscard]] int cover(const bucket_type& bucket_)
+		[[nodiscard]] int cover(const bucket_type &bucket_)
 		{
 			int added_to_bucket = 0;
 
 			iterator begin, end;
-			const bool b_spliced = splice(accessor::low(bucket_), accessor::high(bucket_), begin, end);
+			const bool b_spliced = splice(bucket_.low(), bucket_.high(), begin, end);
 
 			if (!b_spliced)
 				return added_to_bucket;
 
 			index_type l, h;
-			CompareTraits::assign(l, accessor::low(bucket_));
-			CompareTraits::assign(h, accessor::high(bucket_));
+			CompareTraits::assign(l, bucket_.low());
+			CompareTraits::assign(h, bucket_.high());
 
 			if (constrained_)
 			{
-				if (CompareTraits::lt(l, low_)) CompareTraits::assign(l, low_);
-				if (CompareTraits::lt(high_, h)) CompareTraits::assign(h, high_);
+				if (CompareTraits::lt(l, low_))
+					CompareTraits::assign(l, low_);
+				if (CompareTraits::lt(high_, h))
+					CompareTraits::assign(h, high_);
 			}
 
 			iterator next = buckets_.erase(begin, end);
 
-			bucket_type bucket2_ = make_bucket(l, h, accessor::values(bucket_));
+			bucket_type bucket2_ = make_bucket(l, h, bucket_.values());
 
 			buckets_.insert(next, bucket2_);
 
@@ -662,8 +466,10 @@ namespace masutils
 
 			if (constrained_)
 			{
-				if (CompareTraits::lt(l, low_)) CompareTraits::assign(l, low_);
-				if (CompareTraits::lt(high_, h)) CompareTraits::assign(h, high_);
+				if (CompareTraits::lt(l, low_))
+					CompareTraits::assign(l, low_);
+				if (CompareTraits::lt(high_, h))
+					CompareTraits::assign(h, high_);
 			}
 
 			iterator next = buckets_.erase(begin, end);
@@ -678,13 +484,13 @@ namespace masutils
 		 * @return Number of buckets that all the values were added to.
 		 */
 		template <class OtherValueTraits>
-		[[nodiscard]] int spread(const bucket_list<Indices, Values, CompareTraits, OtherValueTraits>& bucket_)
+		[[nodiscard]] int spread(const bucket_list<Indices, Values, CompareTraits, OtherValueTraits> &bucket_)
 		{
 			int added_to_bucket = 0;
 
 			for (const_iterator p = bucket_.begin(); p != bucket_.end(); ++p)
 			{
-				const bucket_type& bucket = *p;
+				const bucket_type &bucket = *p;
 				added_to_bucket += spread(bucket);
 			}
 
@@ -698,13 +504,13 @@ namespace masutils
 		 * @return Th number of buckets that all the values were added to.
 		 */
 		template <class OtherValueTraits>
-		[[nodiscard]] int cover(const bucket_list<Indices, Values, CompareTraits, OtherValueTraits>& bucket_)
+		[[nodiscard]] int cover(const bucket_list<Indices, Values, CompareTraits, OtherValueTraits> &bucket_)
 		{
 			int added_to_bucket = 0;
 
 			for (const_iterator p = bucket_.begin(); p != bucket_.end(); ++p)
 			{
-				const bucket_type& bucket = *p;
+				const bucket_type &bucket = *p;
 				added_to_bucket += cover(bucket);
 			}
 
@@ -712,12 +518,14 @@ namespace masutils
 		}
 
 		// Add a method to create a bucket_range
-		bucket_range<bucket_list<Indices, Values, CompareTraits, ValueTraits>, false> range(Indices start, Indices end) {
+		bucket_range<bucket_list<Indices, Values, CompareTraits, ValueTraits>, false> range(Indices start, Indices end)
+		{
 			return bucket_range<bucket_list<Indices, Values, CompareTraits, ValueTraits>, false>(*this, start, end);
 		}
 
 		// Add a const method to create a bucket_range
-		bucket_range<bucket_list<Indices, Values, CompareTraits, ValueTraits>, true> range(Indices start, Indices end) const {
+		bucket_range<bucket_list<Indices, Values, CompareTraits, ValueTraits>, true> range(Indices start, Indices end) const
+		{
 			return bucket_range<bucket_list<Indices, Values, CompareTraits, ValueTraits>, true>(*this, start, end);
 		}
 	};

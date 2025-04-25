@@ -15,317 +15,301 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *
- * @brief The bucket_range class.
- *
- * A bucket_range provides iterators for iterating over a range of buckets
- * in a bucket collection (bucket_list or bucket_map). The iterators support
- * both forward and reverse iteration, with proper handling of end conditions
- * and range boundaries. When iterating, only buckets that overlap with the
- * specified range are included in the iteration.
+ * @brief Provides iterators for iterating over a range of buckets in a bucket collection.
  */
 
-#ifndef MASUTILS_BUCKET_RANGE_H_
-#define MASUTILS_BUCKET_RANGE_H_
+#pragma once
 
 #include <iterator>
 #include <type_traits>
+#include <algorithm>
+#include <concepts>
+#include "bucket_traits.h"
 
 namespace masutils
 {
 	/**
-	 * @brief The bucket_range class.
-	 * @tparam Container The type of the bucket container (bucket_list or bucket_map).
-	 * @tparam IsConst Boolean value indicating if the iterator is const.
+	 * @brief Concept that checks if a type has the required bucket interface.
+	 * @tparam T The type to check.
 	 */
-	template <class Container, bool IsConst>
+	template<typename T>
+	concept has_bucket_interface = requires(T t) {
+		typename T::index_type;
+		typename T::value_container_type;
+		{ t.low() } -> std::same_as<typename T::index_type&>;
+		{ t.high() } -> std::same_as<typename T::index_type&>;
+		{ t.values() } -> std::same_as<typename T::value_container_type&>;
+	} || requires(const T t) {
+		typename T::index_type;
+		typename T::value_container_type;
+		{ t.low() } -> std::same_as<const typename T::index_type&>;
+		{ t.high() } -> std::same_as<const typename T::index_type&>;
+		{ t.values() } -> std::same_as<const typename T::value_container_type&>;
+	};
+
+	/**
+	 * @brief Concept that checks if a container type has the required bucket type.
+	 * @tparam T The container type to check.
+	 */
+	template<typename T>
+	concept has_bucket_type = requires {
+		typename T::bucket_type;
+		requires has_bucket_interface<typename T::bucket_type>;
+		typename T::index_type;
+		requires std::same_as<typename T::index_type, typename T::bucket_type::index_type>;
+	};
+
+	/**
+	 * @brief Provides iterators for iterating over a range of buckets in a bucket collection.
+	 * @tparam Container The type of the bucket container.
+	 * @tparam IsConst Whether the iteration is const.
+	 */
+	template <typename Container, bool IsConst>
+		requires has_bucket_type<Container>
 	class bucket_range
 	{
 	public:
-		using container_type = Container;
-		using index_type = typename container_type::index_type;
+		using container_type = std::conditional_t<IsConst, const Container, Container>;
+		using container_iterator = typename container_type::iterator;
 		using bucket_type = typename container_type::bucket_type;
-		using iterator_type = typename std::conditional_t<IsConst, 
-			typename container_type::const_iterator, 
-			typename container_type::iterator>;
-		
+		using value_type = bucket_type;
+		using reference = std::conditional_t<IsConst, const value_type&, value_type&>;
+		using pointer = std::conditional_t<IsConst, const value_type*, value_type*>;
+
 		/**
-		 * @brief Iterator for iterating over a range of buckets.
-		 * 
-		 * The iterator supports both forward and reverse iteration over buckets
-		 * that overlap with the specified range. When iterating forward, buckets
-		 * are visited in ascending order of their low values. When iterating in
-		 * reverse, buckets are visited in descending order of their high values.
-		 * 
-		 * End conditions are handled consistently: an iterator is considered at
-		 * the end when either:
-		 * 1. It has reached the end of the container
-		 * 2. No more buckets overlap with the specified range
-		 * 3. For reverse iteration, it has reached the beginning of the container
+		 * @brief Constructor.
+		 * @param container The bucket container.
+		 * @param start The start of the range.
+		 * @param end The end of the range.
+		 */
+		bucket_range(container_type& container, typename container_type::index_type low, typename container_type::index_type high)
+			: container_(&container), low_(low), high_(high)
+		{
+		}
+
+		/**
+		 * @brief Iterator class for bucket_range.
 		 */
 		class iterator
 		{
 		public:
 			using iterator_category = std::bidirectional_iterator_tag;
-			using value_type = typename std::conditional<IsConst, const bucket_type, bucket_type>::type;
-			using difference_type = typename std::iterator_traits<iterator_type>::difference_type;
-			using pointer = value_type*;
-			using reference = typename std::iterator_traits<iterator_type>::reference;
+			using value_type = bucket_range::value_type;
+			using reference = bucket_range::reference;
+			using pointer = bucket_range::pointer;
+			using difference_type = std::ptrdiff_t;
 
-			friend class bucket_range;
+			/**
+			 * @brief Default constructor.
+			 */
+			iterator() = default;
 
 			/**
 			 * @brief Constructor.
-			 * @param container The container to iterate over.
-			 * @param start_range The start of the range.
-			 * @param end_range The end of the range.
-			 * @param forward If true, iterate forward (ascending order);
-			 *              if false, iterate in reverse (descending order).
+			 * @param container The bucket container.
+			 * @param start The start of the range.
+			 * @param end The end of the range.
+			 * @param current The current iterator position.
+			 * @param forward Whether to iterate forward or backward.
 			 */
-			constexpr iterator(container_type& container, 
-				index_type start_range, 
-				index_type end_range, 
-				bool forward = true)
-				: container_(container), 
-				start_range_(start_range), 
-				end_range_(end_range), 
-				forward_(forward)
+			iterator(container_type* container, container_iterator current, typename container_type::index_type low, typename container_type::index_type high, bool forward = true)
+				: container_(container), current_(current), low_(low), high_(high), forward_(forward)
 			{
-				if (forward_)
+				if (current_ != container_->end() && !overlaps(*current_))
 				{
-					current_ = container_.begin();
-					while (current_ != container_.end() && !overlaps(*current_, start_range_, end_range_))
-					{
-						++current_;
-					}
+					++(*this);
 				}
-				else
-				{
-					current_ = container_.end();
-					if (current_ != container_.begin())
-					{
-						--current_;
-						while (current_ != container_.begin() && !overlaps(*current_, start_range_, end_range_))
-						{
-							--current_;
-						}
-						if (!overlaps(*current_, start_range_, end_range_))
-						{
-							current_ = container_.end();
-						}
-					}
-				}
-			}
-
-			/**
-			 * @brief Pre-increment operator.
-			 * @return Reference to this iterator.
-			 * 
-			 * For forward iteration, moves to the next overlapping bucket.
-			 * For reverse iteration, moves to the previous overlapping bucket.
-			 * Sets the iterator to the end if no more overlapping buckets are found.
-			 */
-			constexpr iterator& operator++()
-			{
-				if (forward_)
-				{
-					++current_;
-					while (current_ != container_.end() && !overlaps(*current_, start_range_, end_range_))
-					{
-						++current_;
-					}
-				}
-				else
-				{
-					if (current_ != container_.begin())
-					{
-						--current_;
-						while (current_ != container_.begin() && !overlaps(*current_, start_range_, end_range_))
-						{
-							--current_;
-						}
-						if (!overlaps(*current_, start_range_, end_range_))
-						{
-							current_ = container_.end();
-						}
-					}
-					else
-					{
-						current_ = container_.end();
-					}
-				}
-				return *this;
-			}
-
-			/**
-			 * @brief Pre-decrement operator.
-			 * @return Reference to this iterator.
-			 * 
-			 * For forward iteration, moves to the previous overlapping bucket.
-			 * For reverse iteration, moves to the next overlapping bucket.
-			 * Sets the iterator to the end if no more overlapping buckets are found.
-			 */
-			constexpr iterator& operator--()
-			{
-				if (forward_)
-				{
-					if (current_ != container_.begin())
-					{
-						--current_;
-						while (current_ != container_.begin() && !overlaps(*current_, start_range_, end_range_))
-						{
-							--current_;
-						}
-						if (!overlaps(*current_, start_range_, end_range_))
-						{
-							current_ = container_.end();
-						}
-					}
-				}
-				else
-				{
-					++current_;
-					while (current_ != container_.end() && !overlaps(*current_, start_range_, end_range_))
-					{
-						++current_;
-					}
-				}
-				return *this;
-			}
-
-			/**
-			 * @brief Equality operator.
-			 * @param other The other iterator to compare with.
-			 * @return True if the iterators are equal, false otherwise.
-			 * 
-			 * Two iterators are considered equal if:
-			 * 1. Both are at the end (current_ == container_.end())
-			 * 2. Both point to the same bucket and have the same iteration direction
-			 */
-			[[nodiscard]] constexpr bool operator==(const iterator& other) const noexcept 
-			{ 
-				if (current_ == container_.end() && other.current_ == container_.end())
-				{
-					return true;
-				}
-				if (current_ == container_.end() || other.current_ == container_.end())
-				{
-					return false;
-				}
-				return current_ == other.current_ && forward_ == other.forward_;
-			}
-
-			/**
-			 * @brief Inequality operator.
-			 * @param other The other iterator to compare with.
-			 * @return True if the iterators are not equal, false otherwise.
-			 */
-			[[nodiscard]] constexpr bool operator!=(const iterator& other) const noexcept 
-			{ 
-				return !(*this == other); 
 			}
 
 			/**
 			 * @brief Dereference operator.
 			 * @return Reference to the current bucket.
 			 */
-			[[nodiscard]] constexpr reference operator*() noexcept 
-			{ 
-				return *current_; 
+			reference operator*() const
+			{
+				return *current_;
 			}
 
 			/**
 			 * @brief Arrow operator.
 			 * @return Pointer to the current bucket.
 			 */
-			[[nodiscard]] constexpr pointer operator->() noexcept 
-			{ 
-				return &(*current_); 
+			pointer operator->() const
+			{
+				return &(*current_);
+			}
+
+			/**
+			 * @brief Pre-increment operator.
+			 * @return Reference to this iterator.
+			 */
+			iterator& operator++()
+			{
+				if (current_ == container_->end()) return *this;
+				if (forward_) {
+					++current_;
+					while (current_ != container_->end() && !overlaps(*current_)) {
+						++current_;
+					}
+				} else {
+					--current_;
+					while (current_ != container_->begin() && !overlaps(*current_)) {
+						--current_;
+					}
+					if (!overlaps(*current_)) {
+						current_ = container_->end();
+					}
+				}
+				return *this;
+			}
+
+			/**
+			 * @brief Post-increment operator.
+			 * @return Copy of this iterator before increment.
+			 */
+			iterator operator++(int)
+			{
+				iterator tmp = *this;
+				++(*this);
+				return tmp;
+			}
+
+			/**
+			 * @brief Pre-decrement operator.
+			 * @return Reference to this iterator.
+			 */
+			iterator& operator--()
+			{
+				if (forward_) {
+					if (current_ == container_->begin()) {
+						current_ = container_->end();
+						return *this;
+					}
+					--current_;
+					while (current_ != container_->begin() && !overlaps(*current_)) {
+						--current_;
+					}
+					if (!overlaps(*current_)) {
+						current_ = container_->end();
+					}
+				} else {
+					if (current_ == container_->end()) {
+						auto last = --container_->end();
+						while (last != container_->begin() && !overlaps(*last)) {
+							--last;
+						}
+						if (overlaps(*last)) {
+							current_ = last;
+						}
+					} else {
+						++current_;
+						while (current_ != container_->end() && !overlaps(*current_)) {
+							++current_;
+						}
+					}
+				}
+				return *this;
+			}
+
+			/**
+			 * @brief Post-decrement operator.
+			 * @return Copy of this iterator before decrement.
+			 */
+			iterator operator--(int)
+			{
+				iterator tmp = *this;
+				--(*this);
+				return tmp;
+			}
+
+			/**
+			 * @brief Equality operator.
+			 * @param other The iterator to compare with.
+			 * @return True if the iterators are equal.
+			 */
+			bool operator==(const iterator& other) const
+			{
+				return current_ == other.current_ && forward_ == other.forward_;
+			}
+
+			/**
+			 * @brief Inequality operator.
+			 * @param other The iterator to compare with.
+			 * @return True if the iterators are not equal.
+			 */
+			bool operator!=(const iterator& other) const
+			{
+				return !(*this == other);
 			}
 
 		protected:
-			/**
-			 * @brief Check if a bucket overlaps with a range.
-			 * @param bucket The bucket to check.
-			 * @param start_range The start of the range.
-			 * @param end_range The end of the range.
-			 * @return True if the bucket overlaps with the range, false otherwise.
-			 */
-			template<typename T>
-			[[nodiscard]] static constexpr bool overlaps(const T& bucket, 
-				index_type start_range, 
-				index_type end_range)
-			{
-				return container_type::accessor::low(bucket) < end_range && 
-					container_type::accessor::high(bucket) > start_range;
-			}
+			friend class bucket_range;
+			container_type* container_ = nullptr;
+			container_iterator current_;
+			typename container_type::index_type low_ = 0;
+			typename container_type::index_type high_ = 0;
+			bool forward_ = true;
 
-			container_type& container_;
-			iterator_type current_;
-			index_type start_range_;
-			index_type end_range_;
-			bool forward_;
+			/**
+			 * @brief Check if a bucket overlaps with the range.
+			 * @param bucket The bucket to check.
+			 * @return True if the bucket overlaps with the range.
+			 */
+			bool overlaps(const bucket_type& bucket) const
+			{
+				return bucket.high() > low_ && bucket.low() < high_;
+			}
 		};
 
 		/**
-		 * @brief Constructor.
-		 * @param container The container to iterate over.
-		 * @param start_range The start of the range.
-		 * @param end_range The end of the range.
+		 * @brief Get an iterator to the beginning of the range.
+		 * @return Iterator to the beginning.
 		 */
-		constexpr bucket_range(container_type& container, 
-			index_type start_range, 
-			index_type end_range)
-			: container_(container), 
-			start_range_(start_range), 
-			end_range_(end_range)
+		iterator begin()
 		{
+			return iterator(container_, container_->begin(), low_, high_);
 		}
 
 		/**
-		 * @brief Get the beginning iterator.
-		 * @return Iterator to the first overlapping bucket in ascending order.
+		 * @brief Get an iterator to the end of the range.
+		 * @return Iterator to the end.
 		 */
-		[[nodiscard]] constexpr iterator begin() const noexcept 
-		{ 
-			return iterator(container_, start_range_, end_range_, true); 
+		iterator end()
+		{
+			return iterator(container_, container_->end(), low_, high_);
 		}
 
 		/**
-		 * @brief Get the end iterator.
-		 * @return Iterator marking the end of forward iteration.
+		 * @brief Get a reverse iterator to the beginning of the range.
+		 * @return Reverse iterator to the beginning.
 		 */
-		[[nodiscard]] constexpr iterator end() const noexcept 
-		{ 
-			iterator it(container_, start_range_, end_range_, true);
-			it.current_ = container_.end();
-			return it;
+		iterator rbegin()
+		{
+			auto last = container_->end();
+			if (last != container_->begin()) {
+				--last;
+				while (last != container_->begin() && !iterator(container_, last, low_, high_).overlaps(*last)) {
+					--last;
+				}
+				if (!iterator(container_, last, low_, high_).overlaps(*last)) {
+					last = container_->end();
+				}
+			}
+			return iterator(container_, last, low_, high_, false);
 		}
 
 		/**
-		 * @brief Get the reverse beginning iterator.
-		 * @return Iterator to the first overlapping bucket in descending order.
+		 * @brief Get a reverse iterator to the end of the range.
+		 * @return Reverse iterator to the end.
 		 */
-		[[nodiscard]] constexpr iterator rbegin() const noexcept 
-		{ 
-			return iterator(container_, start_range_, end_range_, false); 
-		}
-
-		/**
-		 * @brief Get the reverse end iterator.
-		 * @return Iterator marking the end of reverse iteration.
-		 */
-		[[nodiscard]] constexpr iterator rend() const noexcept 
-		{ 
-			iterator it(container_, start_range_, end_range_, false);
-			it.current_ = container_.end();
-			return it;
+		iterator rend()
+		{
+			return iterator(container_, container_->end(), low_, high_, false);
 		}
 
 	private:
-		container_type& container_;
-		index_type start_range_;
-		index_type end_range_;
+		container_type* container_;
+		typename container_type::index_type low_;
+		typename container_type::index_type high_;
 	};
-}
-
-#endif // MASUTILS_BUCKET_RANGE_H_ 
+} // namespace masutils

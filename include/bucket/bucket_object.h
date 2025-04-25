@@ -51,6 +51,15 @@ namespace masutils
         }
 
         /**
+         * @brief Set the low index.
+         * @param value The new low index value.
+         */
+        constexpr void set_low(const index_type& value) noexcept
+        {
+            low_ = value;
+        }
+
+        /**
          * @brief Get the high index.
          * @return The high index.
          */
@@ -66,6 +75,15 @@ namespace masutils
         [[nodiscard]] constexpr index_type& high() noexcept
         {
             return high_;
+        }
+
+        /**
+         * @brief Set the high index.
+         * @param value The new high index value.
+         */
+        constexpr void set_high(const index_type& value) noexcept
+        {
+            high_ = value;
         }
 
         /**

@@ -46,7 +46,13 @@ set(TEST_DIR ${CMAKE_CURRENT_SOURCE_DIR}/tests)
 function(add_gtest_executable TEST_NAME)
     add_executable(${TEST_NAME} ${TEST_DIR}/${TEST_NAME}.cpp)
     target_link_libraries(${TEST_NAME} PRIVATE bucket GTest::gtest_main GTest::gmock_main)
-    target_include_directories(${TEST_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+    target_include_directories(${TEST_NAME} PRIVATE 
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+        ${googletest_SOURCE_DIR}/googletest/include
+        ${googletest_SOURCE_DIR}/googlemock/include
+        ${googletest_SOURCE_DIR}/googletest
+        ${googletest_SOURCE_DIR}/googlemock
+    )
     
     # Add test
     add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
@@ -79,8 +85,7 @@ add_gtest_executable(bucket_list_test)
 add_gtest_executable(bucket_map_test)
 add_gtest_executable(bucket_compare_traits_test)
 add_gtest_executable(bucket_value_traits_test)
-add_gtest_executable(bucket_range_test)
-add_gtest_executable(bucket_object_test)
+add_gtest_executable(bucket_traits_test)
 
 # Install targets
 include(GNUInstallDirs)
