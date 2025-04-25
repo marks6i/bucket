@@ -9,328 +9,325 @@
 #include <vector>
 #include <iostream>
 #include <limits>
+#include <concepts>
 
-namespace masutils {
+namespace masutils
+{
 
-// Test fixture for bucket_map tests
-class BucketMapTest : public ::testing::Test {
-protected:
-    using TestBucketMap = bucket_map<int, int>;
-    using TestBucket = TestBucketMap::bucket_type;
-    using TestValueContainer = typename TestBucketMap::value_container;
+    // Test fixture for bucket tests
+    class BucketTest : public ::testing::Test
+    {
+    protected:
+        using TestBucket = bucket_map<int, std::string>;
+        using TestBucketType = TestBucket::bucket_type;
+        using TestValueContainer = typename TestBucket::value_container;
 
-    std::unique_ptr<TestBucketMap> map;
-    TestBucketMap bucket_map_;
+        std::unique_ptr<TestBucket> bucket;
+        TestBucket bucket_;
 
-    BucketMapTest() : bucket_map_() {} // Initialize with default constructor
+        BucketTest() : bucket_() {} // Initialize with default constructor
 
-    void SetUp() override {
-        map = std::make_unique<TestBucketMap>();
-        [[maybe_unused]] auto spread1 = map->spread(0, 10, 1);
-        [[maybe_unused]] auto spread2 = map->spread(20, 30, 2);
-        [[maybe_unused]] auto spread3 = map->spread(40, 50, 3);
-    }
-
-    // Helper function to verify container contents
-    void verifyContainerContents(const TestValueContainer& container, const std::vector<int>& expected_values) {
-        ASSERT_EQ(container.size(), expected_values.size());
-        auto it = container.begin();
-        for (const auto& expected : expected_values) {
-            ASSERT_EQ(*it, expected);
-            ++it;
+        void SetUp() override
+        {
+            bucket = std::make_unique<TestBucket>();
+            [[maybe_unused]] auto spread1 = bucket->spread(0, 10, "test1");
+            [[maybe_unused]] auto spread2 = bucket->spread(20, 30, "test2");
+            [[maybe_unused]] auto spread3 = bucket->spread(40, 50, "test3");
         }
-    }
-};
 
-// Construction tests
-TEST_F(BucketMapTest, DefaultConstruction) {
-    TestBucketMap test_map;
-    EXPECT_FALSE(test_map.is_constrained());
-    EXPECT_TRUE(test_map.begin() == test_map.end());
-}
-
-TEST_F(BucketMapTest, ConstrainedConstruction) {
-    TestBucketMap test_map(0, 100);
-    EXPECT_TRUE(test_map.is_constrained());
-    EXPECT_TRUE(test_map.begin() == test_map.end());
-    EXPECT_EQ(test_map.lower_bound(), 0);
-    EXPECT_EQ(test_map.upper_bound(), 100);
-}
-
-TEST_F(BucketMapTest, InvalidConstrainedConstruction) {
-    EXPECT_THROW(TestBucketMap test_map(100, 0), std::invalid_argument);
-}
-
-// Accessor tests
-TEST_F(BucketMapTest, AccessorFunctions) {
-    TestBucketMap test_map;
-    [[maybe_unused]] auto spread_result = test_map.spread(1, 3, 1);
-    [[maybe_unused]] auto spread_result2 = test_map.spread(1, 3, 2);
-    [[maybe_unused]] auto spread_result3 = test_map.spread(1, 3, 3);
-
-    auto it = test_map.begin();
-    EXPECT_EQ(TestBucketMap::accessor::low(*it), 1);
-    EXPECT_EQ(TestBucketMap::accessor::high(*it), 3);
-    const auto& bucket = *it;
-    const auto& values = TestBucketMap::accessor::values(bucket);
-    verifyContainerContents(values, {1, 2, 3});
-}
-
-// Iterator tests
-TEST_F(BucketMapTest, IteratorFunctionality) {
-    TestBucketMap test_map;
-    [[maybe_unused]] auto spread_result = test_map.spread(1, 3, 1);
-    [[maybe_unused]] auto spread_result2 = test_map.spread(1, 3, 2);
-    [[maybe_unused]] auto spread_result3 = test_map.spread(1, 3, 3);
-    
-    // Forward iteration
-    auto it = test_map.begin();
-    EXPECT_NE(it, test_map.end());
-    EXPECT_EQ(TestBucketMap::accessor::low(*it), 1);
-    EXPECT_EQ(TestBucketMap::accessor::high(*it), 3);
-    const auto& bucket = *it;
-    const auto& values = TestBucketMap::accessor::values(bucket);
-    verifyContainerContents(values, {1, 2, 3});
-    
-    // Reverse iteration
-    auto rit = test_map.rbegin();
-    EXPECT_NE(rit, test_map.rend());
-    EXPECT_EQ(TestBucketMap::accessor::low(*rit), 1);
-    EXPECT_EQ(TestBucketMap::accessor::high(*rit), 3);
-    const auto& rbucket = *rit;
-    const auto& rvalues = TestBucketMap::accessor::values(rbucket);
-    verifyContainerContents(rvalues, {1, 2, 3});
-}
-
-// Range iterator tests
-TEST_F(BucketMapTest, RangeIteratorFunctionality) {
-    TestBucketMap test_map;
-    [[maybe_unused]] auto spread1 = test_map.spread(1, 3, 1);
-    [[maybe_unused]] auto spread2 = test_map.spread(1, 3, 2);
-    [[maybe_unused]] auto spread3 = test_map.spread(1, 3, 3);
-
-    auto range = test_map.range(1, 3);
-    auto it = range.begin();
-    EXPECT_EQ(TestBucketMap::accessor::low(*it), 1);
-    EXPECT_EQ(TestBucketMap::accessor::high(*it), 3);
-    const auto& bucket = *it;
-    const auto& values = TestBucketMap::accessor::values(bucket);
-    verifyContainerContents(values, {1, 2, 3});
-}
-
-// Basic operations tests
-TEST_F(BucketMapTest, SpreadOperation) {
-    TestBucketMap test_map;
-    auto result = test_map.spread(1, 3, 1);
-    EXPECT_EQ(result, 1);
-    EXPECT_FALSE(test_map.begin() == test_map.end());
-    
-    auto it = test_map.begin();
-    EXPECT_EQ(TestBucketMap::accessor::low(*it), 1);
-    EXPECT_EQ(TestBucketMap::accessor::high(*it), 3);
-    const auto& bucket = *it;
-    const auto& values = TestBucketMap::accessor::values(bucket);
-    verifyContainerContents(values, {1});
-}
-
-TEST_F(BucketMapTest, CoverOperation) {
-    TestBucketMap test_map;
-    auto result = test_map.cover(1, 3, 1);
-    EXPECT_EQ(result, 1);
-    EXPECT_FALSE(test_map.begin() == test_map.end());
-    
-    auto it = test_map.begin();
-    EXPECT_EQ(TestBucketMap::accessor::low(*it), 1);
-    EXPECT_EQ(TestBucketMap::accessor::high(*it), 3);
-    const auto& bucket = *it;
-    const auto& values = TestBucketMap::accessor::values(bucket);
-    verifyContainerContents(values, {1});
-}
-
-TEST_F(BucketMapTest, EraseOperation) {
-    TestBucketMap test_map;
-    [[maybe_unused]] auto spread_result = test_map.spread(1, 3, 1);
-    EXPECT_TRUE(test_map.erase(1, 3));
-    EXPECT_TRUE(test_map.begin() == test_map.end());
-}
-
-// Bound tests
-TEST_F(BucketMapTest, UnconstrainedBoundOperations) {
-    TestBucketMap test_map;
-    [[maybe_unused]] auto spread1 = test_map.spread(1, 3, 1);
-    [[maybe_unused]] auto spread2 = test_map.spread(5, 7, 2);
-    [[maybe_unused]] auto spread3 = test_map.spread(9, 11, 3);
-
-    // Should throw when called on unconstrained bucket_map
-    EXPECT_THROW({ test_map.lower_bound(); }, std::runtime_error);
-    EXPECT_THROW({ test_map.upper_bound(); }, std::runtime_error);
-}
-
-TEST_F(BucketMapTest, ConstrainedBoundOperations) {
-    TestBucketMap test_map(0, 100);
-    [[maybe_unused]] auto spread1 = test_map.spread(1, 3, 1);
-    [[maybe_unused]] auto spread2 = test_map.spread(5, 7, 2);
-    [[maybe_unused]] auto spread3 = test_map.spread(9, 11, 3);
-
-    // Should return the constraints, not the bucket bounds
-    EXPECT_EQ(test_map.lower_bound(), 0);
-    EXPECT_EQ(test_map.upper_bound(), 100);
-}
-
-// Edge cases and error conditions
-TEST_F(BucketMapTest, OverlappingRanges) {
-    TestBucketMap test_map;
-    int count = test_map.spread(1, 3, 1);
-    EXPECT_EQ(count, 1);
-    count = test_map.spread(3, 5, 2);
-    EXPECT_EQ(count, 1);
-    count = test_map.spread(1, 5, 3);
-    EXPECT_EQ(count, 2);
-
-    auto it = test_map.begin();
-    EXPECT_EQ(TestBucketMap::accessor::low(*it), 1);
-    EXPECT_EQ(TestBucketMap::accessor::high(*it), 3);
-    const auto& bucket1 = *it;
-    const auto& values1 = TestBucketMap::accessor::values(bucket1);
-    verifyContainerContents(values1, {1, 3});
-
-    ++it;
-    EXPECT_EQ(TestBucketMap::accessor::low(*it), 3);
-    EXPECT_EQ(TestBucketMap::accessor::high(*it), 5);
-    const auto& bucket2 = *it;
-    const auto& values2 = TestBucketMap::accessor::values(bucket2);
-    verifyContainerContents(values2, {2, 3});
-}
-
-TEST_F(BucketMapTest, ConstrainedRangeOperations) {
-    TestBucketMap test_map(0, 100);
-    [[maybe_unused]] auto spread1 = test_map.spread(1, 3, 1);
-    [[maybe_unused]] auto spread2 = test_map.spread(5, 7, 2);
-    [[maybe_unused]] auto spread3 = test_map.spread(9, 11, 3);
-
-    // Test range operations within constraints
-    auto range = test_map.range(1, 5);
-    auto range_it = range.begin();
-    auto range_end = range.end();
-    
-    // Debug information
-    std::cout << "Bucket map size: " << test_map.size() << std::endl;
-    std::cout << "Range iterator == range end: " << (range_it == range_end ? "true" : "false") << std::endl;
-    
-    // Check if we have any buckets in the range
-    if (range_it != range_end) {
-        EXPECT_EQ(TestBucketMap::accessor::low(*range_it), 1);
-        EXPECT_EQ(TestBucketMap::accessor::high(*range_it), 3);
-        const auto& bucket = *range_it;
-        const auto& values = TestBucketMap::accessor::values(bucket);
-        verifyContainerContents(values, {1});
-    } else {
-        // If no buckets in range, print debug information
-        std::cout << "No buckets found in range [1, 5]" << std::endl;
-        
-        // Print all buckets in the map
-        std::cout << "All buckets in map:" << std::endl;
-        for (auto it = test_map.begin(); it != test_map.end(); ++it) {
-            std::cout << "  Bucket: [" << TestBucketMap::accessor::low(*it) << ", " 
-                      << TestBucketMap::accessor::high(*it) << ")" << std::endl;
+        void TearDown() override
+        {
+            // Common cleanup code if needed
         }
-        
-        // Check if the bucket with range [1, 3] exists in the map
-        bool found = false;
-        for (auto it = test_map.begin(); it != test_map.end(); ++it) {
-            if (TestBucketMap::accessor::low(*it) == 1 && TestBucketMap::accessor::high(*it) == 3) {
-                found = true;
-                break;
+
+        // Helper function to verify container contents
+        void verifyContainerContents(const TestValueContainer &container, const std::vector<std::string> &expected_values)
+        {
+            ASSERT_EQ(container.size(), expected_values.size());
+            auto it = container.begin();
+            for (const auto &expected : expected_values)
+            {
+                ASSERT_EQ(*it, expected);
+                ++it;
             }
         }
-        std::cout << "Bucket [1, 3] " << (found ? "exists" : "does not exist") << " in the map" << std::endl;
-        
-        FAIL() << "No buckets found in range [1, 5]";
+    };
+
+    // Construction tests
+    TEST_F(BucketTest, DefaultConstruction)
+    {
+        TestBucket test_bucket;
+        EXPECT_FALSE(test_bucket.constrained());
+        EXPECT_TRUE(test_bucket.empty());
+        EXPECT_EQ(test_bucket.size(), 0);
     }
-}
 
-TEST_F(BucketMapTest, AutomaticOrdering) {
-    TestBucketMap test_map;
-    [[maybe_unused]] auto spread1 = test_map.spread(5, 7, 3);
-    [[maybe_unused]] auto spread2 = test_map.spread(1, 3, 1);
-    [[maybe_unused]] auto spread3 = test_map.spread(9, 11, 5);
+    TEST_F(BucketTest, ConstrainedConstruction)
+    {
+        TestBucket test_bucket(0, 100);
+        EXPECT_TRUE(test_bucket.constrained());
+        EXPECT_TRUE(test_bucket.empty());
+        EXPECT_EQ(test_bucket.size(), 0);
+        EXPECT_EQ(test_bucket.low(), 0);
+        EXPECT_EQ(test_bucket.high(), 100);
+    }
 
-    auto it = test_map.begin();
-    EXPECT_EQ(TestBucketMap::accessor::low(*it), 1);
-    EXPECT_EQ(TestBucketMap::accessor::high(*it), 3);
-    const auto& bucket1 = *it;
-    const auto& values1 = TestBucketMap::accessor::values(bucket1);
-    verifyContainerContents(values1, {1});
+    TEST_F(BucketTest, InvalidConstrainedConstruction)
+    {
+        EXPECT_THROW(TestBucket test_bucket(100, 0), std::invalid_argument);
+    }
 
-    ++it;
-    EXPECT_EQ(TestBucketMap::accessor::low(*it), 5);
-    EXPECT_EQ(TestBucketMap::accessor::high(*it), 7);
-    const auto& bucket2 = *it;
-    const auto& values2 = TestBucketMap::accessor::values(bucket2);
-    verifyContainerContents(values2, {3});
+    // Accessor tests
+    TEST_F(BucketTest, AccessorFunctions)
+    {
+        TestBucket test_bucket;
+        [[maybe_unused]] auto spread_result = test_bucket.spread(0, 10, "test");
 
-    ++it;
-    EXPECT_EQ(TestBucketMap::accessor::low(*it), 9);
-    EXPECT_EQ(TestBucketMap::accessor::high(*it), 11);
-    const auto& bucket3 = *it;
-    const auto& values3 = TestBucketMap::accessor::values(bucket3);
-    verifyContainerContents(values3, {5});
-}
+        auto it = test_bucket.begin();
+        EXPECT_EQ(it->low(), 0);
+        EXPECT_EQ(it->high(), 10);
+        verifyContainerContents(it->values(), {"test"});
+    }
 
-TEST_F(BucketMapTest, NodiscardAttributes) {
-    TestBucketMap test_map;
-    [[maybe_unused]] auto spread_result = test_map.spread(1, 3, 1);
-    EXPECT_EQ(spread_result, 1);
-}
+    // Iterator tests
+    TEST_F(BucketTest, IteratorFunctionality)
+    {
+        TestBucket test_bucket;
+        [[maybe_unused]] auto spread_result = test_bucket.spread(1, 3, "test1");
+        [[maybe_unused]] auto spread_result2 = test_bucket.spread(1, 3, "test2");
+        [[maybe_unused]] auto spread_result3 = test_bucket.spread(1, 3, "test3");
 
-TEST_F(BucketMapTest, Concepts) {
-    EXPECT_TRUE(std::totally_ordered<TestBucketMap::index_type>);
-    EXPECT_TRUE(std::equality_comparable<TestBucketMap::index_type>);
-}
+        // Forward iteration
+        auto it = test_bucket.begin();
+        EXPECT_NE(it, test_bucket.end());
+        EXPECT_EQ(it->low(), 1);
+        EXPECT_EQ(it->high(), 3);
+        const auto &bucket_values = *it;
+        const auto &values = bucket_values.values();
+        verifyContainerContents(values, {"test1", "test2", "test3"});
 
-TEST_F(BucketMapTest, ReverseIteratorFunctionality) {
-    TestBucketMap test_map;
-    [[maybe_unused]] auto spread1 = test_map.spread(1, 3, 1);
-    [[maybe_unused]] auto spread2 = test_map.spread(5, 7, 2);
-    [[maybe_unused]] auto spread3 = test_map.spread(9, 11, 3);
+        // Reverse iteration
+        auto rit = test_bucket.rbegin();
+        EXPECT_NE(rit, test_bucket.rend());
+        EXPECT_EQ(rit->low(), 1);
+        EXPECT_EQ(rit->high(), 3);
+        const auto &rbucket_values = *rit;
+        const auto &rvalues = rbucket_values.values();
+        verifyContainerContents(rvalues, {"test1", "test2", "test3"});
+    }
 
-    // Test reverse iteration
-    auto rit = test_map.rbegin();
-    EXPECT_NE(rit, test_map.rend());
+    // Range iterator tests
+    TEST_F(BucketTest, RangeIteratorFunctionality)
+    {
+        TestBucket test_bucket;
+        [[maybe_unused]] auto spread1 = test_bucket.spread(0, 10, "test1");
+        [[maybe_unused]] auto spread2 = test_bucket.spread(20, 30, "test2");
+        [[maybe_unused]] auto spread3 = test_bucket.spread(40, 50, "test3");
 
-    // First bucket should be [9, 11)
-    EXPECT_EQ(TestBucketMap::accessor::low(*rit), 9);
-    EXPECT_EQ(TestBucketMap::accessor::high(*rit), 11);
-    const auto& bucket1 = *rit;
-    const auto& values1 = TestBucketMap::accessor::values(bucket1);
-    verifyContainerContents(values1, {3});
+        auto range = test_bucket.range(15, 35);
 
-    // Second bucket should be [5, 7)
-    ++rit;
-    EXPECT_NE(rit, test_map.rend());
-    EXPECT_EQ(TestBucketMap::accessor::low(*rit), 5);
-    EXPECT_EQ(TestBucketMap::accessor::high(*rit), 7);
-    const auto& bucket2 = *rit;
-    const auto& values2 = TestBucketMap::accessor::values(bucket2);
-    verifyContainerContents(values2, {2});
+        // Test forward range iteration over [15, 35]
+        auto range_it = range.begin();
+        auto range_end = range.end();
 
-    // Third bucket should be [1, 3)
-    ++rit;
-    EXPECT_NE(rit, test_map.rend());
-    EXPECT_EQ(TestBucketMap::accessor::low(*rit), 1);
-    EXPECT_EQ(TestBucketMap::accessor::high(*rit), 3);
-    const auto& bucket3 = *rit;
-    const auto& values3 = TestBucketMap::accessor::values(bucket3);
-    verifyContainerContents(values3, {1});
+        EXPECT_NE(range_it, range_end);
+        EXPECT_EQ(range_it->low(), 20);
+        EXPECT_EQ(range_it->high(), 30);
+        verifyContainerContents(range_it->values(), {"test2"});
 
-    // Should be at the end
-    ++rit;
-    EXPECT_EQ(rit, test_map.rend());
-}
+        // Test reverse range iteration over [15, 35]
+        auto range_rit = range.rbegin();
+        auto range_rend = range.rend();
 
-int main(int argc, char** argv) {
-    ::testing::InitGoogleTest(&argc, argv);
-    return RUN_ALL_TESTS();
-}
+        EXPECT_NE(range_rit, range_rend);
+        EXPECT_EQ(range_rit->low(), 20);
+        EXPECT_EQ(range_rit->high(), 30);
+        verifyContainerContents(range_rit->values(), {"test2"});
+    }
 
-} // namespace masutils 
+    // Basic operations tests
+    TEST_F(BucketTest, SpreadOperation)
+    {
+        TestBucket test_bucket;
+        auto result = test_bucket.spread(0, 10, "test");
+        EXPECT_EQ(result, 1);
+        EXPECT_EQ(test_bucket.size(), 1);
+        EXPECT_FALSE(test_bucket.empty());
+
+        auto it = test_bucket.begin();
+        EXPECT_EQ(it->low(), 0);
+        EXPECT_EQ(it->high(), 10);
+        verifyContainerContents(it->values(), {"test"});
+    }
+
+    TEST_F(BucketTest, CoverOperation)
+    {
+        TestBucket test_bucket;
+        auto result = test_bucket.cover(0, 10, "test");
+        EXPECT_EQ(result, 1);
+        EXPECT_EQ(test_bucket.size(), 1);
+        EXPECT_FALSE(test_bucket.empty());
+
+        auto it = test_bucket.begin();
+        EXPECT_EQ(it->low(), 0);
+        EXPECT_EQ(it->high(), 10);
+        verifyContainerContents(it->values(), {"test"});
+    }
+
+    TEST_F(BucketTest, EraseOperation)
+    {
+        TestBucket test_bucket;
+        [[maybe_unused]] auto spread_result = test_bucket.spread(0, 10, "test");
+        EXPECT_TRUE(test_bucket.erase(0, 10));
+        EXPECT_TRUE(test_bucket.empty());
+        EXPECT_EQ(test_bucket.size(), 0);
+    }
+
+    // Bound tests
+    TEST_F(BucketTest, UnconstrainedBoundOperations)
+    {
+        TestBucket test_bucket;
+        [[maybe_unused]] auto spread1 = test_bucket.spread(1, 3, "test1");
+        [[maybe_unused]] auto spread2 = test_bucket.spread(5, 7, "test2");
+        [[maybe_unused]] auto spread3 = test_bucket.spread(9, 11, "test3");
+
+        // Should throw when called on unconstrained bucket
+        EXPECT_THROW({ 
+            [[maybe_unused]] auto low = test_bucket.low(); 
+        }, std::runtime_error);
+        EXPECT_THROW({ 
+            [[maybe_unused]] auto high = test_bucket.high(); 
+        }, std::runtime_error);
+    }
+
+    TEST_F(BucketTest, ConstrainedBoundOperations)
+    {
+        TestBucket test_bucket(0, 100);
+        [[maybe_unused]] auto spread1 = test_bucket.spread(1, 3, "test1");
+        [[maybe_unused]] auto spread2 = test_bucket.spread(5, 7, "test2");
+        [[maybe_unused]] auto spread3 = test_bucket.spread(9, 11, "test3");
+
+        EXPECT_EQ(test_bucket.low(), 0);
+        EXPECT_EQ(test_bucket.high(), 100);
+    }
+
+    // Edge cases and error conditions
+    TEST_F(BucketTest, OverlappingRanges)
+    {
+        TestBucket test_bucket;
+        [[maybe_unused]] auto first_spread = test_bucket.spread(0, 10, "test1");
+        auto second_spread = test_bucket.spread(5, 15, "test2");
+        EXPECT_EQ(second_spread, 2);
+        EXPECT_EQ(test_bucket.size(), 3);
+
+        auto it = test_bucket.begin();
+        // First bucket: [0, 5) with test1
+        EXPECT_EQ(it->low(), 0);
+        EXPECT_EQ(it->high(), 5);
+        verifyContainerContents(it->values(), {"test1"});
+
+        ++it;
+        // Second bucket: [5, 10) with both test1 and test2
+        EXPECT_EQ(it->low(), 5);
+        EXPECT_EQ(it->high(), 10);
+        verifyContainerContents(it->values(), {"test1", "test2"});
+
+        ++it;
+        // Third bucket: [10, 15) with test2
+        EXPECT_EQ(it->low(), 10);
+        EXPECT_EQ(it->high(), 15);
+        verifyContainerContents(it->values(), {"test2"});
+    }
+
+    TEST_F(BucketTest, ConstrainedRangeOperations)
+    {
+        TestBucket test_bucket(0, 100);
+        [[maybe_unused]] auto spread1 = test_bucket.spread(0, 10, "test1");
+        [[maybe_unused]] auto spread2 = test_bucket.spread(20, 30, "test2");
+        [[maybe_unused]] auto spread3 = test_bucket.spread(40, 50, "test3");
+
+        // Test range within bounds
+        auto range1 = test_bucket.range(15, 35);
+        EXPECT_NE(range1.begin(), range1.end());
+        EXPECT_EQ(range1.begin()->low(), 20);
+        EXPECT_EQ(range1.begin()->high(), 30);
+
+        // Test range at bounds
+        auto range2 = test_bucket.range(0, 100);
+        EXPECT_NE(range2.begin(), range2.end());
+        EXPECT_EQ(range2.begin()->low(), 0);
+        EXPECT_EQ(range2.begin()->high(), 10);
+    }
+
+    TEST_F(BucketTest, AutomaticOrdering)
+    {
+        TestBucket test_bucket;
+        [[maybe_unused]] auto spread1 = test_bucket.spread(5, 10, "test1");
+        [[maybe_unused]] auto spread2 = test_bucket.spread(0, 5, "test2");
+        [[maybe_unused]] auto spread3 = test_bucket.spread(10, 15, "test3");
+
+        auto it = test_bucket.begin();
+        EXPECT_EQ(it->low(), 0);
+        EXPECT_EQ(it->high(), 5);
+        verifyContainerContents(it->values(), {"test2"});
+
+        ++it;
+        EXPECT_EQ(it->low(), 5);
+        EXPECT_EQ(it->high(), 10);
+        verifyContainerContents(it->values(), {"test1"});
+
+        ++it;
+        EXPECT_EQ(it->low(), 10);
+        EXPECT_EQ(it->high(), 15);
+        verifyContainerContents(it->values(), {"test3"});
+    }
+
+    TEST_F(BucketTest, NodiscardAttributes)
+    {
+        TestBucket test_bucket;
+        // These functions return size_t, not void
+        size_t spread_result = test_bucket.spread(0, 10, "test");
+        size_t cover_result = test_bucket.cover(0, 10, "test");
+        bool erase_result = test_bucket.erase(0, 10);
+        
+        // Use the results to avoid warnings
+        EXPECT_GE(spread_result, 0);
+        EXPECT_GE(cover_result, 0);
+        EXPECT_TRUE(erase_result);
+    }
+
+    TEST_F(BucketTest, ReverseIteratorFunctionality)
+    {
+        TestBucket test_bucket;
+        [[maybe_unused]] auto spread1 = test_bucket.spread(0, 10, "test1");
+        [[maybe_unused]] auto spread2 = test_bucket.spread(20, 30, "test2");
+        [[maybe_unused]] auto spread3 = test_bucket.spread(40, 50, "test3");
+
+        auto rit = test_bucket.rbegin();
+        EXPECT_NE(rit, test_bucket.rend());
+        EXPECT_EQ(rit->low(), 40);
+        EXPECT_EQ(rit->high(), 50);
+        verifyContainerContents(rit->values(), {"test3"});
+
+        ++rit;
+        EXPECT_NE(rit, test_bucket.rend());
+        EXPECT_EQ(rit->low(), 20);
+        EXPECT_EQ(rit->high(), 30);
+        verifyContainerContents(rit->values(), {"test2"});
+
+        ++rit;
+        EXPECT_NE(rit, test_bucket.rend());
+        EXPECT_EQ(rit->low(), 0);
+        EXPECT_EQ(rit->high(), 10);
+        verifyContainerContents(rit->values(), {"test1"});
+
+        ++rit;
+        EXPECT_EQ(rit, test_bucket.rend());
+    }
+
+    int main(int argc, char **argv)
+    {
+        ::testing::InitGoogleTest(&argc, argv);
+        return RUN_ALL_TESTS();
+    }
+} // namespace masutils
