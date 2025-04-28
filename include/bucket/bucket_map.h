@@ -694,7 +694,7 @@ protected:
           // Copy values from original bucket
           ValueTraits::append(split_bucket.values(), current_bucket.values());
           buckets_.insert(p, std::make_pair(l, split_bucket));
-          current_bucket.low() = h;
+          current_bucket.high() = h; // Just set the high value, keep the key
           CompareTraits::assign(l, h);
           continue;
         } else {
@@ -772,8 +772,9 @@ protected:
         CompareTraits::assign(h, high_);
     }
 
-    for (iterator p = begin; p != end; ++p) {
-      bucket_type &bucket = *p;
+    // Add values to all buckets in the range
+    for (auto p = begin.it_; p != end.it_; ++p) {
+      bucket_type &bucket = p->second;
       if (CompareTraits::lt(bucket.high(), l))
         continue;
       if (CompareTraits::lt(h, bucket.low()))
