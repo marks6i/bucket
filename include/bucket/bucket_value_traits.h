@@ -72,19 +72,6 @@ struct bucket_value_traits {
   using container_type = ContainerType;
 
   /**
-   * @brief Check if a value exists in the container.
-   *
-   * @param container The container to search in
-   * @param value The value to search for
-   * @return true if the value exists in the container
-   */
-  static bool contains(const container_type &container,
-                       const value_type &value) {
-    return std::find(container.begin(), container.end(), value) !=
-           container.end();
-  }
-
-  /**
    * @brief Add a value to a bucket.
    * @param x the bucket's value container
    * @param y the value to add to the bucket
@@ -103,9 +90,7 @@ struct bucket_value_traits {
   static constexpr void append(value_container &x,
                                const other_value_container &y) {
     for (const auto &value : y) {
-      if (!contains(x, value)) {
-        x.push_back(value);
-      }
+      x.push_back(value);
     }
   }
 

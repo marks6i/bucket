@@ -392,13 +392,7 @@ public:
       bucket_type &bucket = *p;
       value_container &ocontainer_ = bucket.values();
       const value_container &icontainer_ = bucket_.values();
-
-      // Only append values if they don't already exist in the container
-      for (const auto &value : icontainer_) {
-        if (!ValueTraits::contains(ocontainer_, value)) {
-          ValueTraits::add(ocontainer_, value);
-        }
-      }
+      ValueTraits::append(ocontainer_, icontainer_);
       added_to_bucket++;
     }
 
