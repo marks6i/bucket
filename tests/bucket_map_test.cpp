@@ -163,41 +163,153 @@ TEST_F(BucketMapTest, ConstrainedBoundOperations) {
   EXPECT_EQ(test_bucket.high(), 100);
 }
 
-// Edge case tests
-TEST_F(BucketMapTest, OverlappingRangesSpread) {
+// Test overlapping at the beginning of a bucket
+TEST_F(BucketMapTest, OverlappingRangesAtBeginning) {
   bucket_map_type test_bucket;
 
-  // Test overlapping ranges with gap between buckets
+  // First spread: [0, 10) with "test1"
   [[maybe_unused]] auto spread1 = test_bucket.spread(0, 10, "test1");
-  [[maybe_unused]] auto spread2 = test_bucket.spread(20, 30, "test2");
-  [[maybe_unused]] auto spread3 = test_bucket.spread(5, 25, "test3");
-
-  EXPECT_EQ(test_bucket.size(), 5);
-
+  EXPECT_EQ(test_bucket.size(), 1);
   auto it = test_bucket.begin();
   EXPECT_EQ(it->low(), 0);
+  EXPECT_EQ(it->high(), 10);
+  verifyContainerContents(it->values(), {"test1"});
+
+  // Second spread: [5, 15) with "test2" - overlaps at the beginning
+  [[maybe_unused]] auto spread2 = test_bucket.spread(5, 15, "test2");
+  EXPECT_EQ(test_bucket.size(), 3);
+
+  it = test_bucket.begin();
+  EXPECT_EQ(it->low(), 0);
   EXPECT_EQ(it->high(), 5);
-  verifyContainerContents(it->values(), { "test1" });
+  verifyContainerContents(it->values(), {"test1"});
 
   ++it;
   EXPECT_EQ(it->low(), 5);
   EXPECT_EQ(it->high(), 10);
-  verifyContainerContents(it->values(), { "test1", "test3" });
+  verifyContainerContents(it->values(), {"test1", "test2"});
+
+  ++it;
+  EXPECT_EQ(it->low(), 10);
+  EXPECT_EQ(it->high(), 15);
+  verifyContainerContents(it->values(), {"test2"});
+}
+
+// Test overlapping at the end of a bucket
+TEST_F(BucketMapTest, OverlappingRangesAtEnd) {
+  bucket_map_type test_bucket;
+
+  // First spread: [0, 10) with "test1"
+  [[maybe_unused]] auto spread1 = test_bucket.spread(0, 10, "test1");
+  EXPECT_EQ(test_bucket.size(), 1);
+  auto it = test_bucket.begin();
+  EXPECT_EQ(it->low(), 0);
+  EXPECT_EQ(it->high(), 10);
+  verifyContainerContents(it->values(), {"test1"});
+
+  // Second spread: [-5, 5) with "test2" - overlaps at the end
+  [[maybe_unused]] auto spread2 = test_bucket.spread(-5, 5, "test2");
+  EXPECT_EQ(test_bucket.size(), 3);
+
+  it = test_bucket.begin();
+  EXPECT_EQ(it->low(), -5);
+  EXPECT_EQ(it->high(), 0);
+  verifyContainerContents(it->values(), {"test2"});
+
+  ++it;
+  EXPECT_EQ(it->low(), 0);
+  EXPECT_EQ(it->high(), 5);
+  verifyContainerContents(it->values(), {"test1", "test2"});
+
+  ++it;
+  EXPECT_EQ(it->low(), 5);
+  EXPECT_EQ(it->high(), 10);
+  verifyContainerContents(it->values(), {"test1"});
+}
+
+TEST_F(BucketMapTest, OverlappingRangesSpread) {
+  bucket_map_type test_bucket;
+
+  // First spread: [0, 10) with "test1"
+  [[maybe_unused]] auto spread1 = test_bucket.spread(0, 10, "test1");
+  EXPECT_EQ(test_bucket.size(), 1);
+  auto it = test_bucket.begin();
+  EXPECT_EQ(it->low(), 0);
+  EXPECT_EQ(it->high(), 10);
+  verifyContainerContents(it->values(), {"test1"});
+
+  // Second spread: [20, 30) with "test2"
+  [[maybe_unused]] auto spread2 = test_bucket.spread(20, 30, "test2");
+  EXPECT_EQ(test_bucket.size(), 2);
+  it = test_bucket.begin();
+  EXPECT_EQ(it->low(), 0);
+  EXPECT_EQ(it->high(), 10);
+  verifyContainerContents(it->values(), {"test1"});
+  ++it;
+  EXPECT_EQ(it->low(), 20);
+  EXPECT_EQ(it->high(), 30);
+  verifyContainerContents(it->values(), {"test2"});
+
+  // Third spread: [5, 25) with "test3" - should create 5 buckets
+  [[maybe_unused]] auto spread3 = test_bucket.spread(5, 25, "test3");
+  EXPECT_EQ(test_bucket.size(), 5);
+
+  it = test_bucket.begin();
+  EXPECT_EQ(it->low(), 0);
+  EXPECT_EQ(it->high(), 5);
+  verifyContainerContents(it->values(), {"test1"});
+
+  ++it;
+  EXPECT_EQ(it->low(), 5);
+  EXPECT_EQ(it->high(), 10);
+  verifyContainerContents(it->values(), {"test1", "test3"});
 
   ++it;
   EXPECT_EQ(it->low(), 10);
   EXPECT_EQ(it->high(), 20);
-  verifyContainerContents(it->values(), { "test3" });
+  verifyContainerContents(it->values(), {"test3"});
 
   ++it;
   EXPECT_EQ(it->low(), 20);
   EXPECT_EQ(it->high(), 25);
-  verifyContainerContents(it->values(), { "test2", "test3" });
+  verifyContainerContents(it->values(), {"test2", "test3"});
 
   ++it;
   EXPECT_EQ(it->low(), 25);
   EXPECT_EQ(it->high(), 30);
-  verifyContainerContents(it->values(), { "test2" });
+  verifyContainerContents(it->values(), {"test2"});
+}
+
+// Edge case tests
+TEST_F(BucketMapTest, OverlappingRangesWithConstraints) {
+    bucket_map_type test_bucket(0, 100);
+
+    // Test overlapping ranges with low value at constraint boundary
+    [[maybe_unused]] auto spread1 = test_bucket.spread(0, 10, "test1");
+    [[maybe_unused]] auto spread2 = test_bucket.spread(20, 30, "test2");
+    [[maybe_unused]] auto spread3 = test_bucket.spread(0, 25, "test3");
+
+    EXPECT_EQ(test_bucket.size(), 4);
+
+    auto it = test_bucket.begin();
+    EXPECT_EQ(it->low(), 0);
+    EXPECT_EQ(it->high(), 10);
+    verifyContainerContents(it->values(), { "test1", "test3" });
+
+    ++it;
+    EXPECT_EQ(it->low(), 10);
+    EXPECT_EQ(it->high(), 20);
+    verifyContainerContents(it->values(), { "test3" });
+
+    ++it;
+    EXPECT_EQ(it->low(), 20);
+    EXPECT_EQ(it->high(), 25);
+    verifyContainerContents(it->values(), { "test2", "test3" });
+
+    ++it;
+    EXPECT_EQ(it->low(), 25);
+    EXPECT_EQ(it->high(), 30);
+    verifyContainerContents(it->values(), { "test2" });
 }
 
 TEST_F(BucketMapTest, OverlappingRangesCover) {
@@ -248,37 +360,6 @@ TEST_F(BucketMapTest, OverlappingRangesErase) {
   verifyContainerContents(it->values(), {"test2"});
 }
 
-TEST_F(BucketMapTest, OverlappingRangesWithConstraints) {
-  bucket_map_type test_bucket(0, 100);
-
-  // Test overlapping ranges with low value at constraint boundary
-  [[maybe_unused]] auto spread1 = test_bucket.spread(0, 10, "test1");
-  [[maybe_unused]] auto spread2 = test_bucket.spread(20, 30, "test2");
-  [[maybe_unused]] auto spread3 = test_bucket.spread(0, 25, "test3");
-
-  EXPECT_EQ(test_bucket.size(), 4);
-
-  auto it = test_bucket.begin();
-  EXPECT_EQ(it->low(), 0);
-  EXPECT_EQ(it->high(), 10);
-  verifyContainerContents(it->values(), { "test1", "test3" });
-
-  ++it;
-  EXPECT_EQ(it->low(), 10);
-  EXPECT_EQ(it->high(), 20);
-  verifyContainerContents(it->values(), { "test3" });
-
-  ++it;
-  EXPECT_EQ(it->low(), 20);
-  EXPECT_EQ(it->high(), 25);
-  verifyContainerContents(it->values(), { "test2", "test3" });
-
-  ++it;
-  EXPECT_EQ(it->low(), 25);
-  EXPECT_EQ(it->high(), 30);
-  verifyContainerContents(it->values(), { "test2" });
-}
-
 TEST_F(BucketMapTest, OverlappingRangesWithHighConstraint) {
   bucket_map_type test_bucket(0, 100);
 
@@ -292,27 +373,27 @@ TEST_F(BucketMapTest, OverlappingRangesWithHighConstraint) {
   auto it = test_bucket.begin();
   EXPECT_EQ(it->low(), 0);
   EXPECT_EQ(it->high(), 5);
-  verifyContainerContents(it->values(), { "test1" });
+  verifyContainerContents(it->values(), {"test1"});
 
   ++it;
   EXPECT_EQ(it->low(), 5);
   EXPECT_EQ(it->high(), 10);
-  verifyContainerContents(it->values(), { "test1", "test3" });
+  verifyContainerContents(it->values(), {"test1", "test3"});
 
   ++it;
   EXPECT_EQ(it->low(), 10);
   EXPECT_EQ(it->high(), 20);
-  verifyContainerContents(it->values(), { "test3" });
+  verifyContainerContents(it->values(), {"test3"});
 
   ++it;
   EXPECT_EQ(it->low(), 20);
   EXPECT_EQ(it->high(), 30);
-  verifyContainerContents(it->values(), { "test2", "test3" });
+  verifyContainerContents(it->values(), {"test2", "test3"});
 
   ++it;
   EXPECT_EQ(it->low(), 30);
   EXPECT_EQ(it->high(), 100);
-  verifyContainerContents(it->values(), { "test3" });
+  verifyContainerContents(it->values(), {"test3"});
 }
 
 TEST_F(BucketMapTest, OverlappingRangesWithLowConstraintIntersection) {
@@ -344,7 +425,7 @@ TEST_F(BucketMapTest, OverlappingRangesWithLowConstraintIntersection) {
   ++it;
   EXPECT_EQ(it->low(), 25);
   EXPECT_EQ(it->high(), 30);
-  verifyContainerContents(it->values(), { "test2" });
+  verifyContainerContents(it->values(), {"test2"});
 }
 
 TEST_F(BucketMapTest, OverlappingRangesWithHighConstraintIntersection) {
@@ -361,27 +442,27 @@ TEST_F(BucketMapTest, OverlappingRangesWithHighConstraintIntersection) {
   auto it = test_bucket.begin();
   EXPECT_EQ(it->low(), 0);
   EXPECT_EQ(it->high(), 5);
-  verifyContainerContents(it->values(), { "test1" });
+  verifyContainerContents(it->values(), {"test1"});
 
   ++it;
   EXPECT_EQ(it->low(), 5);
   EXPECT_EQ(it->high(), 10);
-  verifyContainerContents(it->values(), { "test1", "test3" });
+  verifyContainerContents(it->values(), {"test1", "test3"});
 
   ++it;
   EXPECT_EQ(it->low(), 10);
   EXPECT_EQ(it->high(), 20);
-  verifyContainerContents(it->values(), { "test3" });
+  verifyContainerContents(it->values(), {"test3"});
 
   ++it;
   EXPECT_EQ(it->low(), 20);
   EXPECT_EQ(it->high(), 30);
-  verifyContainerContents(it->values(), { "test2", "test3" });
+  verifyContainerContents(it->values(), {"test2", "test3"});
 
   ++it;
   EXPECT_EQ(it->low(), 30);
   EXPECT_EQ(it->high(), 100); // Clamped to constraint
-  verifyContainerContents(it->values(), { "test3" });
+  verifyContainerContents(it->values(), {"test3"});
 }
 
 TEST_F(BucketMapTest, ConstrainedRangeOperations) {

@@ -246,6 +246,7 @@ public:
    */
   bucket_list &operator=(bucket_list &&) noexcept = default;
 
+protected:
   /**
    * @brief Splice a range of buckets.
    * @param low Lower bound of the range.
@@ -362,6 +363,7 @@ public:
     return (b_begin && b_end);
   }
 
+public:
   /**
    * @brief Spread a bucket into the collection.
    * @param bucket_ The bucket to spread.
