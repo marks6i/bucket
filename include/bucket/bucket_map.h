@@ -582,14 +582,6 @@ public:
   }
 
   /**
-   * @brief Returns true if the bucket collection is constrained.
-   * @return True if the collection is constrained.
-   */
-  [[nodiscard]] constexpr bool is_constrained() const noexcept {
-    return constrained_;
-  }
-
-  /**
    * @brief Returns the lower bound of a constrained bucket collection.
    * @return The lower bound.
    * @throw std::runtime_error if the collection is not constrained.
@@ -681,7 +673,8 @@ protected:
    * @param end Iterator to the end of the range.
    * @return True if the splice was successful.
    */
-  [[nodiscard]] bool splice(index_type low, index_type high, iterator &begin, iterator &end) {
+  [[nodiscard]] bool splice(index_type low, index_type high, iterator &begin,
+                            iterator &end) {
     index_type l, h;
     CompareTraits::assign(l, low);
     CompareTraits::assign(h, high);
@@ -712,7 +705,8 @@ protected:
         value_container container_;
         if (CompareTraits::lt(current_bucket.low(), h)) {
           // Create a new bucket for the gap
-          bucket_type new_bucket = make_bucket(l, current_bucket.low(), container_);
+          bucket_type new_bucket =
+              make_bucket(l, current_bucket.low(), container_);
           buckets_[new_bucket.low()] = new_bucket;
           CompareTraits::assign(l, current_bucket.low());
         } else {
@@ -744,7 +738,7 @@ protected:
         // Split the bucket at l
         value_container container_ = current_bucket.values();
         bucket_type split_bucket =
-        make_bucket(current_bucket.low(), l, container_);
+            make_bucket(current_bucket.low(), l, container_);
         buckets_[split_bucket.low()] = split_bucket;
         current_bucket.set_low(l);
 
@@ -784,8 +778,8 @@ protected:
       }
     }
 
-  return (b_begin && b_end);
-}
+    return (b_begin && b_end);
+  }
 
 public:
   [[nodiscard]] int spread(const bucket_type &bucket_) {

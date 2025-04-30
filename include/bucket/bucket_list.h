@@ -186,13 +186,6 @@ public:
   }
 
   /**
-   * @brief Returns true if buckets is constrained.
-   */
-  [[nodiscard]] constexpr bool is_constrained() const noexcept {
-    return constrained_;
-  }
-
-  /**
    * @brief Returns the lower bound of a constrained buckets
    * or a run-time exception if not constrained.
    */
