@@ -1,8 +1,8 @@
-#include "bucket/bucket_compare_traits.h"
-#include "bucket/bucket_list.h"
-#include "bucket/bucket_object.h"
-#include "bucket/bucket_range.h"
-#include "bucket/bucket_value_traits.h"
+#include <bucket/bucket_compare_traits.h>
+#include <bucket/bucket_list.h>
+#include <bucket/bucket_object.h>
+#include <bucket/bucket_range.h>
+#include <bucket/bucket_value_traits.h>
 #include <gtest/gtest.h>
 #include <list>
 #include <memory>
@@ -18,9 +18,9 @@ class BucketListTest : public ::testing::Test {
 protected:
   void SetUp() override {
     bucket = std::make_unique<bucket_list_type>();
-    [[maybe_unused]] auto spread1 = bucket->spread(0, 10, "test1");
-    [[maybe_unused]] auto spread2 = bucket->spread(20, 30, "test2");
-    [[maybe_unused]] auto spread3 = bucket->spread(40, 50, "test3");
+    bucket->spread(0, 10, "test1");
+    bucket->spread(20, 30, "test2");
+    bucket->spread(40, 50, "test3");
   }
 
   void TearDown() override {
@@ -67,7 +67,7 @@ TEST_F(BucketListTest, InvalidConstrainedConstruction) {
 // Accessor tests
 TEST_F(BucketListTest, AccessorFunctions) {
   bucket_list_type test_bucket;
-  [[maybe_unused]] auto spread_result = test_bucket.spread(0, 10, "test");
+  test_bucket.spread(0, 10, "test");
 
   auto it = test_bucket.begin();
   EXPECT_EQ(it->low(), 0);
@@ -78,9 +78,9 @@ TEST_F(BucketListTest, AccessorFunctions) {
 // Iterator tests
 TEST_F(BucketListTest, IteratorFunctionality) {
   bucket_list_type test_bucket;
-  [[maybe_unused]] auto spread_result = test_bucket.spread(1, 3, "test1");
-  [[maybe_unused]] auto spread_result2 = test_bucket.spread(1, 3, "test2");
-  [[maybe_unused]] auto spread_result3 = test_bucket.spread(1, 3, "test3");
+  test_bucket.spread(1, 3, "test1");
+  test_bucket.spread(1, 3, "test2");
+  test_bucket.spread(1, 3, "test3");
 
   auto it = test_bucket.begin();
   EXPECT_NE(it, test_bucket.end());
@@ -93,9 +93,9 @@ TEST_F(BucketListTest, IteratorFunctionality) {
 
 TEST_F(BucketListTest, ReverseIteratorFunctionality) {
   bucket_list_type test_bucket;
-  [[maybe_unused]] auto spread_result = test_bucket.spread(1, 3, "test1");
-  [[maybe_unused]] auto spread_result2 = test_bucket.spread(1, 3, "test2");
-  [[maybe_unused]] auto spread_result3 = test_bucket.spread(1, 3, "test3");
+  test_bucket.spread(1, 3, "test1");
+  test_bucket.spread(1, 3, "test2");
+  test_bucket.spread(1, 3, "test3");
 
   auto rit = test_bucket.rbegin();
   EXPECT_NE(rit, test_bucket.rend());
@@ -109,7 +109,7 @@ TEST_F(BucketListTest, ReverseIteratorFunctionality) {
 // Operation tests
 TEST_F(BucketListTest, SpreadOperation) {
   bucket_list_type test_bucket;
-  [[maybe_unused]] auto result = test_bucket.spread(0, 10, "test");
+  test_bucket.spread(0, 10, "test");
   EXPECT_EQ(test_bucket.size(), 1);
   EXPECT_FALSE(test_bucket.empty());
 
@@ -121,7 +121,7 @@ TEST_F(BucketListTest, SpreadOperation) {
 
 TEST_F(BucketListTest, CoverOperation) {
   bucket_list_type test_bucket;
-  [[maybe_unused]] auto result = test_bucket.cover(0, 10, "test");
+  test_bucket.cover(0, 10, "test");
   EXPECT_EQ(test_bucket.size(), 1);
   EXPECT_FALSE(test_bucket.empty());
 
@@ -133,19 +133,35 @@ TEST_F(BucketListTest, CoverOperation) {
 
 TEST_F(BucketListTest, EraseOperation) {
   bucket_list_type test_bucket;
-  [[maybe_unused]] auto spread_result = test_bucket.spread(0, 10, "test");
-  [[maybe_unused]] auto erase_result = test_bucket.erase(0, 10);
-  EXPECT_TRUE(erase_result);
+  test_bucket.spread(0, 10, "test");
+  test_bucket.erase(0, 10);
   EXPECT_TRUE(test_bucket.empty());
   EXPECT_EQ(test_bucket.size(), 0);
+}
+
+TEST_F(BucketListTest, EraseAllOperation) {
+  bucket_list_type test_bucket;
+  test_bucket.spread(0, 10, "test1");
+  test_bucket.spread(20, 30, "test2");
+  test_bucket.spread(40, 50, "test3");
+
+  EXPECT_FALSE(test_bucket.empty());
+  EXPECT_EQ(test_bucket.size(), 3);
+
+  EXPECT_TRUE(test_bucket.erase());
+  EXPECT_TRUE(test_bucket.empty());
+  EXPECT_EQ(test_bucket.size(), 0);
+
+  // Test erasing an already empty container
+  EXPECT_FALSE(test_bucket.erase());
 }
 
 // Bounds tests
 TEST_F(BucketListTest, UnconstrainedBoundOperations) {
   bucket_list_type test_bucket;
-  [[maybe_unused]] auto spread1 = test_bucket.spread(1, 3, "test1");
-  [[maybe_unused]] auto spread2 = test_bucket.spread(5, 7, "test2");
-  [[maybe_unused]] auto spread3 = test_bucket.spread(9, 11, "test3");
+  test_bucket.spread(1, 3, "test1");
+  test_bucket.spread(5, 7, "test2");
+  test_bucket.spread(9, 11, "test3");
 
   EXPECT_THROW(
       { [[maybe_unused]] auto low = test_bucket.low(); }, std::runtime_error);
@@ -155,9 +171,9 @@ TEST_F(BucketListTest, UnconstrainedBoundOperations) {
 
 TEST_F(BucketListTest, ConstrainedBoundOperations) {
   bucket_list_type test_bucket(0, 100);
-  [[maybe_unused]] auto spread1 = test_bucket.spread(1, 3, "test1");
-  [[maybe_unused]] auto spread2 = test_bucket.spread(5, 7, "test2");
-  [[maybe_unused]] auto spread3 = test_bucket.spread(9, 11, "test3");
+  test_bucket.spread(1, 3, "test1");
+  test_bucket.spread(5, 7, "test2");
+  test_bucket.spread(9, 11, "test3");
 
   EXPECT_EQ(test_bucket.low(), 0);
   EXPECT_EQ(test_bucket.high(), 100);
@@ -168,9 +184,9 @@ TEST_F(BucketListTest, OverlappingRangesSpread) {
   bucket_list_type test_bucket;
 
   // Test overlapping ranges with gap between buckets
-  [[maybe_unused]] auto spread1 = test_bucket.spread(0, 10, "test1");
-  [[maybe_unused]] auto spread2 = test_bucket.spread(20, 30, "test2");
-  [[maybe_unused]] auto spread3 = test_bucket.spread(5, 25, "test3");
+  test_bucket.spread(0, 10, "test1");
+  test_bucket.spread(20, 30, "test2");
+  test_bucket.spread(5, 25, "test3");
 
   EXPECT_EQ(test_bucket.size(), 5);
 
@@ -204,9 +220,9 @@ TEST_F(BucketListTest, OverlappingRangesCover) {
   bucket_list_type test_bucket;
 
   // Test overlapping ranges with gap between buckets
-  [[maybe_unused]] auto cover1 = test_bucket.cover(0, 10, "test1");
-  [[maybe_unused]] auto cover2 = test_bucket.cover(20, 30, "test2");
-  [[maybe_unused]] auto cover3 = test_bucket.cover(5, 25, "test3");
+  test_bucket.cover(0, 10, "test1");
+  test_bucket.cover(20, 30, "test2");
+  test_bucket.cover(5, 25, "test3");
 
   EXPECT_EQ(test_bucket.size(), 3);
 
@@ -230,9 +246,9 @@ TEST_F(BucketListTest, OverlappingRangesErase) {
   bucket_list_type test_bucket;
 
   // Test overlapping ranges with gap between buckets
-  [[maybe_unused]] auto spread1 = test_bucket.spread(0, 10, "test1");
-  [[maybe_unused]] auto spread2 = test_bucket.spread(20, 30, "test2");
-  [[maybe_unused]] auto erase_result = test_bucket.erase(5, 25);
+  test_bucket.spread(0, 10, "test1");
+  test_bucket.spread(20, 30, "test2");
+  test_bucket.erase(5, 25);
 
   EXPECT_EQ(test_bucket.size(), 2);
 
@@ -251,9 +267,9 @@ TEST_F(BucketListTest, OverlappingRangesWithConstraints) {
   bucket_list_type test_bucket(0, 100);
 
   // Test overlapping ranges with low value at constraint boundary
-  [[maybe_unused]] auto spread1 = test_bucket.spread(0, 10, "test1");
-  [[maybe_unused]] auto spread2 = test_bucket.spread(20, 30, "test2");
-  [[maybe_unused]] auto spread3 = test_bucket.spread(0, 25, "test3");
+  test_bucket.spread(0, 10, "test1");
+  test_bucket.spread(20, 30, "test2");
+  test_bucket.spread(0, 25, "test3");
 
   EXPECT_EQ(test_bucket.size(), 4);
 
@@ -282,9 +298,9 @@ TEST_F(BucketListTest, OverlappingRangesWithHighConstraint) {
   bucket_list_type test_bucket(0, 100);
 
   // Test overlapping ranges with high value at constraint boundary
-  [[maybe_unused]] auto spread1 = test_bucket.spread(0, 10, "test1");
-  [[maybe_unused]] auto spread2 = test_bucket.spread(20, 30, "test2");
-  [[maybe_unused]] auto spread3 = test_bucket.spread(5, 100, "test3");
+  test_bucket.spread(0, 10, "test1");
+  test_bucket.spread(20, 30, "test2");
+  test_bucket.spread(5, 100, "test3");
 
   EXPECT_EQ(test_bucket.size(), 5);
 
@@ -319,9 +335,9 @@ TEST_F(BucketListTest, OverlappingRangesWithLowConstraintIntersection) {
 
   // Test overlapping ranges with low value below constraint - should be clamped
   // to constraint
-  [[maybe_unused]] auto spread1 = test_bucket.spread(0, 10, "test1");
-  [[maybe_unused]] auto spread2 = test_bucket.spread(20, 30, "test2");
-  [[maybe_unused]] auto spread3 = test_bucket.spread(-10, 25, "test3");
+  test_bucket.spread(0, 10, "test1");
+  test_bucket.spread(20, 30, "test2");
+  test_bucket.spread(-10, 25, "test3");
 
   EXPECT_EQ(test_bucket.size(), 4);
 
@@ -351,9 +367,9 @@ TEST_F(BucketListTest, OverlappingRangesWithHighConstraintIntersection) {
 
   // Test overlapping ranges with high value above constraint - should be
   // clamped to constraint
-  [[maybe_unused]] auto spread1 = test_bucket.spread(0, 10, "test1");
-  [[maybe_unused]] auto spread2 = test_bucket.spread(20, 30, "test2");
-  [[maybe_unused]] auto spread3 = test_bucket.spread(5, 110, "test3");
+  test_bucket.spread(0, 10, "test1");
+  test_bucket.spread(20, 30, "test2");
+  test_bucket.spread(5, 110, "test3");
 
   EXPECT_EQ(test_bucket.size(), 5);
 
@@ -385,9 +401,9 @@ TEST_F(BucketListTest, OverlappingRangesWithHighConstraintIntersection) {
 
 TEST_F(BucketListTest, ConstrainedRangeOperations) {
   bucket_list_type test_bucket(0, 100);
-  [[maybe_unused]] auto spread1 = test_bucket.spread(0, 10, "test1");
-  [[maybe_unused]] auto spread2 = test_bucket.spread(20, 30, "test2");
-  [[maybe_unused]] auto spread3 = test_bucket.spread(40, 50, "test3");
+  test_bucket.spread(0, 10, "test1");
+  test_bucket.spread(20, 30, "test2");
+  test_bucket.spread(40, 50, "test3");
 
   auto range1 = test_bucket.range(15, 35);
   EXPECT_NE(range1.begin(), range1.end());
@@ -402,9 +418,9 @@ TEST_F(BucketListTest, ConstrainedRangeOperations) {
 
 TEST_F(BucketListTest, AutomaticOrdering) {
   bucket_list_type test_bucket;
-  [[maybe_unused]] auto spread1 = test_bucket.spread(5, 10, "test1");
-  [[maybe_unused]] auto spread2 = test_bucket.spread(0, 5, "test2");
-  [[maybe_unused]] auto spread3 = test_bucket.spread(10, 15, "test3");
+  test_bucket.spread(5, 10, "test1");
+  test_bucket.spread(0, 5, "test2");
+  test_bucket.spread(10, 15, "test3");
 
   auto it = test_bucket.begin();
   EXPECT_EQ(it->low(), 0);
@@ -425,8 +441,8 @@ TEST_F(BucketListTest, AutomaticOrdering) {
 // Multiple values in the same range
 TEST_F(BucketListTest, MultipleValuesInSameRange) {
   bucket_list_type test_bucket;
-  [[maybe_unused]] auto spread1 = test_bucket.spread(0, 10, "test1");
-  [[maybe_unused]] auto spread2 = test_bucket.spread(0, 10, "test2");
+  test_bucket.spread(0, 10, "test1");
+  test_bucket.spread(0, 10, "test2");
 
   auto it = test_bucket.begin();
   EXPECT_EQ(it->low(), 0);
@@ -436,8 +452,8 @@ TEST_F(BucketListTest, MultipleValuesInSameRange) {
 
 TEST_F(BucketListTest, DuplicateValuesInSameRange) {
   bucket_list_type test_bucket;
-  [[maybe_unused]] auto spread1 = test_bucket.spread(0, 10, "test");
-  [[maybe_unused]] auto spread2 = test_bucket.spread(0, 10, "test");
+  test_bucket.spread(0, 10, "test");
+  test_bucket.spread(0, 10, "test");
 
   auto it = test_bucket.begin();
   EXPECT_EQ(it->values().size(), 2);
@@ -477,7 +493,7 @@ TEST_F(BucketListTest, SpreadWithBucketType) {
   bucket_list_type test_bucket;
   bucket_list_type::bucket_type source_bucket(0, 10, {"test1", "test2"});
 
-  [[maybe_unused]] auto result = test_bucket.spread(source_bucket);
+  test_bucket.spread(source_bucket);
   EXPECT_EQ(test_bucket.size(), 1);
 
   auto it = test_bucket.begin();
@@ -490,7 +506,7 @@ TEST_F(BucketListTest, CoverWithBucketType) {
   bucket_list_type test_bucket;
   bucket_list_type::bucket_type source_bucket(0, 10, {"test1", "test2"});
 
-  [[maybe_unused]] auto result = test_bucket.cover(source_bucket);
+  test_bucket.cover(source_bucket);
   EXPECT_EQ(test_bucket.size(), 1);
 
   auto it = test_bucket.begin();
@@ -501,11 +517,11 @@ TEST_F(BucketListTest, CoverWithBucketType) {
 
 TEST_F(BucketListTest, SpreadWithBucketList) {
   bucket_list_type source_bucket;
-  [[maybe_unused]] auto spread1 = source_bucket.spread(0, 10, "test1");
-  [[maybe_unused]] auto spread2 = source_bucket.spread(20, 30, "test2");
+  source_bucket.spread(0, 10, "test1");
+  source_bucket.spread(20, 30, "test2");
 
   bucket_list_type target_bucket;
-  [[maybe_unused]] auto result = target_bucket.spread(source_bucket);
+  target_bucket.spread(source_bucket);
 
   EXPECT_EQ(target_bucket.size(), 2);
 
@@ -522,11 +538,11 @@ TEST_F(BucketListTest, SpreadWithBucketList) {
 
 TEST_F(BucketListTest, CoverWithBucketList) {
   bucket_list_type source_bucket;
-  [[maybe_unused]] auto spread1 = source_bucket.spread(0, 10, "test1");
-  [[maybe_unused]] auto spread2 = source_bucket.spread(20, 30, "test2");
+  source_bucket.spread(0, 10, "test1");
+  source_bucket.spread(20, 30, "test2");
 
   bucket_list_type target_bucket;
-  [[maybe_unused]] auto result = target_bucket.cover(source_bucket);
+  target_bucket.cover(source_bucket);
 
   EXPECT_EQ(target_bucket.size(), 2);
 
@@ -539,6 +555,125 @@ TEST_F(BucketListTest, CoverWithBucketList) {
   EXPECT_EQ(it->low(), 20);
   EXPECT_EQ(it->high(), 30);
   verifyContainerContents(it->values(), {"test2"});
+}
+
+TEST_F(BucketListTest, IteratorOperations) {
+  // Initialize test data
+  bucket_list_type test_bucket;
+  test_bucket.spread(1, 2, "test1");
+  test_bucket.spread(2, 3, "test2");
+  test_bucket.spread(3, 4, "test3");
+
+  // Test forward iteration
+  auto it = test_bucket.begin();
+  EXPECT_EQ(it->low(), 1);
+  EXPECT_EQ(it->high(), 2);
+  verifyContainerContents(it->values(), {"test1"});
+  ++it;
+  EXPECT_EQ(it->low(), 2);
+  EXPECT_EQ(it->high(), 3);
+  verifyContainerContents(it->values(), {"test2"});
+  ++it;
+  EXPECT_EQ(it->low(), 3);
+  EXPECT_EQ(it->high(), 4);
+  verifyContainerContents(it->values(), {"test3"});
+  ++it;
+  EXPECT_EQ(it, test_bucket.end());
+
+  // Test const forward iteration
+  const auto &const_bucket = test_bucket;
+  auto cit = const_bucket.begin();
+  EXPECT_EQ(cit->low(), 1);
+  EXPECT_EQ(cit->high(), 2);
+  verifyContainerContents(cit->values(), {"test1"});
+  ++cit;
+  EXPECT_EQ(cit->low(), 2);
+  EXPECT_EQ(cit->high(), 3);
+  verifyContainerContents(cit->values(), {"test2"});
+  ++cit;
+  EXPECT_EQ(cit->low(), 3);
+  EXPECT_EQ(cit->high(), 4);
+  verifyContainerContents(cit->values(), {"test3"});
+  ++cit;
+  EXPECT_EQ(cit, const_bucket.end());
+
+  // Test reverse iteration
+  auto rit = test_bucket.rbegin();
+  EXPECT_EQ(rit->low(), 3);
+  EXPECT_EQ(rit->high(), 4);
+  verifyContainerContents(rit->values(), {"test3"});
+  ++rit;
+  EXPECT_EQ(rit->low(), 2);
+  EXPECT_EQ(rit->high(), 3);
+  verifyContainerContents(rit->values(), {"test2"});
+  ++rit;
+  EXPECT_EQ(rit->low(), 1);
+  EXPECT_EQ(rit->high(), 2);
+  verifyContainerContents(rit->values(), {"test1"});
+  ++rit;
+  EXPECT_EQ(rit, test_bucket.rend());
+
+  // Test const reverse iteration
+  auto crit = const_bucket.rbegin();
+  EXPECT_EQ(crit->low(), 3);
+  EXPECT_EQ(crit->high(), 4);
+  verifyContainerContents(crit->values(), {"test3"});
+  ++crit;
+  EXPECT_EQ(crit->low(), 2);
+  EXPECT_EQ(crit->high(), 3);
+  verifyContainerContents(crit->values(), {"test2"});
+  ++crit;
+  EXPECT_EQ(crit->low(), 1);
+  EXPECT_EQ(crit->high(), 2);
+  verifyContainerContents(crit->values(), {"test1"});
+  ++crit;
+  EXPECT_EQ(crit, const_bucket.rend());
+}
+
+TEST_F(BucketListTest, IteratorComparison) {
+  bucket_list_type test_bucket;
+  test_bucket.spread(1, 2, "test1");
+  test_bucket.spread(2, 3, "test2");
+  test_bucket.spread(3, 4, "test3");
+
+  auto it1 = test_bucket.begin();
+  auto it2 = test_bucket.begin();
+  auto it3 = ++test_bucket.begin();
+
+  // Test equality
+  EXPECT_EQ(it1, it2);
+  EXPECT_NE(it1, it3);
+
+  // Test const iterator equality
+  const auto &const_bucket = test_bucket;
+  auto cit1 = const_bucket.begin();
+  auto cit2 = const_bucket.begin();
+  auto cit3 = ++const_bucket.begin();
+
+  EXPECT_EQ(cit1, cit2);
+  EXPECT_NE(cit1, cit3);
+}
+
+TEST_F(BucketListTest, IteratorArithmetic) {
+  bucket_list_type test_bucket;
+  test_bucket.spread(1, 2, "test1");
+  test_bucket.spread(2, 3, "test2");
+  test_bucket.spread(3, 4, "test3");
+
+  auto it = test_bucket.begin();
+
+  // Test increment
+  auto it2 = it;
+  ++it2;
+  EXPECT_EQ(it2->low(), 2);
+  EXPECT_EQ(it2->high(), 3);
+  verifyContainerContents(it2->values(), {"test2"});
+
+  // Test decrement
+  --it2;
+  EXPECT_EQ(it2->low(), 1);
+  EXPECT_EQ(it2->high(), 2);
+  verifyContainerContents(it2->values(), {"test1"});
 }
 
 } // namespace test

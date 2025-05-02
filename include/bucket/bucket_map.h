@@ -33,6 +33,7 @@
 #include <type_traits>
 
 #include "bucket_compare_traits.h"
+#include "bucket_iterator.h"
 #include "bucket_object.h"
 #include "bucket_range.h"
 #include "bucket_value_traits.h"
@@ -99,205 +100,70 @@ public:
   using value_container = typename ValueTraits::value_container;
   using const_value_container = const typename ValueTraits::value_container;
 
-  // Define the bucket type using the new bucket_object class
+  // Define the bucket type using the bucket_object class
   using bucket_type = bucket_object<index_type, value_container>;
 
   // Use a map to store the buckets
   using bucket_type_map = std::map<index_type, bucket_type>;
 
-  // Iterator classes defined inside bucket_map
-  class iterator {
-  public:
-    using iterator_category = std::bidirectional_iterator_tag;
-    using value_type = bucket_type;
-    using difference_type = std::ptrdiff_t;
-    using pointer = value_type *;
-    using reference = value_type &;
+  // Update iterator type definitions
+  using iterator =
+      bucket_map_iterator_base<bucket_type_map, bucket_type, false>;
+  using const_iterator =
+      bucket_map_iterator_base<bucket_type_map, bucket_type, true>;
+  using reverse_iterator = std::reverse_iterator<iterator>;
+  using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
-    iterator() = default;
-    explicit iterator(typename bucket_type_map::iterator it) : it_(it) {}
-    iterator(const iterator &) = default;
-    iterator &operator=(const iterator &) = default;
+  // Update iterator methods
+  [[nodiscard]] iterator begin() { return iterator(buckets_.begin()); }
+  [[nodiscard]] const_iterator begin() const {
+    return const_iterator(buckets_.begin());
+  }
+  [[nodiscard]] const_iterator cbegin() const {
+    return const_iterator(buckets_.begin());
+  }
+  [[nodiscard]] iterator end() { return iterator(buckets_.end()); }
+  [[nodiscard]] const_iterator end() const {
+    return const_iterator(buckets_.end());
+  }
+  [[nodiscard]] const_iterator cend() const {
+    return const_iterator(buckets_.end());
+  }
+  [[nodiscard]] reverse_iterator rbegin() { return reverse_iterator(end()); }
+  [[nodiscard]] const_reverse_iterator rbegin() const {
+    return const_reverse_iterator(end());
+  }
+  [[nodiscard]] const_reverse_iterator crbegin() const {
+    return const_reverse_iterator(end());
+  }
+  [[nodiscard]] reverse_iterator rend() { return reverse_iterator(begin()); }
+  [[nodiscard]] const_reverse_iterator rend() const {
+    return const_reverse_iterator(begin());
+  }
+  [[nodiscard]] const_reverse_iterator crend() const {
+    return const_reverse_iterator(begin());
+  }
 
-    // Add conversion operator to std::_Tree_iterator
-    operator typename bucket_type_map::iterator() const { return it_; }
+  // Range operations
+  [[nodiscard]] iterator find_range(index_type low, index_type high) {
+    if (CompareTraits::lt(high, low)) {
+      throw std::invalid_argument("high must be greater than low");
+    }
+    if (constrained_ &&
+        (CompareTraits::lt(low, low_) || CompareTraits::lt(high_, high))) {
+      throw std::out_of_range("range is outside of constrained bounds");
+    }
+    return find_first_overlapping_bucket(low, high);
+  }
 
-    // Add comparison operators
-    bool operator==(const iterator &other) const { return it_ == other.it_; }
-    bool operator!=(const iterator &other) const { return it_ != other.it_; }
-    bool operator==(const typename bucket_type_map::iterator &other) const {
-      return it_ == other;
+  [[nodiscard]] const_iterator find_range(index_type low,
+                                          index_type high) const {
+    auto it = buckets_.lower_bound(low);
+    if (it != buckets_.end() && CompareTraits::lt(it->first, high)) {
+      return const_iterator(it);
     }
-    bool operator!=(const typename bucket_type_map::iterator &other) const {
-      return it_ != other;
-    }
-
-    reference operator*() const { return it_->second; }
-    pointer operator->() const { return &(it_->second); }
-    iterator &operator++() {
-      ++it_;
-      return *this;
-    }
-    iterator operator++(int) {
-      iterator tmp = *this;
-      ++it_;
-      return tmp;
-    }
-    iterator &operator--() {
-      --it_;
-      return *this;
-    }
-    iterator operator--(int) {
-      iterator tmp = *this;
-      --it_;
-      return tmp;
-    }
-
-    // Add method to access the underlying iterator
-    typename bucket_type_map::iterator &get_underlying() { return it_; }
-    const typename bucket_type_map::iterator &get_underlying() const {
-      return it_;
-    }
-
-  private:
-    typename bucket_type_map::iterator it_;
-    friend class bucket_map;
-  };
-
-  class const_iterator {
-  public:
-    using iterator_category = std::bidirectional_iterator_tag;
-    using value_type = const bucket_type;
-    using difference_type = std::ptrdiff_t;
-    using pointer = const value_type *;
-    using reference = const value_type &;
-
-    const_iterator() = default;
-    explicit const_iterator(typename bucket_type_map::const_iterator it)
-        : it_(it) {}
-
-    reference operator*() const { return it_->second; }
-    pointer operator->() const { return &(it_->second); }
-    const_iterator &operator++() {
-      ++it_;
-      return *this;
-    }
-    const_iterator operator++(int) {
-      const_iterator tmp = *this;
-      ++it_;
-      return tmp;
-    }
-    const_iterator &operator--() {
-      --it_;
-      return *this;
-    }
-    const_iterator operator--(int) {
-      const_iterator tmp = *this;
-      --it_;
-      return tmp;
-    }
-    bool operator==(const const_iterator &other) const {
-      return it_ == other.it_;
-    }
-    bool operator!=(const const_iterator &other) const {
-      return it_ != other.it_;
-    }
-
-  private:
-    typename bucket_type_map::const_iterator it_;
-    friend class bucket_map;
-  };
-
-  class reverse_iterator {
-  public:
-    using iterator_category = std::bidirectional_iterator_tag;
-    using value_type = bucket_type;
-    using difference_type = std::ptrdiff_t;
-    using pointer = value_type *;
-    using reference = value_type &;
-
-    reverse_iterator() = default;
-    explicit reverse_iterator(typename bucket_type_map::reverse_iterator it)
-        : it_(it) {}
-
-    reference operator*() { return it_->second; }
-    const reference operator*() const { return it_->second; }
-    pointer operator->() { return &(it_->second); }
-    const pointer operator->() const { return &(it_->second); }
-    reverse_iterator &operator++() {
-      ++it_;
-      return *this;
-    }
-    reverse_iterator operator++(int) {
-      reverse_iterator tmp = *this;
-      ++it_;
-      return tmp;
-    }
-    reverse_iterator &operator--() {
-      --it_;
-      return *this;
-    }
-    reverse_iterator operator--(int) {
-      reverse_iterator tmp = *this;
-      --it_;
-      return tmp;
-    }
-    bool operator==(const reverse_iterator &other) const {
-      return it_ == other.it_;
-    }
-    bool operator!=(const reverse_iterator &other) const {
-      return it_ != other.it_;
-    }
-
-  private:
-    typename bucket_type_map::reverse_iterator it_;
-    friend class bucket_map;
-  };
-
-  class const_reverse_iterator {
-  public:
-    using iterator_category = std::bidirectional_iterator_tag;
-    using value_type = const bucket_type;
-    using difference_type = std::ptrdiff_t;
-    using pointer = const value_type *;
-    using reference = const value_type &;
-
-    const_reverse_iterator() = default;
-    explicit const_reverse_iterator(
-        typename bucket_type_map::const_reverse_iterator it)
-        : it_(it) {}
-
-    reference operator*() const { return it_->second; }
-    pointer operator->() const { return &(it_->second); }
-    const_reverse_iterator &operator++() {
-      ++it_;
-      return *this;
-    }
-    const_reverse_iterator operator++(int) {
-      const_reverse_iterator tmp = *this;
-      ++it_;
-      return tmp;
-    }
-    const_reverse_iterator &operator--() {
-      --it_;
-      return *this;
-    }
-    const_reverse_iterator operator--(int) {
-      const_reverse_iterator tmp = *this;
-      --it_;
-      return tmp;
-    }
-    bool operator==(const const_reverse_iterator &other) const {
-      return it_ == other.it_;
-    }
-    bool operator!=(const const_reverse_iterator &other) const {
-      return it_ != other.it_;
-    }
-
-  private:
-    typename bucket_type_map::const_reverse_iterator it_;
-    friend class bucket_map;
-  };
+    return end();
+  }
 
   using size_type = std::size_t;
 
@@ -358,110 +224,6 @@ public:
    */
   bucket_map &operator=(const bucket_map &) = default;
 
-  // Iterator methods
-  /**
-   * @brief Returns an iterator to the first element of the bucket collection.
-   * @return Iterator to the first element.
-   */
-  [[nodiscard]] iterator begin() noexcept { return iterator(buckets_.begin()); }
-
-  /**
-   * @brief Returns an iterator to the element following the last element of the
-   * bucket collection.
-   * @return Iterator to the element following the last element.
-   */
-  [[nodiscard]] iterator end() noexcept { return iterator(buckets_.end()); }
-
-  /**
-   * @brief Returns a const iterator to the first element of the bucket
-   * collection.
-   * @return Const iterator to the first element.
-   */
-  [[nodiscard]] const_iterator begin() const noexcept {
-    return const_iterator(buckets_.begin());
-  }
-
-  /**
-   * @brief Returns a const iterator to the element following the last element
-   * of the bucket collection.
-   * @return Const iterator to the element following the last element.
-   */
-  [[nodiscard]] const_iterator end() const noexcept {
-    return const_iterator(buckets_.end());
-  }
-
-  /**
-   * @brief Returns a reverse iterator to the first element of the reversed
-   * bucket collection.
-   * @return Reverse iterator to the first element.
-   */
-  [[nodiscard]] reverse_iterator rbegin() noexcept {
-    return reverse_iterator(buckets_.rbegin());
-  }
-
-  /**
-   * @brief Returns a reverse iterator to the element following the last element
-   * of the reversed bucket collection.
-   * @return Reverse iterator to the element following the last element.
-   */
-  [[nodiscard]] reverse_iterator rend() noexcept {
-    return reverse_iterator(buckets_.rend());
-  }
-
-  /**
-   * @brief Returns a const reverse iterator to the first element of the
-   * reversed bucket collection.
-   * @return Const reverse iterator to the first element.
-   */
-  [[nodiscard]] const_reverse_iterator rbegin() const noexcept {
-    return const_reverse_iterator(buckets_.rbegin());
-  }
-
-  /**
-   * @brief Returns a const reverse iterator to the element following the last
-   * element of the reversed bucket collection.
-   * @return Const reverse iterator to the element following the last element.
-   */
-  [[nodiscard]] const_reverse_iterator rend() const noexcept {
-    return const_reverse_iterator(buckets_.rend());
-  }
-
-  /**
-   * @brief Returns a const iterator to the first element of the bucket
-   * collection.
-   * @return Const iterator to the first element.
-   */
-  [[nodiscard]] const_iterator cbegin() const noexcept {
-    return const_iterator(buckets_.cbegin());
-  }
-
-  /**
-   * @brief Returns a const iterator to the element following the last element
-   * of the bucket collection.
-   * @return Const iterator to the element following the last element.
-   */
-  [[nodiscard]] const_iterator cend() const noexcept {
-    return const_iterator(buckets_.cend());
-  }
-
-  /**
-   * @brief Returns a const reverse iterator to the first element of the
-   * reversed bucket collection.
-   * @return Const reverse iterator to the first element.
-   */
-  [[nodiscard]] const_reverse_iterator crbegin() const noexcept {
-    return const_reverse_iterator(buckets_.crbegin());
-  }
-
-  /**
-   * @brief Returns a const reverse iterator to the element following the last
-   * element of the reversed bucket collection.
-   * @return Const reverse iterator to the element following the last element.
-   */
-  [[nodiscard]] const_reverse_iterator crend() const noexcept {
-    return const_reverse_iterator(buckets_.crend());
-  }
-
   // Capacity methods
   /**
    * @brief Returns the number of buckets in the collection.
@@ -477,14 +239,6 @@ public:
    */
   [[nodiscard]] constexpr bool empty() const noexcept {
     return buckets_.empty();
-  }
-
-  /**
-   * @brief Returns the maximum number of buckets that can be stored.
-   * @return The maximum number of buckets.
-   */
-  [[nodiscard]] constexpr std::size_t max_size() const noexcept {
-    return buckets_.max_size();
   }
 
   // Modifiers
@@ -509,10 +263,11 @@ public:
 
   // Erase methods
   iterator erase(const_iterator pos) {
-    return iterator(buckets_.erase(pos.it_));
+    return iterator(buckets_.erase(pos.get_underlying()));
   }
   iterator erase(const_iterator first, const_iterator last) {
-    return iterator(buckets_.erase(first.it_, last.it_));
+    return iterator(
+        buckets_.erase(first.get_underlying(), last.get_underlying()));
   }
   size_type erase(const index_type &index) { return buckets_.erase(index); }
 
@@ -606,7 +361,7 @@ public:
   }
 
   // Spread operation
-  [[nodiscard]] int spread(index_type low, index_type high, value_type value) {
+  int spread(index_type low, index_type high, value_type value) {
     value_container container_;
     ValueTraits::add(container_, value);
 
@@ -630,7 +385,7 @@ public:
   }
 
   // Cover operation
-  [[nodiscard]] int cover(index_type low, index_type high, value_type value) {
+  int cover(index_type low, index_type high, value_type value) {
     value_container container_;
     ValueTraits::add(container_, value);
     bucket_type bucket_ = make_bucket(low, high, container_);
@@ -638,16 +393,15 @@ public:
   }
 
   // Erase operation
-  [[nodiscard]] bool erase(index_type low, index_type high) {
-    iterator begin, end;
-    const bool b_spliced = splice(low, high, begin, end);
-
-    if (!b_spliced)
-      return false;
-
-    // Convert our custom iterators to the underlying map's iterator type
-    buckets_.erase(begin.get_underlying(), end.get_underlying());
-    return true;
+  bool erase(index_type low, index_type high) {
+    if (CompareTraits::lt(high, low)) {
+      throw std::invalid_argument("high must be greater than low");
+    }
+    if (constrained_ &&
+        (CompareTraits::lt(low, low_) || CompareTraits::lt(high_, high))) {
+      throw std::out_of_range("range is outside of constrained bounds");
+    }
+    return erase_impl(low, high);
   }
 
   // Add a method to create a bucket_range
@@ -662,6 +416,18 @@ public:
   range(index_type start, index_type end) const {
     return bucket_range<bucket_map<Indices, Values, CompareTraits, ValueTraits>,
                         true>(*this, start, end);
+  }
+
+  /**
+   * @brief Erase all buckets in the container
+   * @return true if any buckets were erased, false otherwise
+   */
+  bool erase() {
+    if (buckets_.empty()) {
+      return false;
+    }
+    buckets_.clear();
+    return true;
   }
 
 protected:
@@ -781,8 +547,26 @@ protected:
     return (b_begin && b_end);
   }
 
+  /**
+   * @brief Erase all buckets in the range [low, high)
+   * @param low Lower bound of the range
+   * @param high Upper bound of the range
+   * @return true if any buckets were erased, false otherwise
+   */
+  bool erase_impl(index_type low, index_type high) {
+    iterator begin, end;
+    const bool b_spliced = splice(low, high, begin, end);
+
+    if (!b_spliced)
+      return false;
+
+    // Convert our custom iterators to the underlying map's iterator type
+    buckets_.erase(begin.get_underlying(), end.get_underlying());
+    return true;
+  }
+
 public:
-  [[nodiscard]] int spread(const bucket_type &bucket_) {
+  int spread(const bucket_type &bucket_) {
     int added_to_bucket = 0;
 
     iterator begin, end;
@@ -818,7 +602,7 @@ public:
     return added_to_bucket;
   }
 
-  [[nodiscard]] int cover(const bucket_type &bucket_) {
+  int cover(const bucket_type &bucket_) {
     int added_to_bucket = 0;
 
     iterator begin, end;
@@ -853,8 +637,8 @@ public:
   }
 
   template <class OtherValueTraits>
-  [[nodiscard]] int spread(const bucket_map<Indices, Values, CompareTraits,
-                                            OtherValueTraits> &bucket_) {
+  int spread(const bucket_map<Indices, Values, CompareTraits, OtherValueTraits>
+                 &bucket_) {
     int added_to_bucket = 0;
 
     for (const_iterator p = bucket_.begin(); p != bucket_.end(); ++p) {
@@ -866,8 +650,8 @@ public:
   }
 
   template <class OtherValueTraits>
-  [[nodiscard]] int cover(const bucket_map<Indices, Values, CompareTraits,
-                                           OtherValueTraits> &bucket_) {
+  int cover(const bucket_map<Indices, Values, CompareTraits, OtherValueTraits>
+                &bucket_) {
     int added_to_bucket = 0;
 
     for (const_iterator p = bucket_.begin(); p != bucket_.end(); ++p) {
@@ -877,6 +661,37 @@ public:
 
     return added_to_bucket;
   }
+
+  // Add protected helper functions for bucket_range
+protected:
+  /**
+   * @brief Find the first bucket that overlaps with the given range
+   * @param low Lower bound of the range
+   * @param high Upper bound of the range
+   * @return Iterator to the first overlapping bucket, or end() if none found
+   */
+  iterator find_first_overlapping_bucket(index_type low, index_type high) {
+    auto it = buckets_.lower_bound(low);
+    if (it != buckets_.end() && CompareTraits::lt(it->first, high)) {
+      return iterator(it);
+    }
+    return end();
+  }
+
+  /**
+   * @brief Find the first bucket that starts after the given range
+   * @param low Lower bound of the range
+   * @param high Upper bound of the range
+   * @return Iterator to the first bucket after the range, or end() if none
+   * found
+   */
+  iterator find_first_after_range(index_type low, index_type high) {
+    return iterator(buckets_.upper_bound(high));
+  }
+
+  // Make these functions available to bucket_range
+  friend class bucket_range<mytype, false>;
+  friend class bucket_range<mytype, true>;
 
 private:
   bucket_type_map buckets_;

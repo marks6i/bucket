@@ -35,6 +35,7 @@
 #include <type_traits>
 
 #include "bucket_compare_traits.h"
+#include "bucket_iterator.h"
 #include "bucket_object.h"
 #include "bucket_range.h"
 #include "bucket_value_traits.h"
@@ -84,82 +85,49 @@ public:
   // Use a list to store the buckets
   using bucket_type_list = std::list<bucket_type>;
 
-  [[nodiscard]] static constexpr bucket_type
-  make_bucket(index_type low, index_type high, const value_container &values) {
-    return bucket_type(low, high, values);
+  // Update iterator type definitions
+  using iterator = bucket_iterator_base<bucket_type_list, bucket_type, false>;
+  using const_iterator =
+      bucket_iterator_base<bucket_type_list, bucket_type, true>;
+  using reverse_iterator = std::reverse_iterator<iterator>;
+  using const_reverse_iterator = std::reverse_iterator<const_iterator>;
+
+  // Update iterator methods
+  [[nodiscard]] iterator begin() { return iterator(buckets_.begin()); }
+  [[nodiscard]] const_iterator begin() const {
+    return const_iterator(buckets_.begin());
   }
-
-  using iterator = typename bucket_type_list::iterator;
-  using const_iterator = typename bucket_type_list::const_iterator;
-  using reverse_iterator = typename bucket_type_list::reverse_iterator;
-  using const_reverse_iterator =
-      typename bucket_type_list::const_reverse_iterator;
-
-  /**
-   * @brief Returns an iterator to the first element of the bucket collection.
-   * @return Iterator to the first element.
-   */
-  [[nodiscard]] iterator begin() noexcept { return buckets_.begin(); }
-
-  /**
-   * @brief Returns an iterator to the element following the last element of the
-   * bucket collection.
-   * @return Iterator to the element following the last element.
-   */
-  [[nodiscard]] iterator end() noexcept { return buckets_.end(); }
-
-  /**
-   * @brief Returns a const iterator to the first element of the bucket
-   * collection.
-   * @return Const iterator to the first element.
-   */
-  [[nodiscard]] const_iterator begin() const noexcept {
+  [[nodiscard]] const_iterator cbegin() const {
     return const_iterator(buckets_.begin());
   }
 
-  /**
-   * @brief Returns a const iterator to the element following the last element
-   * of the bucket collection.
-   * @return Const iterator to the element following the last element.
-   */
-  [[nodiscard]] const_iterator end() const noexcept {
+  [[nodiscard]] iterator end() { return iterator(buckets_.end()); }
+  [[nodiscard]] const_iterator end() const {
+    return const_iterator(buckets_.end());
+  }
+  [[nodiscard]] const_iterator cend() const {
     return const_iterator(buckets_.end());
   }
 
-  /**
-   * @brief Returns a reverse iterator to the first element of the reversed
-   * bucket collection. It corresponds to the last element of the non-reversed
-   * bucket collection.
-   * @return Reverse iterator to the first element.
-   */
-  [[nodiscard]] reverse_iterator rbegin() noexcept { return buckets_.rbegin(); }
-
-  /**
-   * @brief Returns a reverse iterator to the element following the last element
-   * of the reversed bucket collection. It corresponds to the element preceding
-   * the first element of the non-reversed bucket collection.
-   * @return Reverse iterator to the element following the last element.
-   */
-  [[nodiscard]] reverse_iterator rend() noexcept { return buckets_.rend(); }
-
-  /**
-   * @brief Returns a const reverse iterator to the first element of the
-   * reversed bucket collection. It corresponds to the last element of the
-   * non-reversed bucket collection.
-   * @return Const reverse iterator to the first element.
-   */
-  [[nodiscard]] const_reverse_iterator rbegin() const noexcept {
-    return const_reverse_iterator(buckets_.rbegin());
+  [[nodiscard]] reverse_iterator rbegin() { return reverse_iterator(end()); }
+  [[nodiscard]] const_reverse_iterator rbegin() const {
+    return const_reverse_iterator(end());
+  }
+  [[nodiscard]] const_reverse_iterator crbegin() const {
+    return const_reverse_iterator(end());
   }
 
-  /**
-   * @brief Returns a const reverse iterator to the element following the last
-   * element of the reversed bucket collection. It corresponds to the element
-   * preceding the first element of the non-reversed bucket collection.
-   * @return Const reverse iterator to the element following the last element.
-   */
-  [[nodiscard]] const_reverse_iterator rend() const noexcept {
-    return const_reverse_iterator(buckets_.rend());
+  [[nodiscard]] reverse_iterator rend() { return reverse_iterator(begin()); }
+  [[nodiscard]] const_reverse_iterator rend() const {
+    return const_reverse_iterator(begin());
+  }
+  [[nodiscard]] const_reverse_iterator crend() const {
+    return const_reverse_iterator(begin());
+  }
+
+  [[nodiscard]] static constexpr bucket_type
+  make_bucket(index_type low, index_type high, const value_container &values) {
+    return bucket_type(low, high, values);
   }
 
 public:
@@ -282,12 +250,12 @@ protected:
           // Create a new bucket for the gap
           bucket_type new_bucket =
               make_bucket(l, current_bucket.low(), container_);
-          buckets_.insert(p, new_bucket);
+          buckets_.insert(p.get_underlying(), new_bucket);
           CompareTraits::assign(l, current_bucket.low());
         } else {
           // Create a new bucket that covers the entire range
           bucket_type new_bucket = make_bucket(l, h, container_);
-          buckets_.insert(p, new_bucket);
+          buckets_.insert(p.get_underlying(), new_bucket);
           CompareTraits::assign(l, h);
           continue;
         }
@@ -299,7 +267,7 @@ protected:
           // Split the bucket at h
           value_container container_ = current_bucket.values();
           bucket_type split_bucket = make_bucket(l, h, container_);
-          buckets_.insert(p, split_bucket);
+          buckets_.insert(p.get_underlying(), split_bucket);
           current_bucket.set_low(h);
           CompareTraits::assign(l, h);
           continue;
@@ -314,14 +282,14 @@ protected:
         value_container container_ = current_bucket.values();
         bucket_type split_bucket =
             make_bucket(current_bucket.low(), l, container_);
-        buckets_.insert(p, split_bucket);
+        buckets_.insert(p.get_underlying(), split_bucket);
         current_bucket.set_low(l);
 
         if (CompareTraits::lt(h, current_bucket.high())) {
           // Split the bucket at h
           value_container container2_ = current_bucket.values();
           bucket_type split_bucket2 = make_bucket(l, h, container2_);
-          buckets_.insert(p, split_bucket2);
+          buckets_.insert(p.get_underlying(), split_bucket2);
           current_bucket.set_low(h);
         }
 
@@ -362,7 +330,7 @@ public:
    * @param bucket_ The bucket to spread.
    * @return Number of buckets that were added to.
    */
-  [[nodiscard]] int spread(const bucket_type &bucket_) {
+  int spread(const bucket_type &bucket_) {
     int added_to_bucket = 0;
 
     iterator begin, end;
@@ -399,7 +367,7 @@ public:
    * @param bucket_ The bucket to cover.
    * @return Number of buckets that were added to.
    */
-  [[nodiscard]] int cover(const bucket_type &bucket_) {
+  int cover(const bucket_type &bucket_) {
     int added_to_bucket = 0;
 
     iterator begin, end;
@@ -419,7 +387,7 @@ public:
         CompareTraits::assign(h, high_);
     }
 
-    iterator next = buckets_.erase(begin, end);
+    auto next = buckets_.erase(begin.get_underlying(), end.get_underlying());
 
     bucket_type new_bucket = make_bucket(l, h, bucket_.values());
     buckets_.insert(next, new_bucket);
@@ -436,7 +404,7 @@ public:
    * @param value The value to spread.
    * @return Number of buckets that were added to.
    */
-  [[nodiscard]] int spread(index_type low, index_type high, value_type value) {
+  int spread(index_type low, index_type high, value_type value) {
     value_container container_;
     ValueTraits::add(container_, value);
     bucket_type bucket_ = make_bucket(low, high, container_);
@@ -450,7 +418,7 @@ public:
    * @param value The value to cover.
    * @return Number of buckets that were added to.
    */
-  [[nodiscard]] int cover(index_type low, index_type high, value_type value) {
+  int cover(index_type low, index_type high, value_type value) {
     value_container container_;
     ValueTraits::add(container_, value);
     bucket_type bucket_ = make_bucket(low, high, container_);
@@ -463,26 +431,44 @@ public:
    * @param high Upper bound of the range.
    * @return True if the erase was successful.
    */
-  [[nodiscard]] bool erase(index_type low, index_type high) {
-    iterator begin, end;
-    const bool b_spliced = splice(low, high, begin, end);
-
-    if (!b_spliced)
-      return false;
-
-    index_type l, h;
-    CompareTraits::assign(l, low);
-    CompareTraits::assign(h, high);
-
-    if (constrained_) {
-      if (CompareTraits::lt(l, low_))
-        CompareTraits::assign(l, low_);
-      if (CompareTraits::lt(high_, h))
-        CompareTraits::assign(h, high_);
+  bool erase(index_type low, index_type high) {
+    if (CompareTraits::lt(high, low)) {
+      throw std::invalid_argument("high must be greater than low");
     }
+    if (constrained_ &&
+        (CompareTraits::lt(low, low_) || CompareTraits::lt(high_, high))) {
+      throw std::out_of_range("range is outside of constrained bounds");
+    }
+    return erase_impl(low, high);
+  }
 
-    buckets_.erase(begin, end);
+  /**
+   * @brief Erase all buckets in the container
+   * @return true if any buckets were erased, false otherwise
+   */
+  bool erase() {
+    if (buckets_.empty()) {
+      return false;
+    }
+    buckets_.clear();
     return true;
+  }
+
+  /**
+   * @brief Find the first bucket that overlaps with the given range
+   * @param low Lower bound of the range
+   * @param high Upper bound of the range
+   * @return Iterator to the first overlapping bucket, or end() if none found
+   */
+  iterator find_range(index_type low, index_type high) {
+    if (CompareTraits::lt(high, low)) {
+      throw std::invalid_argument("high must be greater than low");
+    }
+    if (constrained_ &&
+        (CompareTraits::lt(low, low_) || CompareTraits::lt(high_, high))) {
+      throw std::out_of_range("range is outside of constrained bounds");
+    }
+    return find_first_overlapping_bucket(low, high);
   }
 
   /**
@@ -492,8 +478,8 @@ public:
    * @return Number of buckets that all the values were added to.
    */
   template <class OtherValueTraits>
-  [[nodiscard]] int spread(const bucket_list<Indices, Values, CompareTraits,
-                                             OtherValueTraits> &bucket_) {
+  int spread(const bucket_list<Indices, Values, CompareTraits, OtherValueTraits>
+                 &bucket_) {
     int added_to_bucket = 0;
 
     for (const_iterator p = bucket_.begin(); p != bucket_.end(); ++p) {
@@ -511,8 +497,8 @@ public:
    * @return Th number of buckets that all the values were added to.
    */
   template <class OtherValueTraits>
-  [[nodiscard]] int cover(const bucket_list<Indices, Values, CompareTraits,
-                                            OtherValueTraits> &bucket_) {
+  int cover(const bucket_list<Indices, Values, CompareTraits, OtherValueTraits>
+                &bucket_) {
     int added_to_bucket = 0;
 
     for (const_iterator p = bucket_.begin(); p != bucket_.end(); ++p) {
@@ -538,6 +524,45 @@ public:
         bucket_list<Indices, Values, CompareTraits, ValueTraits>, true>(
         *this, start, end);
   }
+
+protected:
+  /**
+   * @brief Erase all buckets in the range [low, high)
+   * @param low Lower bound of the range
+   * @param high Upper bound of the range
+   * @return true if any buckets were erased, false otherwise
+   */
+  bool erase_impl(index_type low, index_type high) {
+    iterator begin, end;
+    const bool b_spliced = splice(low, high, begin, end);
+
+    if (!b_spliced)
+      return false;
+
+    // Convert our custom iterators to the underlying list's iterator type
+    buckets_.erase(begin.get_underlying(), end.get_underlying());
+    return true;
+  }
+
+  /**
+   * @brief Find the first bucket that overlaps with the given range
+   * @param low Lower bound of the range
+   * @param high Upper bound of the range
+   * @return Iterator to the first overlapping bucket, or end() if none found
+   */
+  iterator find_first_overlapping_bucket(index_type low, index_type high) {
+    for (auto it = buckets_.begin(); it != buckets_.end(); ++it) {
+      if (CompareTraits::lt(it->low(), high) &&
+          CompareTraits::lt(low, it->high())) {
+        return iterator(it);
+      }
+    }
+    return end();
+  }
+
+  // Make these functions available to bucket_range
+  friend class bucket_range<mytype, false>;
+  friend class bucket_range<mytype, true>;
 
 private:
   bucket_list(const mytype &) = default;
