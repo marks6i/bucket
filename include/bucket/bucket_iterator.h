@@ -2,8 +2,51 @@
 
 #include <iterator>
 #include <type_traits>
+#include <map>
 
 namespace masutils {
+
+// Access policies
+template <typename Container>
+struct direct_access {
+  using iterator = typename Container::iterator;
+  using const_iterator = typename Container::const_iterator;
+  
+  template <typename Iter>
+  static auto& get_reference(Iter it) { return *it; }
+  
+  template <typename Iter>
+  static auto* get_pointer(Iter it) { return &(*it); }
+};
+
+template <typename Container>
+struct map_access {
+  using iterator = typename Container::iterator;
+  using const_iterator = typename Container::const_iterator;
+  
+  template <typename Iter>
+  static auto& get_reference(Iter it) { return it->second; }
+  
+  template <typename Iter>
+  static auto* get_pointer(Iter it) { return &(it->second); }
+};
+
+// Policy selector
+template <typename Container>
+struct access_policy_selector {
+  template <typename Key, typename Value, typename Compare, typename Alloc>
+  static constexpr bool is_map(std::map<Key, Value, Compare, Alloc>*) { return true; }
+  
+  static constexpr bool is_map(...) { return false; }
+  
+  using type = std::conditional_t<
+    is_map(static_cast<Container*>(nullptr)),
+    map_access<Container>,
+    direct_access<Container>>;
+};
+
+template <typename Container>
+using access_policy = typename access_policy_selector<Container>::type;
 
 /**
  * @brief Base iterator class for bucket containers
@@ -24,37 +67,49 @@ public:
   using iterator_category = IteratorCategory;
   using value_type = std::conditional_t<IsConst, const ValueType, ValueType>;
   using difference_type = std::ptrdiff_t;
-  using pointer = value_type *;
-  using reference = value_type &;
+  using pointer = value_type*;
+  using reference = value_type&;
+  
+  using iterator_type = std::conditional_t<IsConst, 
+    typename Container::const_iterator, 
+    typename Container::iterator>;
+
+  using access_policy_type = access_policy<Container>;
 
   bucket_iterator_base() = default;
-  explicit bucket_iterator_base(typename Container::iterator it) : it_(it) {}
-  bucket_iterator_base(const bucket_iterator_base &) = default;
-  bucket_iterator_base &operator=(const bucket_iterator_base &) = default;
+  explicit bucket_iterator_base(iterator_type it) : it_(it) {}
+  bucket_iterator_base(const bucket_iterator_base&) = default;
+  bucket_iterator_base& operator=(const bucket_iterator_base&) = default;
 
   // Allow conversion from non-const to const iterator
   template <bool OtherIsConst,
             typename = std::enable_if_t<IsConst && !OtherIsConst>>
   bucket_iterator_base(
       const bucket_iterator_base<Container, ValueType, OtherIsConst,
-                                 IteratorCategory> &other)
+                                 IteratorCategory>& other)
       : it_(other.get_underlying()) {}
 
   // Allow conversion from std::list iterator
   template <typename OtherIterator,
             typename = std::enable_if_t<std::is_convertible_v<
-                OtherIterator, typename Container::iterator>>>
+                OtherIterator, iterator_type>>>
   bucket_iterator_base(OtherIterator it) : it_(it) {}
 
   // Basic iterator operations
-  reference operator*() const { return *it_; }
-  pointer operator->() const { return &(*it_); }
+  reference operator*() const { 
+    return access_policy_type::get_reference(it_);
+  }
+  
+  pointer operator->() const { 
+    return access_policy_type::get_pointer(it_);
+  }
 
   // Forward iterator requirements
-  bucket_iterator_base &operator++() {
+  bucket_iterator_base& operator++() {
     ++it_;
     return *this;
   }
+  
   bucket_iterator_base operator++(int) {
     bucket_iterator_base tmp = *this;
     ++it_;
@@ -66,10 +121,11 @@ public:
       typename = std::enable_if_t<
           std::is_same_v<IteratorCategory, std::bidirectional_iterator_tag> ||
           std::is_same_v<IteratorCategory, std::random_access_iterator_tag>>>
-  bucket_iterator_base &operator--() {
+  bucket_iterator_base& operator--() {
     --it_;
     return *this;
   }
+  
   template <
       typename = std::enable_if_t<
           std::is_same_v<IteratorCategory, std::bidirectional_iterator_tag> ||
@@ -82,7 +138,7 @@ public:
 
   // Equality comparison
   template <typename OtherIterator>
-  bool operator==(const OtherIterator &other) const {
+  bool operator==(const OtherIterator& other) const {
     if constexpr (std::is_base_of_v<bucket_iterator_base,
                                     std::decay_t<OtherIterator>>) {
       return it_ == other.get_underlying();
@@ -90,297 +146,21 @@ public:
       return it_ == other;
     }
   }
+  
   template <typename OtherIterator>
-  bool operator!=(const OtherIterator &other) const {
-    if constexpr (std::is_base_of_v<bucket_iterator_base,
-                                    std::decay_t<OtherIterator>>) {
-      return it_ != other.get_underlying();
-    } else {
-      return it_ != other;
-    }
+  bool operator!=(const OtherIterator& other) const {
+    return !(*this == other);
   }
 
 protected:
-  // Protected access to underlying iterator for derived classes
-  typename Container::iterator &get_underlying() { return it_; }
-  const typename Container::iterator &get_underlying() const { return it_; }
+  iterator_type& get_underlying() { return it_; }
+  const iterator_type& get_underlying() const { return it_; }
 
 private:
-  typename Container::iterator it_;
+  iterator_type it_;
 };
 
-// Specialization for const iterators
-template <typename Container, typename ValueType, typename IteratorCategory>
-class bucket_iterator_base<Container, ValueType, true, IteratorCategory> {
-public:
-  // Add friend declaration for bucket_list
-  template <typename Indices, typename Values, typename CompareTraits,
-            typename ValueTraits>
-  friend class bucket_list;
-
-  using iterator_category = IteratorCategory;
-  using value_type = const ValueType;
-  using difference_type = std::ptrdiff_t;
-  using pointer = value_type *;
-  using reference = value_type &;
-
-  bucket_iterator_base() = default;
-  explicit bucket_iterator_base(typename Container::const_iterator it)
-      : it_(it) {}
-  bucket_iterator_base(const bucket_iterator_base &) = default;
-  bucket_iterator_base &operator=(const bucket_iterator_base &) = default;
-
-  // Allow conversion from non-const to const iterator
-  template <bool OtherIsConst,
-            typename = std::enable_if_t<true && !OtherIsConst>>
-  bucket_iterator_base(
-      const bucket_iterator_base<Container, ValueType, OtherIsConst,
-                                 IteratorCategory> &other)
-      : it_(other.get_underlying()) {}
-
-  // Allow conversion from std::list iterator
-  template <typename OtherIterator,
-            typename = std::enable_if_t<std::is_convertible_v<
-                OtherIterator, typename Container::const_iterator>>>
-  bucket_iterator_base(OtherIterator it) : it_(it) {}
-
-  // Basic iterator operations
-  reference operator*() const { return *it_; }
-  pointer operator->() const { return &(*it_); }
-
-  // Forward iterator requirements
-  bucket_iterator_base &operator++() {
-    ++it_;
-    return *this;
-  }
-  bucket_iterator_base operator++(int) {
-    bucket_iterator_base tmp = *this;
-    ++it_;
-    return tmp;
-  }
-
-  // Bidirectional iterator requirements (if supported)
-  template <
-      typename = std::enable_if_t<
-          std::is_same_v<IteratorCategory, std::bidirectional_iterator_tag> ||
-          std::is_same_v<IteratorCategory, std::random_access_iterator_tag>>>
-  bucket_iterator_base &operator--() {
-    --it_;
-    return *this;
-  }
-  template <
-      typename = std::enable_if_t<
-          std::is_same_v<IteratorCategory, std::bidirectional_iterator_tag> ||
-          std::is_same_v<IteratorCategory, std::random_access_iterator_tag>>>
-  bucket_iterator_base operator--(int) {
-    bucket_iterator_base tmp = *this;
-    --it_;
-    return tmp;
-  }
-
-  // Equality comparison
-  template <typename OtherIterator>
-  bool operator==(const OtherIterator &other) const {
-    if constexpr (std::is_base_of_v<bucket_iterator_base,
-                                    std::decay_t<OtherIterator>>) {
-      return it_ == other.get_underlying();
-    } else {
-      return it_ == other;
-    }
-  }
-  template <typename OtherIterator>
-  bool operator!=(const OtherIterator &other) const {
-    if constexpr (std::is_base_of_v<bucket_iterator_base,
-                                    std::decay_t<OtherIterator>>) {
-      return it_ != other.get_underlying();
-    } else {
-      return it_ != other;
-    }
-  }
-
-protected:
-  // Protected access to underlying iterator for derived classes
-  typename Container::const_iterator &get_underlying() { return it_; }
-  const typename Container::const_iterator &get_underlying() const {
-    return it_;
-  }
-
-private:
-  typename Container::const_iterator it_;
-};
-
-/**
- * @brief Specialization for map containers
- * @tparam Container The underlying map container type
- * @tparam ValueType The type of value being iterated over
- * @tparam IsConst Whether this is a const iterator
- * @tparam IteratorCategory The iterator category
- */
-template <typename Container, typename ValueType, bool IsConst,
-          typename IteratorCategory = std::bidirectional_iterator_tag>
-class bucket_map_iterator_base {
-public:
-  // Add friend declaration for bucket_map
-  template <typename Indices, typename Values, typename CompareTraits,
-            typename ValueTraits>
-  friend class bucket_map;
-
-  using iterator_category = IteratorCategory;
-  using value_type = std::conditional_t<IsConst, const ValueType, ValueType>;
-  using difference_type = std::ptrdiff_t;
-  using pointer = value_type *;
-  using reference = value_type &;
-
-  bucket_map_iterator_base() = default;
-  explicit bucket_map_iterator_base(typename Container::iterator it)
-      : it_(it) {}
-  bucket_map_iterator_base(const bucket_map_iterator_base &) = default;
-  bucket_map_iterator_base &
-  operator=(const bucket_map_iterator_base &) = default;
-
-  // Allow conversion from non-const to const iterator
-  template <bool OtherIsConst,
-            typename = std::enable_if_t<IsConst && !OtherIsConst>>
-  bucket_map_iterator_base(
-      const bucket_map_iterator_base<Container, ValueType, OtherIsConst,
-                                     IteratorCategory> &other)
-      : it_(other.get_underlying()) {}
-
-  // Map-specific dereference
-  reference operator*() const { return it_->second; }
-  pointer operator->() const { return &(it_->second); }
-
-  // Forward iterator requirements
-  bucket_map_iterator_base &operator++() {
-    ++it_;
-    return *this;
-  }
-  bucket_map_iterator_base operator++(int) {
-    bucket_map_iterator_base tmp = *this;
-    ++it_;
-    return tmp;
-  }
-
-  // Bidirectional iterator requirements (if supported)
-  template <
-      typename = std::enable_if_t<
-          std::is_same_v<IteratorCategory, std::bidirectional_iterator_tag> ||
-          std::is_same_v<IteratorCategory, std::random_access_iterator_tag>>>
-  bucket_map_iterator_base &operator--() {
-    --it_;
-    return *this;
-  }
-  template <
-      typename = std::enable_if_t<
-          std::is_same_v<IteratorCategory, std::bidirectional_iterator_tag> ||
-          std::is_same_v<IteratorCategory, std::random_access_iterator_tag>>>
-  bucket_map_iterator_base operator--(int) {
-    bucket_map_iterator_base tmp = *this;
-    --it_;
-    return tmp;
-  }
-
-  // Equality comparison
-  bool operator==(const bucket_map_iterator_base &other) const {
-    return it_ == other.it_;
-  }
-  bool operator!=(const bucket_map_iterator_base &other) const {
-    return it_ != other.it_;
-  }
-
-protected:
-  // Protected access to underlying iterator for derived classes
-  typename Container::iterator &get_underlying() { return it_; }
-  const typename Container::iterator &get_underlying() const { return it_; }
-
-private:
-  typename Container::iterator it_;
-};
-
-// Specialization for const map iterators
-template <typename Container, typename ValueType, typename IteratorCategory>
-class bucket_map_iterator_base<Container, ValueType, true, IteratorCategory> {
-public:
-  // Add friend declaration for bucket_map
-  template <typename Indices, typename Values, typename CompareTraits,
-            typename ValueTraits>
-  friend class bucket_map;
-
-  using iterator_category = IteratorCategory;
-  using value_type = const ValueType;
-  using difference_type = std::ptrdiff_t;
-  using pointer = value_type *;
-  using reference = value_type &;
-
-  bucket_map_iterator_base() = default;
-  explicit bucket_map_iterator_base(typename Container::const_iterator it)
-      : it_(it) {}
-  bucket_map_iterator_base(const bucket_map_iterator_base &) = default;
-  bucket_map_iterator_base &
-  operator=(const bucket_map_iterator_base &) = default;
-
-  // Allow conversion from non-const to const iterator
-  template <bool OtherIsConst,
-            typename = std::enable_if_t<true && !OtherIsConst>>
-  bucket_map_iterator_base(
-      const bucket_map_iterator_base<Container, ValueType, OtherIsConst,
-                                     IteratorCategory> &other)
-      : it_(other.get_underlying()) {}
-
-  // Map-specific dereference
-  reference operator*() const { return it_->second; }
-  pointer operator->() const { return &(it_->second); }
-
-  // Forward iterator requirements
-  bucket_map_iterator_base &operator++() {
-    ++it_;
-    return *this;
-  }
-  bucket_map_iterator_base operator++(int) {
-    bucket_map_iterator_base tmp = *this;
-    ++it_;
-    return tmp;
-  }
-
-  // Bidirectional iterator requirements (if supported)
-  template <
-      typename = std::enable_if_t<
-          std::is_same_v<IteratorCategory, std::bidirectional_iterator_tag> ||
-          std::is_same_v<IteratorCategory, std::random_access_iterator_tag>>>
-  bucket_map_iterator_base &operator--() {
-    --it_;
-    return *this;
-  }
-  template <
-      typename = std::enable_if_t<
-          std::is_same_v<IteratorCategory, std::bidirectional_iterator_tag> ||
-          std::is_same_v<IteratorCategory, std::random_access_iterator_tag>>>
-  bucket_map_iterator_base operator--(int) {
-    bucket_map_iterator_base tmp = *this;
-    --it_;
-    return tmp;
-  }
-
-  // Equality comparison
-  bool operator==(const bucket_map_iterator_base &other) const {
-    return it_ == other.it_;
-  }
-  bool operator!=(const bucket_map_iterator_base &other) const {
-    return it_ != other.it_;
-  }
-
-protected:
-  // Protected access to underlying iterator for derived classes
-  typename Container::const_iterator &get_underlying() { return it_; }
-  const typename Container::const_iterator &get_underlying() const {
-    return it_;
-  }
-
-private:
-  typename Container::const_iterator it_;
-};
-
-// Alias templates for convenience
+// Convenience aliases
 template <typename Container, typename ValueType,
           typename IteratorCategory = std::bidirectional_iterator_tag>
 using bucket_iterator =
@@ -390,15 +170,5 @@ template <typename Container, typename ValueType,
           typename IteratorCategory = std::bidirectional_iterator_tag>
 using bucket_const_iterator =
     bucket_iterator_base<Container, ValueType, true, IteratorCategory>;
-
-template <typename Container, typename ValueType,
-          typename IteratorCategory = std::bidirectional_iterator_tag>
-using bucket_map_iterator =
-    bucket_map_iterator_base<Container, ValueType, false, IteratorCategory>;
-
-template <typename Container, typename ValueType,
-          typename IteratorCategory = std::bidirectional_iterator_tag>
-using bucket_map_const_iterator =
-    bucket_map_iterator_base<Container, ValueType, true, IteratorCategory>;
 
 } // namespace masutils
