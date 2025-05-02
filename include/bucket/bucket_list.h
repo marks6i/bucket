@@ -201,7 +201,7 @@ public:
   ~bucket_list() = default;
 
   /**
-   * @brief Default move constructor.
+   * @brief Default move assignment operator.
    * @param  Original buckets collection.
    * @return New buckets collection.
    */

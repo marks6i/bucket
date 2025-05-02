@@ -69,5 +69,8 @@ compile_commands.json
 CTestTestfile.cmake
 _deps
 
+# Temporary files
+*.tmp
+
 # External dependencies
 external/ 

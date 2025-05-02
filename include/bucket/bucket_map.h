@@ -107,10 +107,9 @@ public:
   using bucket_type_map = std::map<index_type, bucket_type>;
 
   // Update iterator type definitions
-  using iterator =
-      bucket_map_iterator_base<bucket_type_map, bucket_type, false>;
+  using iterator = bucket_iterator_base<bucket_type_map, bucket_type, false>;
   using const_iterator =
-      bucket_map_iterator_base<bucket_type_map, bucket_type, true>;
+      bucket_iterator_base<bucket_type_map, bucket_type, true>;
   using reverse_iterator = std::reverse_iterator<iterator>;
   using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
@@ -144,86 +143,6 @@ public:
     return const_reverse_iterator(begin());
   }
 
-  // Range operations
-  [[nodiscard]] iterator find_range(index_type low, index_type high) {
-    if (CompareTraits::lt(high, low)) {
-      throw std::invalid_argument("high must be greater than low");
-    }
-    if (constrained_ &&
-        (CompareTraits::lt(low, low_) || CompareTraits::lt(high_, high))) {
-      throw std::out_of_range("range is outside of constrained bounds");
-    }
-    return find_first_overlapping_bucket(low, high);
-  }
-
-  [[nodiscard]] const_iterator find_range(index_type low,
-                                          index_type high) const {
-    auto it = buckets_.lower_bound(low);
-    if (it != buckets_.end() && CompareTraits::lt(it->first, high)) {
-      return const_iterator(it);
-    }
-    return end();
-  }
-
-  using size_type = std::size_t;
-
-  // Helper to create a bucket
-  [[nodiscard]] static constexpr bucket_type
-  make_bucket(index_type low, index_type high, const value_container &values) {
-    return bucket_type(low, high, values);
-  }
-
-  // Helper to create a bucket
-  static bucket_type create_bucket(index_type index) {
-    return bucket_type(index);
-  }
-
-  /**
-   * @brief Constructor for a constrained bucket collection.
-   * @param low The lower bound.
-   * @param high The upper bound.
-   * @throw std::invalid_argument if the bounds are not in the correct order.
-   */
-  explicit bucket_map(index_type low, index_type high)
-      : low_(low), high_(high), constrained_(true) {
-    if (CompareTraits::lt(high_, low_))
-      throw std::invalid_argument("Arguments not in correct order.");
-  }
-
-  /**
-   * @brief Default constructor.
-   */
-  explicit bucket_map() noexcept(
-      std::is_nothrow_default_constructible<bucket_type>::value &&
-      std::is_nothrow_default_constructible<index_type>::value &&
-      noexcept(false))
-      : low_(), high_(), constrained_(false) {}
-
-  /**
-   * @brief Default destructor.
-   */
-  ~bucket_map() = default;
-
-  /**
-   * @brief Default move constructor.
-   */
-  bucket_map(bucket_map &&) noexcept = default;
-
-  /**
-   * @brief Default copy constructor.
-   */
-  bucket_map(const bucket_map &) = default;
-
-  /**
-   * @brief Default move assignment operator.
-   */
-  bucket_map &operator=(bucket_map &&) noexcept = default;
-
-  /**
-   * @brief Default copy assignment operator.
-   */
-  bucket_map &operator=(const bucket_map &) = default;
-
   // Capacity methods
   /**
    * @brief Returns the number of buckets in the collection.
@@ -241,66 +160,57 @@ public:
     return buckets_.empty();
   }
 
-  // Modifiers
-  void clear() noexcept { buckets_.clear(); }
-
-  // Insert methods
-  std::pair<iterator, bool> insert(const bucket_type &bucket) {
-    auto [it, inserted] = buckets_.insert({bucket.index(), bucket});
-    return {iterator(it), inserted};
-  }
-
-  std::pair<iterator, bool> insert(bucket_type &&bucket) {
-    auto [it, inserted] = buckets_.insert({bucket.index(), std::move(bucket)});
-    return {iterator(it), inserted};
-  }
-
-  template <class InputIt> void insert(InputIt first, InputIt last) {
-    for (auto it = first; it != last; ++it) {
-      buckets_.insert({it->index(), *it});
+  // Range operations
+  [[nodiscard]] iterator find_range(index_type low, index_type high) {
+    if (CompareTraits::lt(high, low)) {
+      throw std::invalid_argument("high must be greater than low");
     }
+    if (constrained_ &&
+        (CompareTraits::lt(low, low_) || CompareTraits::lt(high_, high))) {
+      throw std::out_of_range("range is outside of constrained bounds");
+    }
+    return find_first_overlapping_bucket(low, high);
   }
 
-  // Erase methods
-  iterator erase(const_iterator pos) {
-    return iterator(buckets_.erase(pos.get_underlying()));
+  [[nodiscard]] const_iterator find_range(index_type low,
+                                          index_type high) const {
+    if (CompareTraits::lt(high, low)) {
+      throw std::invalid_argument("high must be greater than low");
+    }
+    if (constrained_ &&
+        (CompareTraits::lt(low, low_) || CompareTraits::lt(high_, high))) {
+      throw std::out_of_range("range is outside of constrained bounds");
+    }
+    return find_first_overlapping_bucket(low, high);
   }
-  iterator erase(const_iterator first, const_iterator last) {
-    return iterator(
-        buckets_.erase(first.get_underlying(), last.get_underlying()));
-  }
-  size_type erase(const index_type &index) { return buckets_.erase(index); }
 
-  // Lookup methods
-  iterator find(const index_type &index) {
-    return iterator(buckets_.find(index));
+  /**
+   * @brief Erase all buckets in the range [low, high)
+   * @param low Lower bound of the range
+   * @param high Upper bound of the range
+   * @return true if any buckets were erased, false otherwise
+   */
+  bool erase(index_type low, index_type high) {
+    if (CompareTraits::lt(high, low)) {
+      throw std::invalid_argument("high must be greater than low");
+    }
+    if (constrained_ &&
+        (CompareTraits::lt(low, low_) || CompareTraits::lt(high_, high))) {
+      throw std::out_of_range("range is outside of constrained bounds");
+    }
+    return erase_impl(low, high);
   }
-  const_iterator find(const index_type &index) const {
-    return const_iterator(buckets_.find(index));
-  }
-  size_type count(const index_type &index) const {
-    return buckets_.count(index);
-  }
-  iterator lower_bound(const index_type &index) {
-    return iterator(buckets_.lower_bound(index));
-  }
-  const_iterator lower_bound(const index_type &index) const {
-    return const_iterator(buckets_.lower_bound(index));
-  }
-  iterator upper_bound(const index_type &index) {
-    return iterator(buckets_.upper_bound(index));
-  }
-  const_iterator upper_bound(const index_type &index) const {
-    return const_iterator(buckets_.upper_bound(index));
-  }
-  std::pair<iterator, iterator> equal_range(const index_type &index) {
-    auto [first, last] = buckets_.equal_range(index);
-    return {iterator(first), iterator(last)};
-  }
-  std::pair<const_iterator, const_iterator>
-  equal_range(const index_type &index) const {
-    auto [first, last] = buckets_.equal_range(index);
-    return {const_iterator(first), const_iterator(last)};
+
+  /**
+   * @brief Erase all buckets in the container
+   * @return true if any buckets were erased, false otherwise
+   */
+  bool erase() {
+    if (buckets_.empty()) {
+      return false;
+    }
+    buckets_.clear();
+    return true;
   }
 
   // Bound accessors
@@ -337,9 +247,40 @@ public:
   }
 
   /**
-   * @brief Returns the lower bound of a constrained bucket collection.
-   * @return The lower bound.
-   * @throw std::runtime_error if the collection is not constrained.
+   * @brief Constructor of an unconstrained buckets collection.
+   */
+  explicit bucket_map() noexcept(
+      std::is_nothrow_default_constructible<bucket_type>::value &&
+      std::is_nothrow_default_constructible<index_type>::value &&
+      noexcept(false))
+      : low_(), high_(), constrained_(false) {}
+
+  /**
+   * @brief Constructor of a constrained buckets collection.
+   * @param low Lower bounds of the buckets collection.
+   * @param high Upper bounds of the buckets collection.
+   */
+  explicit bucket_map(index_type low, index_type high)
+      : low_(low), high_(high), constrained_(true) {
+    if (CompareTraits::lt(high_, low_))
+      throw std::invalid_argument("Arguments not in correct order.");
+  }
+
+  /**
+   * @brief Default destructor.
+   */
+  ~bucket_map() = default;
+
+  /**
+   * @brief Default move constructor.
+   * @param  Original buckets collection.
+   * @return New buckets collection.
+   */
+  bucket_map &operator=(bucket_map &&) noexcept = default;
+
+  /**
+   * @brief Returns the lower bound of a constrained buckets
+   * or a run-time exception if not constrained.
    */
   [[nodiscard]] index_type lower_bound() const {
     if (!constrained_) {
@@ -349,9 +290,8 @@ public:
   }
 
   /**
-   * @brief Returns the upper bound of a constrained bucket collection.
-   * @return The upper bound.
-   * @throw std::runtime_error if the collection is not constrained.
+   * @brief Returns the upper bound of a constrained buckets
+   * or a run-time exception if not constrained.
    */
   [[nodiscard]] index_type upper_bound() const {
     if (!constrained_) {
@@ -364,24 +304,8 @@ public:
   int spread(index_type low, index_type high, value_type value) {
     value_container container_;
     ValueTraits::add(container_, value);
-
-    iterator begin, end;
-    const bool b_spliced = splice(low, high, begin, end);
-
-    if (!b_spliced)
-      return 0;
-
-    int added_to_bucket = 0;
-
-    // Add the value to all buckets in the range
-    for (auto it = begin; it != end; ++it) {
-      bucket_type &bucket =
-          it.it_->second; // Access the underlying map iterator
-      ValueTraits::append(bucket.values(), container_);
-      added_to_bucket++;
-    }
-
-    return added_to_bucket;
+    bucket_type bucket_ = make_bucket(low, high, container_);
+    return spread(bucket_);
   }
 
   // Cover operation
@@ -390,18 +314,6 @@ public:
     ValueTraits::add(container_, value);
     bucket_type bucket_ = make_bucket(low, high, container_);
     return cover(bucket_);
-  }
-
-  // Erase operation
-  bool erase(index_type low, index_type high) {
-    if (CompareTraits::lt(high, low)) {
-      throw std::invalid_argument("high must be greater than low");
-    }
-    if (constrained_ &&
-        (CompareTraits::lt(low, low_) || CompareTraits::lt(high_, high))) {
-      throw std::out_of_range("range is outside of constrained bounds");
-    }
-    return erase_impl(low, high);
   }
 
   // Add a method to create a bucket_range
@@ -416,18 +328,6 @@ public:
   range(index_type start, index_type end) const {
     return bucket_range<bucket_map<Indices, Values, CompareTraits, ValueTraits>,
                         true>(*this, start, end);
-  }
-
-  /**
-   * @brief Erase all buckets in the container
-   * @return true if any buckets were erased, false otherwise
-   */
-  bool erase() {
-    if (buckets_.empty()) {
-      return false;
-    }
-    buckets_.clear();
-    return true;
   }
 
 protected:

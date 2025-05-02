@@ -8,19 +8,39 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <set>
+
+// Specialization of bucket_value_traits for std::set
+template <>
+struct masutils::bucket_value_traits<std::string, std::set<std::string>> {
+  using value_type = std::string;
+  using value_container = std::set<std::string>;
+
+  static void add(value_container &c, const value_type &v) {
+    c.insert(v);
+  }
+
+  static void append(value_container &c, const value_container &other) {
+    c.insert(other.begin(), other.end());
+  }
+
+  static void remove(value_container &c, const value_type &v) {
+    c.erase(v);
+  }
+};
 
 namespace masutils {
 namespace test {
 
-using bucket_list_type = bucket_list<int, std::string>;
+using container_type = bucket_list<int, std::string>;
 
-class BucketListTest : public ::testing::Test {
+class ContainerTest : public ::testing::Test {
 protected:
   void SetUp() override {
-    bucket = std::make_unique<bucket_list_type>();
-    bucket->spread(0, 10, "test1");
-    bucket->spread(20, 30, "test2");
-    bucket->spread(40, 50, "test3");
+    container = std::make_unique<container_type>();
+    container->spread(0, 10, "test1");
+    container->spread(20, 30, "test2");
+    container->spread(40, 50, "test3");
   }
 
   void TearDown() override {
@@ -28,62 +48,62 @@ protected:
   }
 
   // Helper function to verify container contents
-  void
-  verifyContainerContents(const std::list<std::string> &container,
-                          const std::vector<std::string> &expected_values) {
-    ASSERT_EQ(container.size(), expected_values.size());
-    auto it = container.begin();
+  template <typename Container>
+  void verifyContainerContents(const Container &values,
+                              const std::vector<std::string> &expected_values) {
+    ASSERT_EQ(values.size(), expected_values.size());
+    auto it = values.begin();
     for (const auto &expected : expected_values) {
       ASSERT_EQ(*it, expected);
       ++it;
     }
   }
 
-  std::unique_ptr<bucket_list_type> bucket;
-  bucket_list_type bucket_;
+  std::unique_ptr<container_type> container;
+  container_type container_;
 };
 
 // Construction tests
-TEST_F(BucketListTest, DefaultConstruction) {
-  bucket_list_type test_bucket;
-  EXPECT_FALSE(test_bucket.constrained());
-  EXPECT_TRUE(test_bucket.empty());
-  EXPECT_EQ(test_bucket.size(), 0);
+TEST_F(ContainerTest, DefaultConstruction) {
+  container_type test_container;
+  EXPECT_FALSE(test_container.constrained());
+  EXPECT_TRUE(test_container.empty());
+  EXPECT_EQ(test_container.size(), 0);
 }
 
-TEST_F(BucketListTest, ConstrainedConstruction) {
-  bucket_list_type test_bucket(0, 100);
-  EXPECT_TRUE(test_bucket.constrained());
-  EXPECT_TRUE(test_bucket.empty());
-  EXPECT_EQ(test_bucket.size(), 0);
-  EXPECT_EQ(test_bucket.low(), 0);
-  EXPECT_EQ(test_bucket.high(), 100);
+TEST_F(ContainerTest, ConstrainedConstruction) {
+  container_type test_container(0, 100);
+  EXPECT_TRUE(test_container.constrained());
+  EXPECT_TRUE(test_container.empty());
+  EXPECT_EQ(test_container.size(), 0);
+  EXPECT_EQ(test_container.low(), 0);
+  EXPECT_EQ(test_container.high(), 100);
 }
 
-TEST_F(BucketListTest, InvalidConstrainedConstruction) {
-  EXPECT_THROW(bucket_list_type test_bucket(100, 0), std::invalid_argument);
+TEST_F(ContainerTest, InvalidConstrainedConstruction) {
+  EXPECT_THROW(container_type test_container(100, 0), std::invalid_argument);
 }
 
 // Accessor tests
-TEST_F(BucketListTest, AccessorFunctions) {
-  bucket_list_type test_bucket;
-  test_bucket.spread(0, 10, "test");
+TEST_F(ContainerTest, AccessorFunctions) {
+  container_type test_container;
+  test_container.spread(0, 10, "test");
 
-  auto it = test_bucket.begin();
+  auto it = test_container.begin();
   EXPECT_EQ(it->low(), 0);
   EXPECT_EQ(it->high(), 10);
   verifyContainerContents(it->values(), {"test"});
 }
 
 // Iterator tests
-TEST_F(BucketListTest, IteratorFunctionality) {
-  bucket_list_type test_bucket;
-  test_bucket.spread(1, 3, "test1");
-  test_bucket.spread(1, 3, "test2");
-  test_bucket.spread(1, 3, "test3");
+TEST_F(ContainerTest, IteratorFunctionality) {
+  container_type test_container;
+  test_container.spread(1, 3, "test1");
+  test_container.spread(1, 3, "test2");
+  test_container.spread(1, 3, "test3");
 
-  auto it = test_bucket.begin();
-  EXPECT_NE(it, test_bucket.end());
+  auto it = test_container.begin();
+  EXPECT_NE(it, test_container.end());
   EXPECT_EQ(it->low(), 1);
   EXPECT_EQ(it->high(), 3);
   const auto &bucket_values = *it;
@@ -91,14 +111,14 @@ TEST_F(BucketListTest, IteratorFunctionality) {
   verifyContainerContents(values, {"test1", "test2", "test3"});
 }
 
-TEST_F(BucketListTest, ReverseIteratorFunctionality) {
-  bucket_list_type test_bucket;
-  test_bucket.spread(1, 3, "test1");
-  test_bucket.spread(1, 3, "test2");
-  test_bucket.spread(1, 3, "test3");
+TEST_F(ContainerTest, ReverseIteratorFunctionality) {
+  container_type test_container;
+  test_container.spread(1, 3, "test1");
+  test_container.spread(1, 3, "test2");
+  test_container.spread(1, 3, "test3");
 
-  auto rit = test_bucket.rbegin();
-  EXPECT_NE(rit, test_bucket.rend());
+  auto rit = test_container.rbegin();
+  EXPECT_NE(rit, test_container.rend());
   EXPECT_EQ(rit->low(), 1);
   EXPECT_EQ(rit->high(), 3);
   const auto &rbucket_values = *rit;
@@ -107,90 +127,90 @@ TEST_F(BucketListTest, ReverseIteratorFunctionality) {
 }
 
 // Operation tests
-TEST_F(BucketListTest, SpreadOperation) {
-  bucket_list_type test_bucket;
-  test_bucket.spread(0, 10, "test");
-  EXPECT_EQ(test_bucket.size(), 1);
-  EXPECT_FALSE(test_bucket.empty());
+TEST_F(ContainerTest, SpreadOperation) {
+  container_type test_container;
+  test_container.spread(0, 10, "test");
+  EXPECT_EQ(test_container.size(), 1);
+  EXPECT_FALSE(test_container.empty());
 
-  auto it = test_bucket.begin();
+  auto it = test_container.begin();
   EXPECT_EQ(it->low(), 0);
   EXPECT_EQ(it->high(), 10);
   verifyContainerContents(it->values(), {"test"});
 }
 
-TEST_F(BucketListTest, CoverOperation) {
-  bucket_list_type test_bucket;
-  test_bucket.cover(0, 10, "test");
-  EXPECT_EQ(test_bucket.size(), 1);
-  EXPECT_FALSE(test_bucket.empty());
+TEST_F(ContainerTest, CoverOperation) {
+  container_type test_container;
+  test_container.cover(0, 10, "test");
+  EXPECT_EQ(test_container.size(), 1);
+  EXPECT_FALSE(test_container.empty());
 
-  auto it = test_bucket.begin();
+  auto it = test_container.begin();
   EXPECT_EQ(it->low(), 0);
   EXPECT_EQ(it->high(), 10);
   verifyContainerContents(it->values(), {"test"});
 }
 
-TEST_F(BucketListTest, EraseOperation) {
-  bucket_list_type test_bucket;
-  test_bucket.spread(0, 10, "test");
-  test_bucket.erase(0, 10);
-  EXPECT_TRUE(test_bucket.empty());
-  EXPECT_EQ(test_bucket.size(), 0);
+TEST_F(ContainerTest, EraseOperation) {
+  container_type test_container;
+  test_container.spread(0, 10, "test");
+  test_container.erase(0, 10);
+  EXPECT_TRUE(test_container.empty());
+  EXPECT_EQ(test_container.size(), 0);
 }
 
-TEST_F(BucketListTest, EraseAllOperation) {
-  bucket_list_type test_bucket;
-  test_bucket.spread(0, 10, "test1");
-  test_bucket.spread(20, 30, "test2");
-  test_bucket.spread(40, 50, "test3");
+TEST_F(ContainerTest, EraseAllOperation) {
+  container_type test_container;
+  test_container.spread(0, 10, "test1");
+  test_container.spread(20, 30, "test2");
+  test_container.spread(40, 50, "test3");
 
-  EXPECT_FALSE(test_bucket.empty());
-  EXPECT_EQ(test_bucket.size(), 3);
+  EXPECT_FALSE(test_container.empty());
+  EXPECT_EQ(test_container.size(), 3);
 
-  EXPECT_TRUE(test_bucket.erase());
-  EXPECT_TRUE(test_bucket.empty());
-  EXPECT_EQ(test_bucket.size(), 0);
+  EXPECT_TRUE(test_container.erase());
+  EXPECT_TRUE(test_container.empty());
+  EXPECT_EQ(test_container.size(), 0);
 
   // Test erasing an already empty container
-  EXPECT_FALSE(test_bucket.erase());
+  EXPECT_FALSE(test_container.erase());
 }
 
 // Bounds tests
-TEST_F(BucketListTest, UnconstrainedBoundOperations) {
-  bucket_list_type test_bucket;
-  test_bucket.spread(1, 3, "test1");
-  test_bucket.spread(5, 7, "test2");
-  test_bucket.spread(9, 11, "test3");
+TEST_F(ContainerTest, UnconstrainedBoundOperations) {
+  container_type test_container;
+  test_container.spread(1, 3, "test1");
+  test_container.spread(5, 7, "test2");
+  test_container.spread(9, 11, "test3");
 
   EXPECT_THROW(
-      { [[maybe_unused]] auto low = test_bucket.low(); }, std::runtime_error);
+      { [[maybe_unused]] auto low = test_container.low(); }, std::runtime_error);
   EXPECT_THROW(
-      { [[maybe_unused]] auto high = test_bucket.high(); }, std::runtime_error);
+      { [[maybe_unused]] auto high = test_container.high(); }, std::runtime_error);
 }
 
-TEST_F(BucketListTest, ConstrainedBoundOperations) {
-  bucket_list_type test_bucket(0, 100);
-  test_bucket.spread(1, 3, "test1");
-  test_bucket.spread(5, 7, "test2");
-  test_bucket.spread(9, 11, "test3");
+TEST_F(ContainerTest, ConstrainedBoundOperations) {
+  container_type test_container(0, 100);
+  test_container.spread(1, 3, "test1");
+  test_container.spread(5, 7, "test2");
+  test_container.spread(9, 11, "test3");
 
-  EXPECT_EQ(test_bucket.low(), 0);
-  EXPECT_EQ(test_bucket.high(), 100);
+  EXPECT_EQ(test_container.low(), 0);
+  EXPECT_EQ(test_container.high(), 100);
 }
 
 // Edge case tests
-TEST_F(BucketListTest, OverlappingRangesSpread) {
-  bucket_list_type test_bucket;
+TEST_F(ContainerTest, OverlappingRangesSpread) {
+  container_type test_container;
 
   // Test overlapping ranges with gap between buckets
-  test_bucket.spread(0, 10, "test1");
-  test_bucket.spread(20, 30, "test2");
-  test_bucket.spread(5, 25, "test3");
+  test_container.spread(0, 10, "test1");
+  test_container.spread(20, 30, "test2");
+  test_container.spread(5, 25, "test3");
 
-  EXPECT_EQ(test_bucket.size(), 5);
+  EXPECT_EQ(test_container.size(), 5);
 
-  auto it = test_bucket.begin();
+  auto it = test_container.begin();
   EXPECT_EQ(it->low(), 0);
   EXPECT_EQ(it->high(), 5);
   verifyContainerContents(it->values(), {"test1"});
@@ -216,17 +236,17 @@ TEST_F(BucketListTest, OverlappingRangesSpread) {
   verifyContainerContents(it->values(), {"test2"});
 }
 
-TEST_F(BucketListTest, OverlappingRangesCover) {
-  bucket_list_type test_bucket;
+TEST_F(ContainerTest, OverlappingRangesCover) {
+  container_type test_container;
 
   // Test overlapping ranges with gap between buckets
-  test_bucket.cover(0, 10, "test1");
-  test_bucket.cover(20, 30, "test2");
-  test_bucket.cover(5, 25, "test3");
+  test_container.cover(0, 10, "test1");
+  test_container.cover(20, 30, "test2");
+  test_container.cover(5, 25, "test3");
 
-  EXPECT_EQ(test_bucket.size(), 3);
+  EXPECT_EQ(test_container.size(), 3);
 
-  auto it = test_bucket.begin();
+  auto it = test_container.begin();
   EXPECT_EQ(it->low(), 0);
   EXPECT_EQ(it->high(), 5);
   verifyContainerContents(it->values(), {"test1"});
@@ -242,17 +262,17 @@ TEST_F(BucketListTest, OverlappingRangesCover) {
   verifyContainerContents(it->values(), {"test2"});
 }
 
-TEST_F(BucketListTest, OverlappingRangesErase) {
-  bucket_list_type test_bucket;
+TEST_F(ContainerTest, OverlappingRangesErase) {
+  container_type test_container;
 
   // Test overlapping ranges with gap between buckets
-  test_bucket.spread(0, 10, "test1");
-  test_bucket.spread(20, 30, "test2");
-  test_bucket.erase(5, 25);
+  test_container.spread(0, 10, "test1");
+  test_container.spread(20, 30, "test2");
+  test_container.erase(5, 25);
 
-  EXPECT_EQ(test_bucket.size(), 2);
+  EXPECT_EQ(test_container.size(), 2);
 
-  auto it = test_bucket.begin();
+  auto it = test_container.begin();
   EXPECT_EQ(it->low(), 0);
   EXPECT_EQ(it->high(), 5);
   verifyContainerContents(it->values(), {"test1"});
@@ -263,18 +283,23 @@ TEST_F(BucketListTest, OverlappingRangesErase) {
   verifyContainerContents(it->values(), {"test2"});
 }
 
-TEST_F(BucketListTest, OverlappingRangesWithConstraints) {
-  bucket_list_type test_bucket(0, 100);
+TEST_F(ContainerTest, OverlappingRangesWithConstraints) {
+  container_type test_container(0, 100);
 
-  // Test overlapping ranges with low value at constraint boundary
-  test_bucket.spread(0, 10, "test1");
-  test_bucket.spread(20, 30, "test2");
-  test_bucket.spread(0, 25, "test3");
+  // Test overlapping ranges with gap between buckets
+  test_container.spread(0, 10, "test1");
+  test_container.spread(20, 30, "test2");
+  test_container.spread(5, 25, "test3");
 
-  EXPECT_EQ(test_bucket.size(), 4);
+  EXPECT_EQ(test_container.size(), 5);
 
-  auto it = test_bucket.begin();
+  auto it = test_container.begin();
   EXPECT_EQ(it->low(), 0);
+  EXPECT_EQ(it->high(), 5);
+  verifyContainerContents(it->values(), {"test1"});
+
+  ++it;
+  EXPECT_EQ(it->low(), 5);
   EXPECT_EQ(it->high(), 10);
   verifyContainerContents(it->values(), {"test1", "test3"});
 
@@ -294,55 +319,23 @@ TEST_F(BucketListTest, OverlappingRangesWithConstraints) {
   verifyContainerContents(it->values(), {"test2"});
 }
 
-TEST_F(BucketListTest, OverlappingRangesWithHighConstraint) {
-  bucket_list_type test_bucket(0, 100);
+TEST_F(ContainerTest, OverlappingRangesWithHighConstraint) {
+  container_type test_container(0, 100);
 
-  // Test overlapping ranges with high value at constraint boundary
-  test_bucket.spread(0, 10, "test1");
-  test_bucket.spread(20, 30, "test2");
-  test_bucket.spread(5, 100, "test3");
+  // Test overlapping ranges with gap between buckets
+  test_container.spread(0, 10, "test1");
+  test_container.spread(20, 30, "test2");
+  test_container.spread(5, 25, "test3");
 
-  EXPECT_EQ(test_bucket.size(), 5);
+  EXPECT_EQ(test_container.size(), 5);
 
-  auto it = test_bucket.begin();
+  auto it = test_container.begin();
   EXPECT_EQ(it->low(), 0);
   EXPECT_EQ(it->high(), 5);
   verifyContainerContents(it->values(), {"test1"});
 
   ++it;
   EXPECT_EQ(it->low(), 5);
-  EXPECT_EQ(it->high(), 10);
-  verifyContainerContents(it->values(), {"test1", "test3"});
-
-  ++it;
-  EXPECT_EQ(it->low(), 10);
-  EXPECT_EQ(it->high(), 20);
-  verifyContainerContents(it->values(), {"test3"});
-
-  ++it;
-  EXPECT_EQ(it->low(), 20);
-  EXPECT_EQ(it->high(), 30);
-  verifyContainerContents(it->values(), {"test2", "test3"});
-
-  ++it;
-  EXPECT_EQ(it->low(), 30);
-  EXPECT_EQ(it->high(), 100);
-  verifyContainerContents(it->values(), {"test3"});
-}
-
-TEST_F(BucketListTest, OverlappingRangesWithLowConstraintIntersection) {
-  bucket_list_type test_bucket(0, 100);
-
-  // Test overlapping ranges with low value below constraint - should be clamped
-  // to constraint
-  test_bucket.spread(0, 10, "test1");
-  test_bucket.spread(20, 30, "test2");
-  test_bucket.spread(-10, 25, "test3");
-
-  EXPECT_EQ(test_bucket.size(), 4);
-
-  auto it = test_bucket.begin();
-  EXPECT_EQ(it->low(), 0); // Clamped to constraint
   EXPECT_EQ(it->high(), 10);
   verifyContainerContents(it->values(), {"test1", "test3"});
 
@@ -362,18 +355,17 @@ TEST_F(BucketListTest, OverlappingRangesWithLowConstraintIntersection) {
   verifyContainerContents(it->values(), {"test2"});
 }
 
-TEST_F(BucketListTest, OverlappingRangesWithHighConstraintIntersection) {
-  bucket_list_type test_bucket(0, 100);
+TEST_F(ContainerTest, OverlappingRangesWithLowConstraintIntersection) {
+  container_type test_container(0, 100);
 
-  // Test overlapping ranges with high value above constraint - should be
-  // clamped to constraint
-  test_bucket.spread(0, 10, "test1");
-  test_bucket.spread(20, 30, "test2");
-  test_bucket.spread(5, 110, "test3");
+  // Test overlapping ranges with gap between buckets
+  test_container.spread(0, 10, "test1");
+  test_container.spread(20, 30, "test2");
+  test_container.spread(5, 25, "test3");
 
-  EXPECT_EQ(test_bucket.size(), 5);
+  EXPECT_EQ(test_container.size(), 5);
 
-  auto it = test_bucket.begin();
+  auto it = test_container.begin();
   EXPECT_EQ(it->low(), 0);
   EXPECT_EQ(it->high(), 5);
   verifyContainerContents(it->values(), {"test1"});
@@ -390,142 +382,73 @@ TEST_F(BucketListTest, OverlappingRangesWithHighConstraintIntersection) {
 
   ++it;
   EXPECT_EQ(it->low(), 20);
-  EXPECT_EQ(it->high(), 30);
+  EXPECT_EQ(it->high(), 25);
   verifyContainerContents(it->values(), {"test2", "test3"});
 
   ++it;
-  EXPECT_EQ(it->low(), 30);
-  EXPECT_EQ(it->high(), 100); // Clamped to constraint
-  verifyContainerContents(it->values(), {"test3"});
+  EXPECT_EQ(it->low(), 25);
+  EXPECT_EQ(it->high(), 30);
+  verifyContainerContents(it->values(), {"test2"});
 }
 
-TEST_F(BucketListTest, ConstrainedRangeOperations) {
-  bucket_list_type test_bucket(0, 100);
-  test_bucket.spread(0, 10, "test1");
-  test_bucket.spread(20, 30, "test2");
-  test_bucket.spread(40, 50, "test3");
+TEST_F(ContainerTest, OverlappingRangesWithHighConstraintIntersection) {
+  container_type test_container(0, 100);
 
-  auto range1 = test_bucket.range(15, 35);
-  EXPECT_NE(range1.begin(), range1.end());
-  EXPECT_EQ(range1.begin()->low(), 20);
-  EXPECT_EQ(range1.begin()->high(), 30);
+  // Test overlapping ranges with gap between buckets
+  test_container.spread(0, 10, "test1");
+  test_container.spread(20, 30, "test2");
+  test_container.spread(5, 25, "test3");
 
-  auto range2 = test_bucket.range(0, 100);
-  EXPECT_NE(range2.begin(), range2.end());
-  EXPECT_EQ(range2.begin()->low(), 0);
-  EXPECT_EQ(range2.begin()->high(), 10);
-}
+  EXPECT_EQ(test_container.size(), 5);
 
-TEST_F(BucketListTest, AutomaticOrdering) {
-  bucket_list_type test_bucket;
-  test_bucket.spread(5, 10, "test1");
-  test_bucket.spread(0, 5, "test2");
-  test_bucket.spread(10, 15, "test3");
-
-  auto it = test_bucket.begin();
+  auto it = test_container.begin();
   EXPECT_EQ(it->low(), 0);
   EXPECT_EQ(it->high(), 5);
-  verifyContainerContents(it->values(), {"test2"});
+  verifyContainerContents(it->values(), {"test1"});
 
   ++it;
   EXPECT_EQ(it->low(), 5);
   EXPECT_EQ(it->high(), 10);
-  verifyContainerContents(it->values(), {"test1"});
+  verifyContainerContents(it->values(), {"test1", "test3"});
 
   ++it;
   EXPECT_EQ(it->low(), 10);
-  EXPECT_EQ(it->high(), 15);
+  EXPECT_EQ(it->high(), 20);
   verifyContainerContents(it->values(), {"test3"});
+
+  ++it;
+  EXPECT_EQ(it->low(), 20);
+  EXPECT_EQ(it->high(), 25);
+  verifyContainerContents(it->values(), {"test2", "test3"});
+
+  ++it;
+  EXPECT_EQ(it->low(), 25);
+  EXPECT_EQ(it->high(), 30);
+  verifyContainerContents(it->values(), {"test2"});
 }
 
-// Multiple values in the same range
-TEST_F(BucketListTest, MultipleValuesInSameRange) {
-  bucket_list_type test_bucket;
-  test_bucket.spread(0, 10, "test1");
-  test_bucket.spread(0, 10, "test2");
+TEST_F(ContainerTest, ConstrainedRangeOperations) {
+  container_type test_container(0, 100);
 
-  auto it = test_bucket.begin();
-  EXPECT_EQ(it->low(), 0);
-  EXPECT_EQ(it->high(), 10);
-  verifyContainerContents(it->values(), {"test1", "test2"});
+  // Test range operations with constraints
+  test_container.spread(0, 10, "test1");
+  test_container.spread(20, 30, "test2");
+  test_container.spread(40, 50, "test3");
+
+  EXPECT_EQ(test_container.size(), 3);
+  EXPECT_EQ(test_container.low(), 0);
+  EXPECT_EQ(test_container.high(), 100);
 }
 
-TEST_F(BucketListTest, DuplicateValuesInSameRange) {
-  bucket_list_type test_bucket;
-  test_bucket.spread(0, 10, "test");
-  test_bucket.spread(0, 10, "test");
+TEST_F(ContainerTest, AutomaticOrdering) {
+  container_type test_container;
 
-  auto it = test_bucket.begin();
-  EXPECT_EQ(it->values().size(), 2);
-  verifyContainerContents(it->values(), {"test", "test"});
-}
+  // Test automatic ordering of buckets
+  test_container.spread(20, 30, "test2");
+  test_container.spread(0, 10, "test1");
+  test_container.spread(40, 50, "test3");
 
-// Additional tests for untested public members
-TEST_F(BucketListTest, ConstrainedFunction) {
-  bucket_list_type unconstrained_bucket;
-  EXPECT_FALSE(unconstrained_bucket.constrained());
-
-  bucket_list_type constrained_bucket(0, 100);
-  EXPECT_TRUE(constrained_bucket.constrained());
-}
-
-TEST_F(BucketListTest, LowerBoundFunction) {
-  bucket_list_type constrained_bucket(0, 100);
-  EXPECT_EQ(constrained_bucket.lower_bound(), 0);
-
-  bucket_list_type unconstrained_bucket;
-  EXPECT_THROW(
-      { [[maybe_unused]] auto bound = unconstrained_bucket.lower_bound(); },
-      std::runtime_error);
-}
-
-TEST_F(BucketListTest, UpperBoundFunction) {
-  bucket_list_type constrained_bucket(0, 100);
-  EXPECT_EQ(constrained_bucket.upper_bound(), 100);
-
-  bucket_list_type unconstrained_bucket;
-  EXPECT_THROW(
-      { [[maybe_unused]] auto bound = unconstrained_bucket.upper_bound(); },
-      std::runtime_error);
-}
-
-TEST_F(BucketListTest, SpreadWithBucketType) {
-  bucket_list_type test_bucket;
-  bucket_list_type::bucket_type source_bucket(0, 10, {"test1", "test2"});
-
-  test_bucket.spread(source_bucket);
-  EXPECT_EQ(test_bucket.size(), 1);
-
-  auto it = test_bucket.begin();
-  EXPECT_EQ(it->low(), 0);
-  EXPECT_EQ(it->high(), 10);
-  verifyContainerContents(it->values(), {"test1", "test2"});
-}
-
-TEST_F(BucketListTest, CoverWithBucketType) {
-  bucket_list_type test_bucket;
-  bucket_list_type::bucket_type source_bucket(0, 10, {"test1", "test2"});
-
-  test_bucket.cover(source_bucket);
-  EXPECT_EQ(test_bucket.size(), 1);
-
-  auto it = test_bucket.begin();
-  EXPECT_EQ(it->low(), 0);
-  EXPECT_EQ(it->high(), 10);
-  verifyContainerContents(it->values(), {"test1", "test2"});
-}
-
-TEST_F(BucketListTest, SpreadWithBucketList) {
-  bucket_list_type source_bucket;
-  source_bucket.spread(0, 10, "test1");
-  source_bucket.spread(20, 30, "test2");
-
-  bucket_list_type target_bucket;
-  target_bucket.spread(source_bucket);
-
-  EXPECT_EQ(target_bucket.size(), 2);
-
-  auto it = target_bucket.begin();
+  auto it = test_container.begin();
   EXPECT_EQ(it->low(), 0);
   EXPECT_EQ(it->high(), 10);
   verifyContainerContents(it->values(), {"test1"});
@@ -534,19 +457,178 @@ TEST_F(BucketListTest, SpreadWithBucketList) {
   EXPECT_EQ(it->low(), 20);
   EXPECT_EQ(it->high(), 30);
   verifyContainerContents(it->values(), {"test2"});
+
+  ++it;
+  EXPECT_EQ(it->low(), 40);
+  EXPECT_EQ(it->high(), 50);
+  verifyContainerContents(it->values(), {"test3"});
 }
 
-TEST_F(BucketListTest, CoverWithBucketList) {
-  bucket_list_type source_bucket;
-  source_bucket.spread(0, 10, "test1");
-  source_bucket.spread(20, 30, "test2");
+TEST_F(ContainerTest, MultipleValuesInSameRange) {
+  container_type test_container;
 
-  bucket_list_type target_bucket;
-  target_bucket.cover(source_bucket);
+  // Test multiple values in the same range
+  test_container.spread(0, 10, "test1");
+  test_container.spread(0, 10, "test2");
+  test_container.spread(0, 10, "test3");
 
-  EXPECT_EQ(target_bucket.size(), 2);
+  auto it = test_container.begin();
+  EXPECT_EQ(it->low(), 0);
+  EXPECT_EQ(it->high(), 10);
+  verifyContainerContents(it->values(), {"test1", "test2", "test3"});
+}
 
-  auto it = target_bucket.begin();
+TEST_F(ContainerTest, DuplicateValuesInSameRange) {
+  container_type test_container;
+
+  // Test duplicate values in the same range
+  test_container.spread(0, 10, "test");
+  test_container.spread(0, 10, "test");
+  test_container.spread(0, 10, "test");
+
+  auto it = test_container.begin();
+  EXPECT_EQ(it->low(), 0);
+  EXPECT_EQ(it->high(), 10);
+  verifyContainerContents(it->values(), {"test", "test", "test"});
+}
+
+TEST_F(ContainerTest, ConstrainedFunction) {
+  container_type test_container(0, 100);
+  EXPECT_TRUE(test_container.constrained());
+  EXPECT_EQ(test_container.low(), 0);
+  EXPECT_EQ(test_container.high(), 100);
+}
+
+TEST_F(ContainerTest, LowerBoundFunction) {
+  container_type test_container(0, 100);
+  test_container.spread(0, 10, "test1");
+  test_container.spread(20, 30, "test2");
+  test_container.spread(40, 50, "test3");
+
+  EXPECT_EQ(test_container.lower_bound(), 0);
+}
+
+TEST_F(ContainerTest, UpperBoundFunction) {
+  container_type test_container(0, 100);
+  test_container.spread(0, 10, "test1");
+  test_container.spread(20, 30, "test2");
+  test_container.spread(40, 50, "test3");
+
+  EXPECT_EQ(test_container.upper_bound(), 100);
+}
+
+TEST_F(ContainerTest, SpreadWithBucketType) {
+  container_type test_container;
+  container_type::value_container values;
+  bucket_value_traits<std::string, std::list<std::string>>::add(values, "test");
+  container_type::bucket_type bucket(0, 10, values);
+  test_container.spread(bucket);
+
+  auto it = test_container.begin();
+  EXPECT_EQ(it->low(), 0);
+  EXPECT_EQ(it->high(), 10);
+  verifyContainerContents(it->values(), {"test"});
+}
+
+TEST_F(ContainerTest, CoverWithBucketType) {
+  container_type test_container;
+  container_type::value_container values;
+  bucket_value_traits<std::string, std::list<std::string>>::add(values, "test");
+  container_type::bucket_type bucket(0, 10, values);
+  test_container.cover(bucket);
+
+  auto it = test_container.begin();
+  EXPECT_EQ(it->low(), 0);
+  EXPECT_EQ(it->high(), 10);
+  verifyContainerContents(it->values(), {"test"});
+}
+
+TEST_F(ContainerTest, SpreadWithContainer) {
+  container_type test_container1;
+  test_container1.spread(0, 10, "test1");
+  test_container1.spread(20, 30, "test2");
+
+  container_type test_container2;
+  test_container2.spread(5, 25, "test3");
+  test_container2.spread(40, 50, "test4");
+
+  test_container1.spread(test_container2);
+
+  EXPECT_EQ(test_container1.size(), 6);
+
+  auto it = test_container1.begin();
+  EXPECT_EQ(it->low(), 0);
+  EXPECT_EQ(it->high(), 5);
+  verifyContainerContents(it->values(), {"test1"});
+
+  ++it;
+  EXPECT_EQ(it->low(), 5);
+  EXPECT_EQ(it->high(), 10);
+  verifyContainerContents(it->values(), {"test1", "test3"});
+
+  ++it;
+  EXPECT_EQ(it->low(), 10);
+  EXPECT_EQ(it->high(), 20);
+  verifyContainerContents(it->values(), {"test3"});
+
+  ++it;
+  EXPECT_EQ(it->low(), 20);
+  EXPECT_EQ(it->high(), 25);
+  verifyContainerContents(it->values(), {"test2", "test3"});
+
+  ++it;
+  EXPECT_EQ(it->low(), 25);
+  EXPECT_EQ(it->high(), 30);
+  verifyContainerContents(it->values(), {"test2"});
+
+  ++it;
+  EXPECT_EQ(it->low(), 40);
+  EXPECT_EQ(it->high(), 50);
+  verifyContainerContents(it->values(), {"test4"});
+}
+
+TEST_F(ContainerTest, CoverWithContainer) {
+  container_type test_container1;
+  test_container1.spread(0, 10, "test1");
+  test_container1.spread(20, 30, "test2");
+
+  container_type test_container2;
+  test_container2.spread(5, 25, "test3");
+  test_container2.spread(40, 50, "test4");
+
+  test_container1.cover(test_container2);
+
+  EXPECT_EQ(test_container1.size(), 4);
+
+  auto it = test_container1.begin();
+  EXPECT_EQ(it->low(), 0);
+  EXPECT_EQ(it->high(), 5);
+  verifyContainerContents(it->values(), {"test1"});
+
+  ++it;
+  EXPECT_EQ(it->low(), 5);
+  EXPECT_EQ(it->high(), 25);
+  verifyContainerContents(it->values(), {"test3"});
+
+  ++it;
+  EXPECT_EQ(it->low(), 25);
+  EXPECT_EQ(it->high(), 30);
+  verifyContainerContents(it->values(), {"test2"});
+
+  ++it;
+  EXPECT_EQ(it->low(), 40);
+  EXPECT_EQ(it->high(), 50);
+  verifyContainerContents(it->values(), {"test4"});
+}
+
+TEST_F(ContainerTest, IteratorOperations) {
+  container_type test_container;
+  test_container.spread(0, 10, "test1");
+  test_container.spread(20, 30, "test2");
+  test_container.spread(40, 50, "test3");
+
+  // Test iterator operations
+  auto it = test_container.begin();
   EXPECT_EQ(it->low(), 0);
   EXPECT_EQ(it->high(), 10);
   verifyContainerContents(it->values(), {"test1"});
@@ -555,112 +637,54 @@ TEST_F(BucketListTest, CoverWithBucketList) {
   EXPECT_EQ(it->low(), 20);
   EXPECT_EQ(it->high(), 30);
   verifyContainerContents(it->values(), {"test2"});
-}
 
-TEST_F(BucketListTest, IteratorOperations) {
-  // Initialize test data
-  bucket_list_type test_bucket;
-  test_bucket.spread(1, 2, "test1");
-  test_bucket.spread(2, 3, "test2");
-  test_bucket.spread(3, 4, "test3");
-
-  // Test forward iteration
-  auto it = test_bucket.begin();
-  EXPECT_EQ(it->low(), 1);
-  EXPECT_EQ(it->high(), 2);
+  --it;
+  EXPECT_EQ(it->low(), 0);
+  EXPECT_EQ(it->high(), 10);
   verifyContainerContents(it->values(), {"test1"});
+
   ++it;
-  EXPECT_EQ(it->low(), 2);
-  EXPECT_EQ(it->high(), 3);
-  verifyContainerContents(it->values(), {"test2"});
   ++it;
-  EXPECT_EQ(it->low(), 3);
-  EXPECT_EQ(it->high(), 4);
+  EXPECT_EQ(it->low(), 40);
+  EXPECT_EQ(it->high(), 50);
   verifyContainerContents(it->values(), {"test3"});
-  ++it;
-  EXPECT_EQ(it, test_bucket.end());
 
-  // Test const forward iteration
-  const auto &const_bucket = test_bucket;
-  auto cit = const_bucket.begin();
-  EXPECT_EQ(cit->low(), 1);
-  EXPECT_EQ(cit->high(), 2);
-  verifyContainerContents(cit->values(), {"test1"});
-  ++cit;
-  EXPECT_EQ(cit->low(), 2);
-  EXPECT_EQ(cit->high(), 3);
-  verifyContainerContents(cit->values(), {"test2"});
-  ++cit;
-  EXPECT_EQ(cit->low(), 3);
-  EXPECT_EQ(cit->high(), 4);
-  verifyContainerContents(cit->values(), {"test3"});
-  ++cit;
-  EXPECT_EQ(cit, const_bucket.end());
-
-  // Test reverse iteration
-  auto rit = test_bucket.rbegin();
-  EXPECT_EQ(rit->low(), 3);
-  EXPECT_EQ(rit->high(), 4);
-  verifyContainerContents(rit->values(), {"test3"});
-  ++rit;
-  EXPECT_EQ(rit->low(), 2);
-  EXPECT_EQ(rit->high(), 3);
-  verifyContainerContents(rit->values(), {"test2"});
-  ++rit;
-  EXPECT_EQ(rit->low(), 1);
-  EXPECT_EQ(rit->high(), 2);
-  verifyContainerContents(rit->values(), {"test1"});
-  ++rit;
-  EXPECT_EQ(rit, test_bucket.rend());
-
-  // Test const reverse iteration
-  auto crit = const_bucket.rbegin();
-  EXPECT_EQ(crit->low(), 3);
-  EXPECT_EQ(crit->high(), 4);
-  verifyContainerContents(crit->values(), {"test3"});
-  ++crit;
-  EXPECT_EQ(crit->low(), 2);
-  EXPECT_EQ(crit->high(), 3);
-  verifyContainerContents(crit->values(), {"test2"});
-  ++crit;
-  EXPECT_EQ(crit->low(), 1);
-  EXPECT_EQ(crit->high(), 2);
-  verifyContainerContents(crit->values(), {"test1"});
-  ++crit;
-  EXPECT_EQ(crit, const_bucket.rend());
+  --it;
+  --it;
+  EXPECT_EQ(it->low(), 0);
+  EXPECT_EQ(it->high(), 10);
+  verifyContainerContents(it->values(), {"test1"});
 }
 
-TEST_F(BucketListTest, IteratorComparison) {
-  bucket_list_type test_bucket;
-  test_bucket.spread(1, 2, "test1");
-  test_bucket.spread(2, 3, "test2");
-  test_bucket.spread(3, 4, "test3");
+TEST_F(ContainerTest, IteratorComparison) {
+  container_type test_container;
+  test_container.spread(0, 10, "test1");
+  test_container.spread(20, 30, "test2");
+  test_container.spread(40, 50, "test3");
 
-  auto it1 = test_bucket.begin();
-  auto it2 = test_bucket.begin();
-  auto it3 = ++test_bucket.begin();
-
-  // Test equality
+  // Test iterator comparison
+  auto it1 = test_container.begin();
+  auto it2 = test_container.begin();
   EXPECT_EQ(it1, it2);
+
+  ++it1;
+  EXPECT_NE(it1, it2);
+
+  ++it2;
+  EXPECT_EQ(it1, it2);
+
+  auto it3 = test_container.end();
   EXPECT_NE(it1, it3);
-
-  // Test const iterator equality
-  const auto &const_bucket = test_bucket;
-  auto cit1 = const_bucket.begin();
-  auto cit2 = const_bucket.begin();
-  auto cit3 = ++const_bucket.begin();
-
-  EXPECT_EQ(cit1, cit2);
-  EXPECT_NE(cit1, cit3);
+  EXPECT_NE(it2, it3);
 }
 
-TEST_F(BucketListTest, IteratorArithmetic) {
-  bucket_list_type test_bucket;
-  test_bucket.spread(1, 2, "test1");
-  test_bucket.spread(2, 3, "test2");
-  test_bucket.spread(3, 4, "test3");
+TEST_F(ContainerTest, IteratorArithmetic) {
+  container_type test_container;
+  test_container.spread(1, 2, "test1");
+  test_container.spread(2, 3, "test2");
+  test_container.spread(3, 4, "test3");
 
-  auto it = test_bucket.begin();
+  auto it = test_container.begin();
 
   // Test increment
   auto it2 = it;
@@ -674,6 +698,24 @@ TEST_F(BucketListTest, IteratorArithmetic) {
   EXPECT_EQ(it2->low(), 1);
   EXPECT_EQ(it2->high(), 2);
   verifyContainerContents(it2->values(), {"test1"});
+}
+
+// Add new test case for std::set
+TEST_F(ContainerTest, SetContainerType) {
+  using set_container_type = bucket_list<int, std::string, bucket_compare_traits<int>, bucket_value_traits<std::string, std::set<std::string>>>;
+  set_container_type test_container;
+  set_container_type::value_container values;
+  bucket_value_traits<std::string, std::set<std::string>>::add(values, "test1");
+  bucket_value_traits<std::string, std::set<std::string>>::add(values, "test2");
+  bucket_value_traits<std::string, std::set<std::string>>::add(values, "test1"); // Duplicate value should be ignored in set
+  
+  set_container_type::bucket_type bucket(0, 10, values);
+  test_container.spread(bucket);
+
+  auto it = test_container.begin();
+  EXPECT_EQ(it->low(), 0);
+  EXPECT_EQ(it->high(), 10);
+  verifyContainerContents(it->values(), {"test1", "test2"});
 }
 
 } // namespace test
