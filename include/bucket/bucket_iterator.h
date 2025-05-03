@@ -17,6 +17,9 @@ struct direct_access {
   
   template <typename Iter>
   static auto* get_pointer(Iter it) { return &(*it); }
+  
+  template <typename Iter>
+  static bool is_end(Iter it, Iter end) { return it == end; }
 };
 
 template <typename Container>
@@ -29,6 +32,9 @@ struct map_access {
   
   template <typename Iter>
   static auto* get_pointer(Iter it) { return &(it->second); }
+  
+  template <typename Iter>
+  static bool is_end(Iter it, Iter end) { return it == end; }
 };
 
 // Policy selector
@@ -87,7 +93,7 @@ public:
   bucket_iterator_base(
       const bucket_iterator_base<Container, ValueType, OtherIsConst,
                                  IteratorCategory>& other)
-      : it_(other.get_underlying()) {}
+      : it_(other.it_) {}
 
   // Allow conversion from std::list iterator
   template <typename OtherIterator,
@@ -141,7 +147,7 @@ public:
   bool operator==(const OtherIterator& other) const {
     if constexpr (std::is_base_of_v<bucket_iterator_base,
                                     std::decay_t<OtherIterator>>) {
-      return it_ == other.get_underlying();
+      return it_ == other.it_;
     } else {
       return it_ == other;
     }
@@ -151,10 +157,6 @@ public:
   bool operator!=(const OtherIterator& other) const {
     return !(*this == other);
   }
-
-protected:
-  iterator_type& get_underlying() { return it_; }
-  const iterator_type& get_underlying() const { return it_; }
 
 private:
   iterator_type it_;

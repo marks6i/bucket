@@ -212,12 +212,13 @@ protected:
    * @brief Splice a range of buckets.
    * @param low Lower bound of the range.
    * @param high Upper bound of the range.
-   * @param begin Iterator to the beginning of the range.
-   * @param end Iterator to the end of the range.
+   * @param begin [out] Iterator to the beginning of the affected range.
+   * @param end [out] Iterator to the end of the affected range.
    * @return True if the splice was successful.
    */
-  [[nodiscard]] bool splice(index_type low, index_type high, iterator &begin,
-                            iterator &end) {
+  [[nodiscard]] bool splice(index_type low, index_type high, 
+                           typename bucket_type_list::iterator &begin,
+                           typename bucket_type_list::iterator &end) {
     index_type l, h;
     CompareTraits::assign(l, low);
     CompareTraits::assign(h, high);
@@ -237,7 +238,12 @@ protected:
     CompareTraits::assign(highest_, h);
 
     // First, handle any existing buckets that overlap with our range
-    for (iterator p = buckets_.begin(); p != buckets_.end(); ++p) {
+    auto p = buckets_.begin();
+    while (p != buckets_.end() && CompareTraits::lt(p->high(), l)) {
+      ++p;
+    }
+
+    for (; p != buckets_.end(); ) {
       if (CompareTraits::lt(l, h) != true)
         break;
 
@@ -248,80 +254,67 @@ protected:
         value_container container_;
         if (CompareTraits::lt(current_bucket.low(), h)) {
           // Create a new bucket for the gap
-          bucket_type new_bucket =
-              make_bucket(l, current_bucket.low(), container_);
-          buckets_.insert(p.get_underlying(), new_bucket);
+          bucket_type new_bucket = make_bucket(l, current_bucket.low(), container_);
+          p = buckets_.insert(p, new_bucket);
+          ++p;  // Move past the newly inserted bucket
           CompareTraits::assign(l, current_bucket.low());
+          continue;
         } else {
-          // Create a new bucket that covers the entire range
+          // Create a new bucket for the entire gap
           bucket_type new_bucket = make_bucket(l, h, container_);
-          buckets_.insert(p.get_underlying(), new_bucket);
+          p = buckets_.insert(p, new_bucket);
           CompareTraits::assign(l, h);
-          continue;
+          break;
         }
       }
 
-      // If we're at the start of a bucket
-      if (CompareTraits::eq(l, current_bucket.low())) {
-        if (CompareTraits::lt(h, current_bucket.high())) {
-          // Split the bucket at h
-          value_container container_ = current_bucket.values();
-          bucket_type split_bucket = make_bucket(l, h, container_);
-          buckets_.insert(p.get_underlying(), split_bucket);
-          current_bucket.set_low(h);
-          CompareTraits::assign(l, h);
-          continue;
-        } else {
-          CompareTraits::assign(l, current_bucket.high());
-        }
-      }
-
-      // If we're in the middle of a bucket
+      // If we have an overlap with the current bucket
       if (CompareTraits::lt(l, current_bucket.high())) {
-        // Split the bucket at l
-        value_container container_ = current_bucket.values();
-        bucket_type split_bucket =
-            make_bucket(current_bucket.low(), l, container_);
-        buckets_.insert(p.get_underlying(), split_bucket);
-        current_bucket.set_low(l);
+        if (CompareTraits::lt(current_bucket.low(), l)) {
+          // Split the current bucket
+          value_container container_ = current_bucket.values();
+          bucket_type new_bucket = make_bucket(current_bucket.low(), l, container_);
+          p = buckets_.insert(p, new_bucket);
+          ++p;  // Move past the newly inserted bucket
+          current_bucket.set_low(l);
+        }
 
         if (CompareTraits::lt(h, current_bucket.high())) {
-          // Split the bucket at h
-          value_container container2_ = current_bucket.values();
-          bucket_type split_bucket2 = make_bucket(l, h, container2_);
-          buckets_.insert(p.get_underlying(), split_bucket2);
-          current_bucket.set_low(h);
+          // Split the current bucket again
+          value_container container_ = current_bucket.values();
+          bucket_type new_bucket = make_bucket(h, current_bucket.high(), container_);
+          p = buckets_.insert(std::next(p), new_bucket);
+          current_bucket.set_high(h);
         }
 
         CompareTraits::assign(l, current_bucket.high());
+        ++p;
+      } else {
+        ++p;
       }
     }
 
-    // Create a new bucket for any remaining range
+    // Handle any remaining gap at the end
     if (CompareTraits::lt(l, h)) {
       value_container container_;
       bucket_type new_bucket = make_bucket(l, h, container_);
-      buckets_.push_back(new_bucket);
+      buckets_.insert(buckets_.end(), new_bucket);
     }
 
-    // Find the begin and end iterators
-    bool b_begin = false, b_end = false;
-
-    for (iterator p = buckets_.begin(); p != buckets_.end(); ++p) {
-      const bucket_type &bucket = *p;
-      if (CompareTraits::eq(lowest_, bucket.low())) {
-        begin = p;
-        b_begin = true;
+    // Find and set the begin and end iterators
+    begin = buckets_.begin();
+    end = buckets_.end();
+    for (auto it = buckets_.begin(); it != buckets_.end(); ++it) {
+      if (CompareTraits::eq(it->low(), lowest_)) {
+        begin = it;
       }
-      if (CompareTraits::eq(highest_, bucket.high())) {
-        end = p;
-        ++end;
-        b_end = true;
+      if (CompareTraits::eq(it->high(), highest_)) {
+        end = std::next(it);
         break;
       }
     }
 
-    return (b_begin && b_end);
+    return true;
   }
 
 public:
@@ -333,7 +326,7 @@ public:
   int spread(const bucket_type &bucket_) {
     int added_to_bucket = 0;
 
-    iterator begin, end;
+    typename bucket_type_list::iterator begin, end;
     const bool b_spliced = splice(bucket_.low(), bucket_.high(), begin, end);
 
     if (!b_spliced)
@@ -351,7 +344,7 @@ public:
     }
 
     // Add values to all buckets in the range
-    for (iterator p = begin; p != end; ++p) {
+    for (auto p = begin; p != end; ++p) {
       bucket_type &bucket = *p;
       value_container &ocontainer_ = bucket.values();
       const value_container &icontainer_ = bucket_.values();
@@ -370,7 +363,7 @@ public:
   int cover(const bucket_type &bucket_) {
     int added_to_bucket = 0;
 
-    iterator begin, end;
+    typename bucket_type_list::iterator begin, end;
     const bool b_spliced = splice(bucket_.low(), bucket_.high(), begin, end);
 
     if (!b_spliced)
@@ -387,10 +380,15 @@ public:
         CompareTraits::assign(h, high_);
     }
 
-    auto next = buckets_.erase(begin.get_underlying(), end.get_underlying());
+    // Find the range in the internal collection
+    auto internal_begin = begin;
+    auto internal_end = end;
+    
+    // Erase the range and get the position for insertion
+    auto insert_pos = buckets_.erase(internal_begin, internal_end);
 
     bucket_type new_bucket = make_bucket(l, h, bucket_.values());
-    buckets_.insert(next, new_bucket);
+    buckets_.insert(insert_pos, new_bucket);
 
     added_to_bucket++;
 
@@ -533,14 +531,18 @@ protected:
    * @return true if any buckets were erased, false otherwise
    */
   bool erase_impl(index_type low, index_type high) {
-    iterator begin, end;
+    typename bucket_type_list::iterator begin, end;
     const bool b_spliced = splice(low, high, begin, end);
 
     if (!b_spliced)
       return false;
 
-    // Convert our custom iterators to the underlying list's iterator type
-    buckets_.erase(begin.get_underlying(), end.get_underlying());
+    // Find the range in the internal collection
+    auto internal_begin = begin;
+    auto internal_end = end;
+    
+    // Erase the range
+    buckets_.erase(internal_begin, internal_end);
     return true;
   }
 

@@ -104,6 +104,27 @@ namespace masutils
             return values_;
         }
 
+        /**
+         * @brief Compare two bucket_objects for equality based on their ranges.
+         * @param other The other bucket_object to compare with.
+         * @return True if the bucket_objects have equal ranges, false otherwise.
+         */
+        [[nodiscard]] constexpr bool operator==(const bucket_object& other) const noexcept
+        {
+            return bucket_compare_traits<index_type>::eq(low_, other.low_) && 
+                   bucket_compare_traits<index_type>::eq(high_, other.high_);
+        }
+
+        /**
+         * @brief Compare two bucket_objects for inequality based on their ranges.
+         * @param other The other bucket_object to compare with.
+         * @return True if the bucket_objects have different ranges, false otherwise.
+         */
+        [[nodiscard]] constexpr bool operator!=(const bucket_object& other) const noexcept
+        {
+            return !(*this == other);
+        }
+
     private:
         index_type low_;
         index_type high_;

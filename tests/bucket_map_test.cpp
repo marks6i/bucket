@@ -10,6 +10,25 @@
 #include <vector>
 #include <set>
 
+// Specialization of bucket_value_traits for std::set
+template <>
+struct masutils::bucket_value_traits<std::string, std::set<std::string>> {
+  using value_type = std::string;
+  using value_container = std::set<std::string>;
+
+  static void add(value_container &c, const value_type &v) {
+    c.insert(v);
+  }
+
+  static void append(value_container &c, const value_container &other) {
+    c.insert(other.begin(), other.end());
+  }
+
+  static void remove(value_container &c, const value_type &v) {
+    c.erase(v);
+  }
+};
+
 namespace masutils {
 namespace test {
 
@@ -680,25 +699,6 @@ TEST_F(ContainerTest, IteratorArithmetic) {
   EXPECT_EQ(it2->high(), 2);
   verifyContainerContents(it2->values(), {"test1"});
 }
-
-// Specialization of bucket_value_traits for std::set
-template <>
-struct masutils::bucket_value_traits<std::string, std::set<std::string>> {
-  using value_type = std::string;
-  using value_container = std::set<std::string>;
-
-  static void add(value_container &c, const value_type &v) {
-    c.insert(v);
-  }
-
-  static void append(value_container &c, const value_container &other) {
-    c.insert(other.begin(), other.end());
-  }
-
-  static void remove(value_container &c, const value_type &v) {
-    c.erase(v);
-  }
-};
 
 // Add new test case for std::set
 TEST_F(ContainerTest, SetContainerType) {
