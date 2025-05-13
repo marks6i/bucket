@@ -125,11 +125,6 @@ public:
     return const_reverse_iterator(begin());
   }
 
-  [[nodiscard]] static constexpr bucket_type
-  make_bucket(index_type low, index_type high, const value_container &values) {
-    return bucket_type(low, high, values);
-  }
-
 public:
   [[nodiscard]] constexpr std::size_t size() const noexcept {
     return buckets_.size();
@@ -239,11 +234,16 @@ protected:
 
     // First, handle any existing buckets that overlap with our range
     auto p = buckets_.begin();
+
+	// Skip buckets that are completely before the range
     while (p != buckets_.end() && CompareTraits::lt(p->high(), l)) {
       ++p;
     }
 
+	// Iterate through the buckets and handle overlaps
     for (; p != buckets_.end(); ) {
+
+	  // If the current bucket is completely after the range, we can stop
       if (CompareTraits::lt(l, h) != true)
         break;
 
@@ -253,15 +253,15 @@ protected:
       if (CompareTraits::lt(l, current_bucket.low())) {
         value_container container_;
         if (CompareTraits::lt(current_bucket.low(), h)) {
-          // Create a new bucket for the gap
-          bucket_type new_bucket = make_bucket(l, current_bucket.low(), container_);
+          // Create a new bucket for the gap since its in our range
+          bucket_type new_bucket = bucket_type(l, current_bucket.low(), container_);
           p = buckets_.insert(p, new_bucket);
           ++p;  // Move past the newly inserted bucket
           CompareTraits::assign(l, current_bucket.low());
           continue;
         } else {
           // Create a new bucket for the entire gap
-          bucket_type new_bucket = make_bucket(l, h, container_);
+          bucket_type new_bucket = bucket_type(l, h, container_);
           p = buckets_.insert(p, new_bucket);
           CompareTraits::assign(l, h);
           break;
@@ -273,7 +273,7 @@ protected:
         if (CompareTraits::lt(current_bucket.low(), l)) {
           // Split the current bucket
           value_container container_ = current_bucket.values();
-          bucket_type new_bucket = make_bucket(current_bucket.low(), l, container_);
+          bucket_type new_bucket = bucket_type(current_bucket.low(), l, container_);
           p = buckets_.insert(p, new_bucket);
           ++p;  // Move past the newly inserted bucket
           current_bucket.set_low(l);
@@ -282,7 +282,7 @@ protected:
         if (CompareTraits::lt(h, current_bucket.high())) {
           // Split the current bucket again
           value_container container_ = current_bucket.values();
-          bucket_type new_bucket = make_bucket(h, current_bucket.high(), container_);
+          bucket_type new_bucket = bucket_type(h, current_bucket.high(), container_);
           p = buckets_.insert(std::next(p), new_bucket);
           current_bucket.set_high(h);
         }
@@ -297,7 +297,7 @@ protected:
     // Handle any remaining gap at the end
     if (CompareTraits::lt(l, h)) {
       value_container container_;
-      bucket_type new_bucket = make_bucket(l, h, container_);
+      bucket_type new_bucket = bucket_type(l, h, container_);
       buckets_.insert(buckets_.end(), new_bucket);
     }
 
@@ -387,7 +387,7 @@ public:
     // Erase the range and get the position for insertion
     auto insert_pos = buckets_.erase(internal_begin, internal_end);
 
-    bucket_type new_bucket = make_bucket(l, h, bucket_.values());
+    bucket_type new_bucket = bucket_type(l, h, bucket_.values());
     buckets_.insert(insert_pos, new_bucket);
 
     added_to_bucket++;
@@ -405,7 +405,7 @@ public:
   int spread(index_type low, index_type high, value_type value) {
     value_container container_;
     ValueTraits::add(container_, value);
-    bucket_type bucket_ = make_bucket(low, high, container_);
+    bucket_type bucket_ = bucket_type(low, high, container_);
     return spread(bucket_);
   }
 
@@ -419,7 +419,7 @@ public:
   int cover(index_type low, index_type high, value_type value) {
     value_container container_;
     ValueTraits::add(container_, value);
-    bucket_type bucket_ = make_bucket(low, high, container_);
+    bucket_type bucket_ = bucket_type(low, high, container_);
     return cover(bucket_);
   }
 

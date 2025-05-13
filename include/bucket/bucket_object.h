@@ -33,6 +33,16 @@ namespace masutils
         }
 
         /**
+         * @brief Constructor that creates a new bucket with default value container.
+         * @param low The low index.
+         * @param high The high index.
+         */
+        bucket_object(index_type low, index_type high)
+            : low_(low), high_(high), values_()
+        {
+        }
+
+        /**
          * @brief Get the low index.
          * @return The low index.
          */

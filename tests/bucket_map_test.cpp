@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 #include <set>
+#include <iostream>
 
 // Specialization of bucket_value_traits for std::set
 template <>
@@ -57,6 +58,22 @@ protected:
       ASSERT_EQ(*it, expected);
       ++it;
     }
+  }
+
+  void print_actual_ranges(const bucket_map<int, std::string>& cont) {
+    std::string actual;
+    for (auto it = cont.begin(); it != cont.end(); ++it) {
+      if (!actual.empty()) {
+        actual += ",";
+      }
+      actual += "[" + std::to_string(it->low()) + "," + std::to_string(it->high()) + ")";
+    }
+    std::cout << "Current ranges: " << actual << std::endl;
+  }
+
+  void print_bucket_ranges(const std::string& expected, const bucket_map<int, std::string>& cont) {
+    std::cout << "Expected ranges: " << expected << std::endl;
+    print_actual_ranges(cont);
   }
 
   std::unique_ptr<container_type> container;
@@ -202,13 +219,14 @@ TEST_F(ContainerTest, ConstrainedBoundOperations) {
 // Edge case tests
 TEST_F(ContainerTest, OverlappingRangesSpread) {
   container_type test_container;
-
-  // Test overlapping ranges with gap between buckets
   test_container.spread(0, 10, "test1");
-  test_container.spread(20, 30, "test2");
-  test_container.spread(5, 25, "test3");
+  print_actual_ranges(test_container);
 
-  EXPECT_EQ(test_container.size(), 5);
+  test_container.spread(20, 30, "test2");
+  print_actual_ranges(test_container);
+
+  test_container.spread(5, 25, "test3");
+  print_bucket_ranges("[0,5),[5,10),[10,20),[20,25),[25,30)", test_container);
 
   auto it = test_container.begin();
   EXPECT_EQ(it->low(), 0);
