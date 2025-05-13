@@ -57,14 +57,17 @@ function(add_gtest_executable TEST_NAME)
     # Add test with platform-specific settings
     if(MSVC)
         # Windows-specific test configuration
-        gtest_discover_tests(${TEST_NAME}
-            PROPERTIES
-                VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
-                VS_DEBUGGER_ENVIRONMENT "PATH=${CMAKE_CURRENT_BINARY_DIR}"
-        )
         set_target_properties(${TEST_NAME} PROPERTIES
             VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
             VS_DEBUGGER_ENVIRONMENT "PATH=${CMAKE_CURRENT_BINARY_DIR}"
+        )
+        
+        # Enable Google Test discovery for VS
+        gtest_discover_tests(${TEST_NAME}
+            WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+            PROPERTIES
+                LABELS "gtest"
+                ENVIRONMENT "PATH=${CMAKE_CURRENT_BINARY_DIR}"
         )
     else()
         # Linux/Unix test configuration
