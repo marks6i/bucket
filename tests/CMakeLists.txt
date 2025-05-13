@@ -1,3 +1,7 @@
+# This file is kept for future use if we need to add test-specific configurations
+# Individual test executables are created in the root CMakeLists.txt using add_gtest_executable
+# This ensures consistent test configuration across platforms and proper test discovery
+
 # Create test executable
 add_executable(bucket_tests
     main.cpp

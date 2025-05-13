@@ -12,7 +12,7 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
 
-# Set compiler options and runtime library
+# Platform-specific compiler settings
 if(MSVC)
     add_compile_options(/W4)
     # Use the same runtime library for all targets
@@ -54,21 +54,23 @@ function(add_gtest_executable TEST_NAME)
         ${googletest_SOURCE_DIR}/googlemock
     )
     
-    # Add test
-    add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
-    
-    # Set VS-specific properties only when using Visual Studio
+    # Add test with platform-specific settings
     if(MSVC)
-        set_target_properties(${TEST_NAME} PROPERTIES
-            VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
-            VS_DEBUGGER_ENVIRONMENT "PATH=${CMAKE_CURRENT_BINARY_DIR}"
-        )
-        
-        # Enable Google Test discovery for VS
+        # Windows-specific test configuration
         gtest_discover_tests(${TEST_NAME}
             PROPERTIES
                 VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
                 VS_DEBUGGER_ENVIRONMENT "PATH=${CMAKE_CURRENT_BINARY_DIR}"
+        )
+        set_target_properties(${TEST_NAME} PROPERTIES
+            VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+            VS_DEBUGGER_ENVIRONMENT "PATH=${CMAKE_CURRENT_BINARY_DIR}"
+        )
+    else()
+        # Linux/Unix test configuration
+        gtest_discover_tests(${TEST_NAME}
+            PROPERTIES
+                ENVIRONMENT "PATH=${CMAKE_CURRENT_BINARY_DIR}"
         )
     endif()
 endfunction()

@@ -83,8 +83,8 @@ public:
     const_reverse_iterator rbegin() const { return const_reverse_iterator(); }
     const_reverse_iterator rend() const { return const_reverse_iterator(); }
     
-    iterator lower_bound(index_type key) { return iterator(); }
-    iterator upper_bound(index_type key) { return iterator(); }
+    iterator lower_bound([[maybe_unused]] index_type key) { return iterator(); }
+    iterator upper_bound([[maybe_unused]] index_type key) { return iterator(); }
 };
 
 // Test fixture for bucket traits tests
