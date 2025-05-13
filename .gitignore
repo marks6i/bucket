@@ -4,10 +4,11 @@ out/
 cmake-build-*/
 
 # IDE specific files
-.vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
+
+# VS Code per-user settings
+.vscode/launch.json
+.vscode/settings.json
+.vscode/c_cpp_properties.json
 !.vscode/extensions.json
 .idea/
 *.suo
@@ -74,3 +75,26 @@ _deps
 
 # External dependencies
 external/ 
+
+# Build output
+build*/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+compile_commands.json
+
+# CMake user-specific overrides
+CMakeUserPresets.json
+
+# Windows artifacts
+*.sln
+*.vcxproj*
+*.user
+*.opensdf
+*.pdb
+*.exe
+
+# macOS/Linux/Windows cruft
+.DS_Store
+Thumbs.db

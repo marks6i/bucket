@@ -1,0 +1,18 @@
+{
+  "recommendations": [
+    // Core CMake support
+    "ms-vscode.cmake-tools",
+
+    // C++ language support with IntelliSense and debugging
+    "ms-vscode.cpptools",
+
+    // Optional: helpful C++ tooling (clang-format, etc.)
+    "ms-vscode.cpptools-extension-pack",
+
+    // Test Explorer UI for integrated test discovery/debug
+    "hbenl.vscode-test-explorer",
+
+    // Google Test adapter that works with Test Explorer
+    "matepek.vscode-catch2-test-adapter"
+  ]
+}
