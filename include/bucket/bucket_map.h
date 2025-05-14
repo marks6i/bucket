@@ -388,8 +388,8 @@ public:
     auto internal_begin = begin;
     auto internal_end = end;
     
-    // Erase the range and get the position for insertion
-    auto insert_pos = buckets_.erase(internal_begin, internal_end);
+    // Erase the range
+    buckets_.erase(internal_begin, internal_end);
 
     bucket_type new_bucket(l, h, bucket_.values());
     buckets_.insert({new_bucket.low(), new_bucket});
