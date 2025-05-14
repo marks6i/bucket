@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 #include <bucket/bucket_compare_traits.h>
 #include <chrono>
+#include <concepts>
 
 using namespace masutils;
 

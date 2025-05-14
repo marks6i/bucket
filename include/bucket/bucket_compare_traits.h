@@ -27,8 +27,20 @@
 
 #include <type_traits>
 #include <chrono>
+#include <concepts>
 
 namespace masutils {
+
+    // Define concepts for types that support comparison operations
+    template<typename T>
+    concept LessThanComparable = requires(const T& a, const T& b) {
+        { a < b } -> std::convertible_to<bool>;
+    };
+
+    template<typename T>
+    concept EqualityComparable = requires(const T& a, const T& b) {
+        { a == b } -> std::convertible_to<bool>;
+    };
 
     /**
      * @brief Traits class for comparing and assigning bucket key elements
