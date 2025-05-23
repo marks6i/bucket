@@ -13,7 +13,9 @@
         "kind": "build",
         "isDefault": true
       },
-      "problemMatcher": ["$gcc"],
+      "problemMatcher": [
+        "$gcc"
+      ],
       "detail": "Build using the linux-x64-debug preset"
     },
     {
@@ -30,8 +32,18 @@
         "kind": "build",
         "isDefault": true
       },
-      "problemMatcher": ["$msCompile"],
+      "problemMatcher": [
+        "$msCompile"
+      ],
       "detail": "Build using the windows-x64-debug preset"
+    },
+    {
+      "type": "cmake",
+      "label": "CMake: clean",
+      "command": "clean",
+      "preset": "${command:cmake.activeBuildPresetName}",
+      "problemMatcher": [],
+      "detail": "CMake template clean task"
     }
   ]
 }

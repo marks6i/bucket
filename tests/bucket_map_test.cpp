@@ -220,13 +220,13 @@ TEST_F(ContainerTest, ConstrainedBoundOperations) {
 TEST_F(ContainerTest, OverlappingRangesSpread) {
   container_type test_container;
   test_container.spread(0, 10, "test1");
-  print_actual_ranges(test_container);
+  // print_actual_ranges(test_container);
 
   test_container.spread(20, 30, "test2");
-  print_actual_ranges(test_container);
+  // print_actual_ranges(test_container);
 
   test_container.spread(5, 25, "test3");
-  print_bucket_ranges("[0,5),[5,10),[10,20),[20,25),[25,30)", test_container);
+  // print_bucket_ranges("[0,5),[5,10),[10,20),[20,25),[25,30)", test_container);
 
   auto it = test_container.begin();
   EXPECT_EQ(it->low(), 0);

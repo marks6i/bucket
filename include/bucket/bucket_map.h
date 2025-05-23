@@ -387,13 +387,13 @@ public:
     // Find the range in the internal collection
     auto internal_begin = begin;
     auto internal_end = end;
-    
+  
     // Erase the range
     buckets_.erase(internal_begin, internal_end);
 
     bucket_type new_bucket(l, h, bucket_.values());
     buckets_.insert({new_bucket.low(), new_bucket});
-
+  
     added_to_bucket++;
 
     return added_to_bucket;
@@ -458,15 +458,15 @@ protected:
             if (CompareTraits::lt(l, h) != true)
                 break;
 
-            bucket_type& current_bucket = p->second;
+            bucket_type* current_bucket = &p->second;
 
             // If we have a gap before the current bucket
-            if (CompareTraits::lt(l, current_bucket.low())) {
-                if (CompareTraits::lt(current_bucket.low(), h)) {
+            if (CompareTraits::lt(l, current_bucket->low())) {
+                if (CompareTraits::lt(current_bucket->low(), h)) {
                     // Create a new bucket for the gap since its in our range
-                    bucket_type new_bucket(l, current_bucket.low());
+                    bucket_type new_bucket(l, current_bucket->low());
                     buckets_.emplace(l, new_bucket);
-                    CompareTraits::assign(l, current_bucket.low());
+                    CompareTraits::assign(l, current_bucket->low());
                     continue;
                 }
                 else {
@@ -479,27 +479,27 @@ protected:
             }
 
             // If we have an overlap with the current bucket
-            if (CompareTraits::lt(l, current_bucket.high())) {
+            if (CompareTraits::lt(l, current_bucket->high())) {
 
-                if (CompareTraits::lt(current_bucket.low(), l)) {
+                if (CompareTraits::lt(current_bucket->low(), l)) {
                    // Split the current bucket
-                    bucket_type new_bucket(current_bucket);
-					current_bucket.set_high(l); // first half
-					new_bucket.set_low(l);
-					auto result = buckets_.emplace(new_bucket.low(), new_bucket); // Second half
-					current_bucket = result.first->second;
+                    bucket_type new_bucket(*current_bucket);
+          		 			current_bucket->set_high(l); // first half
+                    new_bucket.set_low(l);
+                    auto result = buckets_.emplace(new_bucket.low(), new_bucket); // Second half
+                    current_bucket = &result.first->second;
                     ++p;  // Move past the newly inserted bucket
                 }
 
-                if (CompareTraits::lt(h, current_bucket.high())) {
+                if (CompareTraits::lt(h, current_bucket->high())) {
                     // Split the current bucket again
-					bucket_type new_bucket(current_bucket);
-					current_bucket.set_high(h); // First half
-					new_bucket.set_low(h);
-					buckets_.emplace(new_bucket.low(), new_bucket); // Second half
+                    bucket_type new_bucket(*current_bucket);
+                    current_bucket->set_high(h); // First half
+                    new_bucket.set_low(h);
+                    buckets_.emplace(new_bucket.low(), new_bucket); // Second half
                 }
 
-                CompareTraits::assign(l, current_bucket.high());
+                CompareTraits::assign(l, current_bucket->high());
                 ++p;
             }
             else {
@@ -551,7 +551,7 @@ protected:
 public:
   template <class OtherValueTraits>
   int spread(const bucket_map<Indices, Values, CompareTraits, OtherValueTraits>
-                 &bucket_) {
+          &bucket_) {
     int added_to_bucket = 0;
 
     for (const_iterator p = bucket_.begin(); p != bucket_.end(); ++p) {
