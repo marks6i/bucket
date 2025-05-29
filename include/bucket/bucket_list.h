@@ -203,6 +203,7 @@ public:
   bucket_list &operator=(bucket_list &&) noexcept = default;
 
 protected:
+
   /**
    * @brief Splice a range of buckets.
    * @param low Lower bound of the range.
@@ -521,6 +522,24 @@ public:
     return bucket_range<
         bucket_list<Indices, Values, CompareTraits, ValueTraits>, true>(
         *this, start, end);
+  }
+
+  [[nodiscard]] iterator find(index_type index) {
+    for (auto it = begin(); it != end(); ++it) {
+      if (CompareTraits::lt(it->low(), index) && CompareTraits::lt(index, it->high())) {
+        return it;
+      }
+    }
+    return end();
+  }
+
+  [[nodiscard]] const_iterator find(index_type index) const {
+    for (auto it = begin(); it != end(); ++it) {
+      if (CompareTraits::lt(it->low(), index) && CompareTraits::lt(index, it->high())) {
+        return it;
+      }
+    }
+    return end();
   }
 
 protected:

@@ -10,9 +10,6 @@
     "ms-vscode.cpptools-extension-pack",
 
     // Test Explorer UI for integrated test discovery/debug
-    "hbenl.vscode-test-explorer",
-
-    // Google Test adapter that works with Test Explorer
-    "matepek.vscode-catch2-test-adapter"
+    "hbenl.vscode-test-explorer"
   ]
 }

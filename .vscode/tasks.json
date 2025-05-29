@@ -38,12 +38,120 @@
       "detail": "Build using the windows-x64-debug preset"
     },
     {
+      "label": "build-linux-x64-release",
+      "type": "shell",
+      "command": "cmake",
+      "args": [
+        "--build",
+        "${workspaceFolder}/build/linux-x64-release"
+      ],
+      "group": "build",
+      "problemMatcher": [
+        "$gcc"
+      ],
+      "detail": "Build using the linux-x64-release preset"
+    },
+    {
+      "label": "build-windows-x64-release",
+      "type": "shell",
+      "command": "cmake",
+      "args": [
+        "--build",
+        "${workspaceFolder}/build/windows-x64-release",
+        "--config",
+        "Release"
+      ],
+      "group": "build",
+      "problemMatcher": [
+        "$msCompile"
+      ],
+      "detail": "Build using the windows-x64-release preset"
+    },
+    {
       "type": "cmake",
       "label": "CMake: clean",
       "command": "clean",
       "preset": "${command:cmake.activeBuildPresetName}",
       "problemMatcher": [],
       "detail": "CMake template clean task"
+    },
+    {
+      "label": "CMake: install (Linux)",
+      "type": "shell",
+      "command": "sudo",
+      "args": [
+        "cmake",
+        "--install",
+        "${workspaceFolder}/build/linux-x64-release"
+      ],
+      "group": "none",
+      "problemMatcher": [],
+      "detail": "Install the library using CMake (Linux) - Release build",
+      "dependsOn": ["build-linux-x64-release"]
+    },
+    {
+      "label": "CMake: install (Windows)",
+      "type": "shell",
+      "command": "cmake",
+      "args": [
+        "--install",
+        "${workspaceFolder}/build/windows-x64-release",
+        "--config",
+        "Release"
+      ],
+      "group": "none",
+      "problemMatcher": [],
+      "detail": "Install the library using CMake (Windows) - Release build",
+      "dependsOn": ["build-windows-x64-release"]
+    },
+    {
+      "label": "Manual install: headers and docs (Linux)",
+      "type": "shell",
+      "command": "sudo",
+      "args": [
+        "bash",
+        "-c",
+        "mkdir -p /usr/local/include/bucket && cp -r ${workspaceFolder}/include/bucket/* /usr/local/include/bucket/ && mkdir -p /usr/local/share/doc/bucket && cp -r ${workspaceFolder}/docs/* /usr/local/share/doc/bucket/ && cp ${workspaceFolder}/README.md /usr/local/share/doc/bucket/"
+      ],
+      "group": "none",
+      "problemMatcher": [],
+      "detail": "Manually install header files and documentation to system directories (Linux)"
+    },
+    {
+      "label": "Manual install: headers and docs (Windows)",
+      "type": "shell",
+      "command": "cmd",
+      "args": [
+        "/c",
+        "mkdir \"C:\\Program Files\\bucket\\include\\bucket\" 2>nul & xcopy /E /I /Y \"${workspaceFolder}\\include\\bucket\" \"C:\\Program Files\\bucket\\include\\bucket\\\" & mkdir \"C:\\Program Files\\bucket\\doc\" 2>nul & xcopy /E /I /Y \"${workspaceFolder}\\docs\" \"C:\\Program Files\\bucket\\doc\\\" & copy /Y \"${workspaceFolder}\\README.md\" \"C:\\Program Files\\bucket\\doc\\\""
+      ],
+      "group": "none",
+      "problemMatcher": [],
+      "detail": "Manually install header files and documentation to system directories (Windows)"
+    },
+    {
+      "label": "Create distribution package (Linux)",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "-c",
+        "VERSION=$(grep -oP 'project\\(bucket VERSION \\K[0-9.]+' CMakeLists.txt) && PKGDIR=bucket-$VERSION && mkdir -p $PKGDIR && cp -r include docs README.md LICENSE CMakeLists.txt cmake $PKGDIR/ && tar czf $PKGDIR.tar.gz $PKGDIR && rm -rf $PKGDIR"
+      ],
+      "group": "none",
+      "problemMatcher": [],
+      "detail": "Create a distributable tarball containing headers, documentation, and build files"
+    },
+    {
+      "label": "Create distribution package (Windows)",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-Command",
+        "$version = Select-String -Path CMakeLists.txt -Pattern 'project\\(bucket VERSION ([0-9.]+)' | %{$_.Matches.Groups[1].Value}; $pkgdir = \"bucket-$version\"; New-Item -ItemType Directory -Force -Path $pkgdir; Copy-Item -Recurse -Force include,docs,README.md,LICENSE,CMakeLists.txt,cmake $pkgdir/; Compress-Archive -Path $pkgdir -DestinationPath \"$pkgdir.zip\" -Force; Remove-Item -Recurse -Force $pkgdir"
+      ],
+      "group": "none",
+      "problemMatcher": [],
+      "detail": "Create a distributable ZIP file containing headers, documentation, and build files"
     }
   ]
 }

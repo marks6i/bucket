@@ -35,7 +35,7 @@ namespace test {
 
 using container_type = bucket_map<int, std::string>;
 
-class ContainerTest : public ::testing::Test {
+class BucketMapTest : public ::testing::Test {
 protected:
   void SetUp() override {
     container = std::make_unique<container_type>();
@@ -81,14 +81,14 @@ protected:
 };
 
 // Construction tests
-TEST_F(ContainerTest, DefaultConstruction) {
+TEST_F(BucketMapTest, DefaultConstruction) {
   container_type test_container;
   EXPECT_FALSE(test_container.constrained());
   EXPECT_TRUE(test_container.empty());
   EXPECT_EQ(test_container.size(), 0);
 }
 
-TEST_F(ContainerTest, ConstrainedConstruction) {
+TEST_F(BucketMapTest, ConstrainedConstruction) {
   container_type test_container(0, 100);
   EXPECT_TRUE(test_container.constrained());
   EXPECT_TRUE(test_container.empty());
@@ -97,12 +97,12 @@ TEST_F(ContainerTest, ConstrainedConstruction) {
   EXPECT_EQ(test_container.high(), 100);
 }
 
-TEST_F(ContainerTest, InvalidConstrainedConstruction) {
+TEST_F(BucketMapTest, InvalidConstrainedConstruction) {
   EXPECT_THROW(container_type test_container(100, 0), std::invalid_argument);
 }
 
 // Accessor tests
-TEST_F(ContainerTest, AccessorFunctions) {
+TEST_F(BucketMapTest, AccessorFunctions) {
   container_type test_container;
   test_container.spread(0, 10, "test");
 
@@ -113,7 +113,7 @@ TEST_F(ContainerTest, AccessorFunctions) {
 }
 
 // Iterator tests
-TEST_F(ContainerTest, IteratorFunctionality) {
+TEST_F(BucketMapTest, IteratorFunctionality) {
   container_type test_container;
   test_container.spread(1, 3, "test1");
   test_container.spread(1, 3, "test2");
@@ -128,7 +128,7 @@ TEST_F(ContainerTest, IteratorFunctionality) {
   verifyContainerContents(values, {"test1", "test2", "test3"});
 }
 
-TEST_F(ContainerTest, ReverseIteratorFunctionality) {
+TEST_F(BucketMapTest, ReverseIteratorFunctionality) {
   container_type test_container;
   test_container.spread(1, 3, "test1");
   test_container.spread(1, 3, "test2");
@@ -144,7 +144,7 @@ TEST_F(ContainerTest, ReverseIteratorFunctionality) {
 }
 
 // Operation tests
-TEST_F(ContainerTest, SpreadOperation) {
+TEST_F(BucketMapTest, SpreadOperation) {
   container_type test_container;
   test_container.spread(0, 10, "test");
   EXPECT_EQ(test_container.size(), 1);
@@ -156,7 +156,7 @@ TEST_F(ContainerTest, SpreadOperation) {
   verifyContainerContents(it->values(), {"test"});
 }
 
-TEST_F(ContainerTest, CoverOperation) {
+TEST_F(BucketMapTest, CoverOperation) {
   container_type test_container;
   test_container.cover(0, 10, "test");
   EXPECT_EQ(test_container.size(), 1);
@@ -168,7 +168,7 @@ TEST_F(ContainerTest, CoverOperation) {
   verifyContainerContents(it->values(), {"test"});
 }
 
-TEST_F(ContainerTest, EraseOperation) {
+TEST_F(BucketMapTest, EraseOperation) {
   container_type test_container;
   test_container.spread(0, 10, "test");
   test_container.erase(0, 10);
@@ -176,7 +176,7 @@ TEST_F(ContainerTest, EraseOperation) {
   EXPECT_EQ(test_container.size(), 0);
 }
 
-TEST_F(ContainerTest, EraseAllOperation) {
+TEST_F(BucketMapTest, EraseAllOperation) {
   container_type test_container;
   test_container.spread(0, 10, "test1");
   test_container.spread(20, 30, "test2");
@@ -194,7 +194,7 @@ TEST_F(ContainerTest, EraseAllOperation) {
 }
 
 // Bounds tests
-TEST_F(ContainerTest, UnconstrainedBoundOperations) {
+TEST_F(BucketMapTest, UnconstrainedBoundOperations) {
   container_type test_container;
   test_container.spread(1, 3, "test1");
   test_container.spread(5, 7, "test2");
@@ -206,7 +206,7 @@ TEST_F(ContainerTest, UnconstrainedBoundOperations) {
       { [[maybe_unused]] auto high = test_container.high(); }, std::runtime_error);
 }
 
-TEST_F(ContainerTest, ConstrainedBoundOperations) {
+TEST_F(BucketMapTest, ConstrainedBoundOperations) {
   container_type test_container(0, 100);
   test_container.spread(1, 3, "test1");
   test_container.spread(5, 7, "test2");
@@ -217,7 +217,7 @@ TEST_F(ContainerTest, ConstrainedBoundOperations) {
 }
 
 // Edge case tests
-TEST_F(ContainerTest, OverlappingRangesSpread) {
+TEST_F(BucketMapTest, OverlappingRangesSpread) {
   container_type test_container;
   test_container.spread(0, 10, "test1");
   // print_actual_ranges(test_container);
@@ -254,7 +254,7 @@ TEST_F(ContainerTest, OverlappingRangesSpread) {
   verifyContainerContents(it->values(), {"test2"});
 }
 
-TEST_F(ContainerTest, OverlappingRangesCover) {
+TEST_F(BucketMapTest, OverlappingRangesCover) {
   container_type test_container;
 
   // Test overlapping ranges with gap between buckets
@@ -280,7 +280,7 @@ TEST_F(ContainerTest, OverlappingRangesCover) {
   verifyContainerContents(it->values(), {"test2"});
 }
 
-TEST_F(ContainerTest, OverlappingRangesErase) {
+TEST_F(BucketMapTest, OverlappingRangesErase) {
   container_type test_container;
 
   // Test overlapping ranges with gap between buckets
@@ -301,7 +301,7 @@ TEST_F(ContainerTest, OverlappingRangesErase) {
   verifyContainerContents(it->values(), {"test2"});
 }
 
-TEST_F(ContainerTest, OverlappingRangesWithConstraints) {
+TEST_F(BucketMapTest, OverlappingRangesWithConstraints) {
   container_type test_container(0, 100);
 
   // Test overlapping ranges with gap between buckets
@@ -337,7 +337,7 @@ TEST_F(ContainerTest, OverlappingRangesWithConstraints) {
   verifyContainerContents(it->values(), {"test2"});
 }
 
-TEST_F(ContainerTest, OverlappingRangesWithHighConstraint) {
+TEST_F(BucketMapTest, OverlappingRangesWithHighConstraint) {
   container_type test_container(0, 100);
 
   // Test overlapping ranges with gap between buckets
@@ -373,7 +373,7 @@ TEST_F(ContainerTest, OverlappingRangesWithHighConstraint) {
   verifyContainerContents(it->values(), {"test2"});
 }
 
-TEST_F(ContainerTest, OverlappingRangesWithLowConstraintIntersection) {
+TEST_F(BucketMapTest, OverlappingRangesWithLowConstraintIntersection) {
   container_type test_container(0, 100);
 
   // Test overlapping ranges with gap between buckets
@@ -409,7 +409,7 @@ TEST_F(ContainerTest, OverlappingRangesWithLowConstraintIntersection) {
   verifyContainerContents(it->values(), {"test2"});
 }
 
-TEST_F(ContainerTest, OverlappingRangesWithHighConstraintIntersection) {
+TEST_F(BucketMapTest, OverlappingRangesWithHighConstraintIntersection) {
   container_type test_container(0, 100);
 
   // Test overlapping ranges with gap between buckets
@@ -445,7 +445,7 @@ TEST_F(ContainerTest, OverlappingRangesWithHighConstraintIntersection) {
   verifyContainerContents(it->values(), {"test2"});
 }
 
-TEST_F(ContainerTest, ConstrainedRangeOperations) {
+TEST_F(BucketMapTest, ConstrainedRangeOperations) {
   container_type test_container(0, 100);
 
   // Test range operations with constraints
@@ -458,7 +458,7 @@ TEST_F(ContainerTest, ConstrainedRangeOperations) {
   EXPECT_EQ(test_container.high(), 100);
 }
 
-TEST_F(ContainerTest, AutomaticOrdering) {
+TEST_F(BucketMapTest, AutomaticOrdering) {
   container_type test_container;
 
   // Test automatic ordering of buckets
@@ -482,7 +482,7 @@ TEST_F(ContainerTest, AutomaticOrdering) {
   verifyContainerContents(it->values(), {"test3"});
 }
 
-TEST_F(ContainerTest, MultipleValuesInSameRange) {
+TEST_F(BucketMapTest, MultipleValuesInSameRange) {
   container_type test_container;
 
   // Test multiple values in the same range
@@ -496,7 +496,7 @@ TEST_F(ContainerTest, MultipleValuesInSameRange) {
   verifyContainerContents(it->values(), {"test1", "test2", "test3"});
 }
 
-TEST_F(ContainerTest, DuplicateValuesInSameRange) {
+TEST_F(BucketMapTest, DuplicateValuesInSameRange) {
   container_type test_container;
 
   // Test duplicate values in the same range
@@ -510,14 +510,14 @@ TEST_F(ContainerTest, DuplicateValuesInSameRange) {
   verifyContainerContents(it->values(), {"test", "test", "test"});
 }
 
-TEST_F(ContainerTest, ConstrainedFunction) {
+TEST_F(BucketMapTest, ConstrainedFunction) {
   container_type test_container(0, 100);
   EXPECT_TRUE(test_container.constrained());
   EXPECT_EQ(test_container.low(), 0);
   EXPECT_EQ(test_container.high(), 100);
 }
 
-TEST_F(ContainerTest, LowerBoundFunction) {
+TEST_F(BucketMapTest, LowerBoundFunction) {
   container_type test_container(0, 100);  // Create a constrained container
   test_container.spread(0, 10, "test1");
   test_container.spread(20, 30, "test2");
@@ -526,7 +526,7 @@ TEST_F(ContainerTest, LowerBoundFunction) {
   EXPECT_EQ(test_container.lower_bound(), 0);
 }
 
-TEST_F(ContainerTest, UpperBoundFunction) {
+TEST_F(BucketMapTest, UpperBoundFunction) {
   container_type test_container(0, 100);  // Create a constrained container
   test_container.spread(0, 10, "test1");
   test_container.spread(20, 30, "test2");
@@ -535,7 +535,7 @@ TEST_F(ContainerTest, UpperBoundFunction) {
   EXPECT_EQ(test_container.upper_bound(), 100);
 }
 
-TEST_F(ContainerTest, SpreadWithBucketType) {
+TEST_F(BucketMapTest, SpreadWithBucketType) {
   container_type test_container;
   container_type::value_container values;
   bucket_value_traits<std::string, std::list<std::string>>::add(values, "test");
@@ -548,7 +548,7 @@ TEST_F(ContainerTest, SpreadWithBucketType) {
   verifyContainerContents(it->values(), {"test"});
 }
 
-TEST_F(ContainerTest, CoverWithBucketType) {
+TEST_F(BucketMapTest, CoverWithBucketType) {
   container_type test_container;
   container_type::value_container values;
   bucket_value_traits<std::string, std::list<std::string>>::add(values, "test");
@@ -561,7 +561,7 @@ TEST_F(ContainerTest, CoverWithBucketType) {
   verifyContainerContents(it->values(), {"test"});
 }
 
-TEST_F(ContainerTest, SpreadWithContainer) {
+TEST_F(BucketMapTest, SpreadWithContainer) {
   container_type test_container1;
   test_container1.spread(0, 10, "test1");
   test_container1.spread(20, 30, "test2");
@@ -605,7 +605,7 @@ TEST_F(ContainerTest, SpreadWithContainer) {
   verifyContainerContents(it->values(), {"test4"});
 }
 
-TEST_F(ContainerTest, CoverWithContainer) {
+TEST_F(BucketMapTest, CoverWithContainer) {
   container_type test_container1;
   test_container1.spread(0, 10, "test1");
   test_container1.spread(20, 30, "test2");
@@ -639,7 +639,7 @@ TEST_F(ContainerTest, CoverWithContainer) {
   verifyContainerContents(it->values(), {"test4"});
 }
 
-TEST_F(ContainerTest, IteratorOperations) {
+TEST_F(BucketMapTest, IteratorOperations) {
   container_type test_container;
   test_container.spread(0, 10, "test1");
   test_container.spread(20, 30, "test2");
@@ -674,7 +674,7 @@ TEST_F(ContainerTest, IteratorOperations) {
   verifyContainerContents(it->values(), {"test1"});
 }
 
-TEST_F(ContainerTest, IteratorComparison) {
+TEST_F(BucketMapTest, IteratorComparison) {
   container_type test_container;
   test_container.spread(0, 10, "test1");
   test_container.spread(20, 30, "test2");
@@ -696,7 +696,7 @@ TEST_F(ContainerTest, IteratorComparison) {
   EXPECT_NE(it2, it3);
 }
 
-TEST_F(ContainerTest, IteratorArithmetic) {
+TEST_F(BucketMapTest, IteratorArithmetic) {
   container_type test_container;
   test_container.spread(1, 2, "test1");
   test_container.spread(2, 3, "test2");
@@ -718,8 +718,41 @@ TEST_F(ContainerTest, IteratorArithmetic) {
   verifyContainerContents(it2->values(), {"test1"});
 }
 
+TEST_F(BucketMapTest, FindMethod) {
+  container_type test_container;
+  test_container.spread(0, 10, "test1");
+  test_container.spread(20, 30, "test2");
+  test_container.spread(40, 50, "test3");
+
+  // Test finding existing values
+  auto it = test_container.find(5);
+  EXPECT_NE(it, test_container.end());
+  EXPECT_EQ(it->low(), 0);
+  EXPECT_EQ(it->high(), 10);
+  verifyContainerContents(it->values(), {"test1"});
+
+  it = test_container.find(25);
+  EXPECT_NE(it, test_container.end());
+  EXPECT_EQ(it->low(), 20);
+  EXPECT_EQ(it->high(), 30);
+  verifyContainerContents(it->values(), {"test2"});
+
+  // Test finding non-existent values
+  EXPECT_EQ(test_container.find(15), test_container.end());
+  EXPECT_EQ(test_container.find(35), test_container.end());
+  EXPECT_EQ(test_container.find(55), test_container.end());
+
+  // Test const version
+  const container_type& const_container = test_container;
+  auto const_it = const_container.find(45);
+  EXPECT_NE(const_it, const_container.end());
+  EXPECT_EQ(const_it->low(), 40);
+  EXPECT_EQ(const_it->high(), 50);
+  verifyContainerContents(const_it->values(), {"test3"});
+}
+
 // Add new test case for std::set
-TEST_F(ContainerTest, SetContainerType) {
+TEST_F(BucketMapTest, SetContainerType) {
   using set_container_type = bucket_map<int, std::string, bucket_compare_traits<int>, bucket_value_traits<std::string, std::set<std::string>>>;
   set_container_type test_container;
   set_container_type::value_container values;

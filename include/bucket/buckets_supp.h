@@ -45,10 +45,6 @@
 #include <cctype>
 #endif // CCTYPE_H_
 
-#ifndef MASUTILS_OPTIONAL_H_
-#include "optional.h"
-#endif // MASUTILS_OPTIONAL_H_
-
 namespace masutils {
 /**
  * @brief Value traits functions for a LIFO value collection.

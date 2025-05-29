@@ -28,84 +28,95 @@
 #include <type_traits>
 #include <chrono>
 #include <concepts>
+#include <utility>
 
 namespace masutils {
 
-    // Define concepts for types that support comparison operations
-    template<typename T>
-    concept LessThanComparable = requires(const T& a, const T& b) {
-        { a < b } -> std::convertible_to<bool>;
-    };
+// Define concepts for types that support comparison operations
+template<typename T>
+concept LessThanComparable = requires(const T& a, const T& b) {
+    { a < b } -> std::convertible_to<bool>;
+};
 
-    template<typename T>
-    concept EqualityComparable = requires(const T& a, const T& b) {
-        { a == b } -> std::convertible_to<bool>;
-    };
+template<typename T>
+concept EqualityComparable = requires(const T& a, const T& b) {
+    { a == b } -> std::convertible_to<bool>;
+};
 
-    /**
-     * @brief Traits class for comparing and assigning bucket key elements
-     * @tparam IndexType The type of the keys in the bucket
-     * 
-     * This class provides a unified interface for comparing and assigning
-     * key elements in a bucket container. Specializations can be defined
-     * to provide custom comparison and assignment logic for types that
-     * cannot be modified directly.
-     */
-    template<class IndexType>
-    struct bucket_compare_traits {
-        using index_type = IndexType;
-
-        /**
-         * @brief Compare two elements for equality
-         * @param x First element to compare
-         * @param y Second element to compare
-         * @return true if elements are equal, false otherwise
-         */
-        static constexpr bool eq(const IndexType& x, const IndexType& y) noexcept {
-            return (x == y);
-        }
-
-        /**
-         * @brief Compare two elements for less-than relationship
-         * @param x First element to compare
-         * @param y Second element to compare
-         * @return true if x is less than y, false otherwise
-         */
-        static constexpr bool lt(const IndexType& x, const IndexType& y) noexcept {
-            return (x < y);
-        }
-
-        /**
-         * @brief Assign a value to another
-         * @param x The target to assign to
-         * @param y The value to assign
-         */
-        static constexpr void assign(IndexType& x, const IndexType& y) noexcept {
-            x = y;
-        }
-
-        /**
-         * @brief Assign a value to a reference
-         * @param x The target to assign to
-         * @param y The source value (rvalue)
-         */
-        static constexpr void assign(IndexType& x, IndexType&& y) noexcept {
-            x = std::move(y);
-        }
-
-    private:
-        bucket_compare_traits() = delete;
-    };
+/**
+ * @brief Traits class for comparing and assigning bucket key elements
+ * @tparam IndexType The type of the keys in the bucket
+ * 
+ * This class provides a unified interface for comparing and assigning
+ * key elements in a bucket container. Specializations can be defined
+ * to provide custom comparison and assignment logic for types that
+ * cannot be modified directly.
+ */
+template<class IndexType>
+struct bucket_compare_traits {
+    using index_type = IndexType;
 
     /**
-     * @brief Traits class for descending order comparison
-     * @tparam IndexType The type of the keys in the bucket
+     * @brief Compare two elements for equality
+     * @param x First element to compare
+     * @param y Second element to compare
+     * @return true if elements are equal, false otherwise
      */
-    template<class IndexType>
-    struct bucket_compare_traits_descending : public bucket_compare_traits<IndexType> {
-        static constexpr bool lt(const IndexType& x, const IndexType& y) noexcept {
-            return bucket_compare_traits<IndexType>::lt(y, x);
-        }
-    };
+    static constexpr bool eq(const IndexType& x, const IndexType& y) noexcept {
+        return (x == y);
+    }
+
+    /**
+     * @brief Compare two elements for less-than relationship
+     * @param x First element to compare
+     * @param y Second element to compare
+     * @return true if x is less than y, false otherwise
+     */
+    static constexpr bool lt(const IndexType& x, const IndexType& y) noexcept {
+        return (x < y);
+    }
+
+    /**
+     * @brief Compare two elements for less-than-or-equal relationship
+     * @param x First element to compare
+     * @param y Second element to compare
+     * @return true if x is less than or equal to y, false otherwise
+     */
+    static constexpr bool le(const IndexType& x, const IndexType& y) noexcept {
+        return lt(x, y) || eq(x, y);
+    }
+
+    /**
+     * @brief Assign a value to another
+     * @param x The target to assign to
+     * @param y The value to assign
+     */
+    static constexpr void assign(IndexType& x, const IndexType& y) noexcept {
+        x = y;
+    }
+
+    /**
+     * @brief Assign a value to a reference
+     * @param x The target to assign to
+     * @param y The source value (rvalue)
+     */
+    static constexpr void assign(IndexType& x, IndexType&& y) noexcept {
+        x = std::move(y);
+    }
+
+private:
+    bucket_compare_traits() = delete;
+};
+
+/**
+ * @brief Traits class for descending order comparison
+ * @tparam IndexType The type of the keys in the bucket
+ */
+template<class IndexType>
+struct bucket_compare_traits_descending : public bucket_compare_traits<IndexType> {
+    static constexpr bool lt(const IndexType& x, const IndexType& y) noexcept {
+        return bucket_compare_traits<IndexType>::lt(y, x);
+    }
+};
 
 } // namespace masutils

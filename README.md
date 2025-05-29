@@ -120,8 +120,7 @@ map.spread(0, 5, "test1");
 // Cover a range with a value
 map.cover(2, 4, "test2");
 
-// Query values at a point
-auto values = map.query(3);  // Returns both "test1" and "test2"
+
 
 // Erase values from a range
 map.erase(1, 3);
@@ -140,8 +139,7 @@ list.spread(0, 5, "test1");
 // Cover a range with a value
 list.cover(2, 4, "test2");
 
-// Query values at a point
-auto values = list.query(3);  // Returns both "test1" and "test2"
+
 
 // Erase values from a range
 list.erase(1, 3);
@@ -186,4 +184,80 @@ bucket/
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details. 
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Installation
+
+The bucket library is header-only, which means there are no binaries to compile or link against. You just need to include the header files in your project.
+
+### Option 1: Download from GitHub Releases
+
+1. Visit the [Releases page](https://github.com/yourusername/bucket/releases) of the bucket library
+2. Download the latest release package `bucket-x.y.z.tar.gz`
+3. Extract the package:
+   ```bash
+   tar xzf bucket-x.y.z.tar.gz
+   ```
+
+### Option 2: Building from Source
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/yourusername/bucket.git
+   ```
+
+2. Optional: Create source package
+   ```bash
+   mkdir build && cd build
+   cmake ..
+   cpack --config CPackSourceConfig.cmake
+   ```
+
+### Using with CMake Projects
+
+Add the library to your project using one of these methods:
+
+1. **FetchContent** (recommended for version control):
+   ```cmake
+   include(FetchContent)
+   FetchContent_Declare(
+       bucket
+       GIT_REPOSITORY https://github.com/yourusername/bucket.git
+       GIT_TAG v1.0.0  # Specify the version you want
+   )
+   FetchContent_MakeAvailable(bucket)
+   
+   target_link_libraries(your_target PRIVATE bucket::bucket)
+   ```
+
+2. **find_package** (if installed system-wide):
+   ```cmake
+   find_package(bucket 1.0.0 REQUIRED)
+   target_link_libraries(your_target PRIVATE bucket::bucket)
+   ```
+
+### Using without CMake
+
+Since this is a header-only library, you can simply:
+
+1. Copy the headers to your project:
+   - Copy the `include/bucket` directory to your project's include path
+   - Or copy to a system-wide location:
+     ```bash
+     sudo cp -r include/bucket /usr/local/include/
+     ```
+
+2. Include in your C++ code:
+   ```cpp
+   #include <bucket/bucket_list.h>
+   #include <bucket/bucket_map.h>
+   ```
+
+3. Compile with C++20 support:
+   ```bash
+   g++ -std=c++20 your_code.cpp -I/path/to/bucket/include
+   ```
+
+### Documentation
+
+Documentation can be found in the `docs/` directory of the source package.

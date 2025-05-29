@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.15)
 
 project(bucket VERSION 1.0.0 LANGUAGES CXX)
 
-# Set C++ standard
+# Set C++20 standard
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -14,12 +14,12 @@ endif()
 
 # Platform-specific compiler settings
 if(MSVC)
-    add_compile_options(/W4)
+    add_compile_options(/W4 /std:c++20)
     # Use the same runtime library for all targets
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
     set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 else()
-    add_compile_options(-Wall -Wextra -Wpedantic)
+    add_compile_options(-Wall -Wextra -Wpedantic -std=c++20)
 endif()
 
 # Enable testing
@@ -92,6 +92,21 @@ add_gtest_executable(bucket_compare_traits_test)
 add_gtest_executable(bucket_value_traits_test)
 add_gtest_executable(bucket_traits_test)
 
+# Configure package version
+include(CMakePackageConfigHelpers)
+write_basic_package_version_file(
+    "${CMAKE_CURRENT_BINARY_DIR}/bucket-config-version.cmake"
+    VERSION ${PROJECT_VERSION}
+    COMPATIBILITY SameMajorVersion
+)
+
+# Configure package
+configure_package_config_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/bucket-config.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/bucket-config.cmake"
+    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/bucket
+)
+
 # Install targets
 include(GNUInstallDirs)
 install(TARGETS bucket
@@ -109,4 +124,36 @@ install(EXPORT bucket-targets
     FILE bucket-targets.cmake
     NAMESPACE bucket::
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/bucket
-) 
+)
+
+# Install package configuration files
+install(FILES
+    "${CMAKE_CURRENT_BINARY_DIR}/bucket-config.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/bucket-config-version.cmake"
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/bucket
+)
+
+# Configure CPack for creating source package only (header-only library)
+include(CPack)
+set(CPACK_PACKAGE_NAME "bucket")
+set(CPACK_PACKAGE_VENDOR "masutils")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Modern C++20 header-only bucket container library")
+set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
+
+# Source package settings only - no binary packages needed for header-only library
+set(CPACK_SOURCE_GENERATOR "TGZ")
+set(CPACK_SOURCE_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}")
+set(CPACK_SOURCE_IGNORE_FILES
+    "/\\\\.git/"
+    "/\\\\.github/"
+    "/build/"
+    "/\\\\.vscode/"
+    "/\\\\.vs/"
+    "\\\\.gitignore$"
+    ".*~$"
+)
+
+# Install additional directories for source distribution
+install(DIRECTORY docs/
+    DESTINATION share/doc/bucket
+    FILES_MATCHING PATTERN "*.md") 

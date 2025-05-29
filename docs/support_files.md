@@ -10,128 +10,116 @@ The support files provide common functionality and traits used by both `bucket_m
 
 ### bucket_compare_traits.h
 
-The `bucket_compare_traits.h` file provides a unified interface for comparing key elements in a bucket container. It uses C++20 concepts to ensure type safety and provides sensible defaults for common types.
+Provides a unified interface for comparing key elements in a bucket container. It uses C++20 concepts to ensure type safety and provides sensible defaults for common types.
 
 ### Key Features
 
-- **Modern C++20 Concepts**: Uses concepts to define type requirements:
-  - `std::totally_ordered`: Ensures types support total ordering
-  - `std::equality_comparable`: Ensures types support equality comparison
+- **Type Requirements**:
+  - Must be either arithmetic or a class type supporting comparison operations
+  - If class type, must support `lt` and `eq` operations through the traits
 
 - **Core Comparison Functions**:
-  - `eq`: Compares two elements for equality
   - `lt`: Compares two elements for less-than relationship
-  - `assign`: Assigns one value to another (both lvalue and rvalue references)
+  - `eq`: Compares two elements for equality
+  - `assign`: Assigns one value to another
 
-### Usage Example
+### bucket_value_traits.h
+
+Defines operations for working with bucket values, including container type definitions and value operations.
+
+### Key Features
+
+- **Container Type Definition**: Defines the container type used to store values
+- **Value Operations**:
+  - `add`: Adds a value to a container
+  - `append`: Appends one container's values to another
+
+### bucket_object.h
+
+Defines the core bucket type used by both `bucket_map` and `bucket_list`. Each bucket represents a non-overlapping range on an ordered axis.
+
+### Key Features
+
+- **Range Representation**: 
+  - `low()`: Lower bound of the range
+  - `high()`: Upper bound of the range
+  - `values()`: Container of values in the range
+
+### bucket_range.h
+
+Provides range-based operations and iterators for bucket containers.
+
+### Key Features
+
+- **Range Operations**:
+  - `spread`: Spreads a value across a range
+  - `cover`: Covers a range with a value
+  - `erase`: Erases values from a range
+
+### bucket_iterator.h
+
+Implements iterator types for bucket containers.
+
+### Key Features
+
+- **Iterator Types**:
+  - `bucket_iterator_base`: Base iterator template
+  - Support for both const and non-const iteration
+  - Forward and reverse iteration support
+
+### bucket_traits.h
+
+Defines common traits and concepts used across the library.
+
+### Key Features
+
+- **Type Traits**:
+  - Type checking and validation
+  - Common type definitions
+
+### buckets_supp.h
+
+Provides supplementary functionality used by bucket containers.
+
+### Key Features
+
+- **Support Functions**:
+  - Range manipulation
+  - Container operations
+  - Error handling
+
+## Common Usage Pattern
 
 ```cpp
 // Using with standard types
-using traits = bucket_compare_traits<int>;
+using compare_traits = bucket_compare_traits<int>;
+using value_traits = bucket_value_traits<std::string>;
 
-// Using with custom types (must implement < and == operators)
+// Using with custom types
 struct MyType {
     bool operator<(const MyType& other) const;
     bool operator==(const MyType& other) const;
 };
-using custom_traits = bucket_compare_traits<MyType>;
-```
 
-### bucket_value_traits.h
+using custom_compare_traits = bucket_compare_traits<MyType>;
+using custom_value_traits = bucket_value_traits<std::string, std::vector<std::string>>;
 
-The `bucket_value_traits.h` file defines operations for working with bucket values, including container type definitions and value containment checks.
-
-### Key Features
-
-- **Container Type Flexibility**: Supports any container type that meets the basic requirements
-- **Value Operations**:
-  - `add`: Adds a value to a container
-  - `append`: Appends one container's values to another
-- **Default Container Type**: Uses `std::list<ValueType>` by default
-
-### Usage Example
-
-```cpp
-// Using with standard container
-using traits = bucket_value_traits<int>;
-
-// Using with custom container type
-using custom_traits = bucket_value_traits<int, std::vector<int>>;
-```
-
-### bucket_object.h
-
-The `bucket_object.h` file defines the core bucket type used by both `bucket_map` and `bucket_list`. It represents a bucket with low and high indices and a value container.
-
-### Key Features
-
-- **Range Representation**: Stores low and high indices defining a range
-- **Value Storage**: Contains a value container for storing associated values
-- **Accessor Methods**:
-  - `low()`: Returns the lower bound of the range
-  - `high()`: Returns the upper bound of the range
-  - `values()`: Returns the value container
-
-### Usage Example
-
-```cpp
-using bucket_type = bucket_object<int, std::list<std::string>>;
-bucket_type bucket(1, 10, {"value1", "value2"});
-```
-
-### bucket_range.h
-
-The `bucket_range.h` file provides a range view over a bucket container, allowing iteration over buckets that overlap with a specified range.
-
-### Key Features
-
-- **Range View**: Provides a view over buckets in a specified range
-- **Iterator Support**: 
-  - Forward and reverse iteration
-  - Const and non-const iterators
-- **Template Parameters**:
-  - `Container`: The type of bucket container (bucket_map or bucket_list)
-  - `IsConst`: Boolean indicating if the iterator is const
-
-### Usage Example
-
-```cpp
-bucket_map<int, std::string> map;
-// ... add some buckets ...
-auto range = map.range(5, 15);
-for (const auto& bucket : range) {
-    // Process buckets in range [5, 15)
-}
-```
-
-## Common Usage Pattern
-
-These traits and support files are typically used together in bucket containers:
-
-```cpp
-template<typename Indices, typename Values>
-class bucket_container {
-    using compare_traits = bucket_compare_traits<Indices>;
-    using value_traits = bucket_value_traits<Values>;
-    using bucket_type = bucket_object<Indices, typename value_traits::value_container>;
-    
-    // Use compare_traits for index comparisons
-    // Use value_traits for value operations
-    // Use bucket_type for storing ranges and values
-};
+// Creating a bucket container
+bucket_list<int, std::string> list;
+bucket_map<MyType, std::string> map;
 ```
 
 ## Thread Safety
 
-The support files are designed to be thread-safe. All trait methods are static and don't maintain any state. Container operations should be synchronized by the user if accessed from multiple threads.
+The support files themselves are thread-safe as they contain only static methods and no shared state. However, bucket containers should be synchronized by the user when accessed from multiple threads.
+
+## Error Handling
+
+- Invalid range bounds throw `std::invalid_argument`
+- Accessing bounds of unconstrained containers throws `std::runtime_error`
 
 ## Performance Considerations
 
-- Trait methods should be efficient as they are called frequently during container operations
-- Container operations (add, append) should have appropriate complexity for the use case
-- Range operations use efficient algorithms for finding overlapping buckets
-
-## Related Documentation
-
-- [bucket_map API Documentation](bucket_map_api.md)
-- [bucket_list API Documentation](bucket_list_api.md) 
+- Trait operations are designed to be efficient and inlined where possible
+- Container operations maintain optimal complexity
+- Iterator operations are optimized for traversal 
