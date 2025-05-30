@@ -406,7 +406,7 @@ public:
    * @param high Upper bound of the range
    * @return Iterator to the first bucket after the range, or end() if none found
    */
-  iterator find_first_after_range(index_type low, index_type high) {
+  iterator find_first_after_range([[maybe_unused]] index_type low, index_type high) {
     return iterator(buckets_.upper_bound(high));
   }
 

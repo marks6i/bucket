@@ -25,6 +25,7 @@
 #include <iterator>
 #include <type_traits>
 
+#include "bucket_types.h"
 #include "bucket_traits.h"
 
 namespace masutils {

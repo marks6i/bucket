@@ -8,6 +8,80 @@ The support files provide common functionality and traits used by both `bucket_m
 
 ## Files
 
+### bucket_types.h
+
+This file is fundamental to the library's type safety and interface consistency. It provides a comprehensive type system that includes forward declarations, type traits, and concepts that ensure all bucket containers adhere to the required interfaces.
+
+#### Key Features
+
+- **Forward Declarations**:
+  - Declares the main container types (`bucket_map`, `bucket_list`, `bucket_range`)
+  - Enables circular references without full includes
+
+- **Type Traits**:
+  - `has_ordering_ops<T>`: Checks if a type supports all ordering operations (<, <=, >, >=)
+  - `has_equality_ops<T>`: Checks if a type supports equality operations (==, !=)
+
+- **Core Concepts**:
+  - `has_bucket_interface`: A C++20 concept that defines the required interface for any bucket type:
+    ```cpp
+    template <typename T>
+    concept has_bucket_interface = requires(T t) {
+      typename T::index_type;              // Must have an index type
+      typename T::value_container_type;     // Must have a value container type
+      { t.low() } -> std::same_as<typename T::index_type &>;         // Must have low()
+      { t.high() } -> std::same_as<typename T::index_type &>;        // Must have high()
+      { t.values() } -> std::same_as<typename T::value_container_type &>; // Must have values()
+    };
+    ```
+    This concept ensures that any type used as a bucket must provide:
+    - Type definitions for indices and value containers
+    - Accessor methods for the range bounds (low/high)
+    - Accessor method for the values
+    - Both const and non-const versions of these accessors
+
+  - `has_bucket_type`: A concept that ensures container types properly expose their bucket implementation:
+    ```cpp
+    template <typename T>
+    concept has_bucket_type = requires {
+      typename T::bucket_type;                 // Must have a bucket type
+      requires has_bucket_interface<typename T::bucket_type>; // Must satisfy bucket interface
+      typename T::index_type;                  // Must have an index type
+      requires std::same_as<typename T::index_type,  // Index types must match
+                          typename T::bucket_type::index_type>;
+    };
+    ```
+    This concept ensures that container types:
+    - Define their bucket implementation type
+    - Use bucket types that satisfy the bucket interface
+    - Have consistent index types throughout
+
+#### Interface Guarantees
+
+The type system in `bucket_types.h` provides several important guarantees:
+
+1. **Type Safety**: All bucket-related types must explicitly define their index and value container types.
+2. **Interface Consistency**: All bucket types must provide the same core interface (low, high, values).
+3. **Const Correctness**: Both const and non-const access patterns are enforced.
+4. **Type Compatibility**: Index types must be consistent between containers and their buckets.
+
+#### Usage in Container Classes
+
+The type system is used throughout the library to ensure type safety:
+
+```cpp
+// bucket_map and bucket_list both satisfy has_bucket_type
+static_assert(has_bucket_type<bucket_map<int, std::string>>);
+static_assert(has_bucket_type<bucket_list<int, std::string>>);
+
+// bucket_object satisfies has_bucket_interface
+static_assert(has_bucket_interface<bucket_object<int, std::vector<std::string>>>);
+
+// bucket_range works with any container satisfying has_bucket_type
+bucket_range<bucket_map<int, std::string>, false> range;  // non-const range
+bucket_range<bucket_list<int, std::string>, true> const_range;  // const range
+```
+
 ### bucket_compare_traits.h
 
 Provides a unified interface for comparing key elements in a bucket container. It uses C++20 concepts to ensure type safety and provides sensible defaults for common types.

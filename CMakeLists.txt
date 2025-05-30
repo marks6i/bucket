@@ -22,6 +22,33 @@ else()
     add_compile_options(-Wall -Wextra -Wpedantic -std=c++20)
 endif()
 
+# Add clang-tidy target
+find_program(CLANG_TIDY_EXE NAMES "clang-tidy")
+if(CLANG_TIDY_EXE)
+    # Copy run-clang-tidy.sh to build directory
+    configure_file(
+        ${CMAKE_CURRENT_SOURCE_DIR}/run-clang-tidy.sh
+        ${CMAKE_CURRENT_BINARY_DIR}/run-clang-tidy.sh
+        COPYONLY
+    )
+    
+    # Make the script executable
+    file(CHMOD ${CMAKE_CURRENT_BINARY_DIR}/run-clang-tidy.sh
+        PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
+    )
+    
+    # Add custom target
+    add_custom_target(
+        ctidy
+        COMMAND cd ${CMAKE_CURRENT_SOURCE_DIR} && ${CMAKE_CURRENT_BINARY_DIR}/run-clang-tidy.sh
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+        COMMENT "Running clang-tidy..."
+        VERBATIM
+    )
+else()
+    message(STATUS "clang-tidy not found. The 'ctidy' target will not be available.")
+endif()
+
 # Enable testing
 enable_testing()
 

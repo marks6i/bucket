@@ -6,6 +6,7 @@
 #pragma once
 
 #include <utility>
+#include "bucket_compare_traits.h"
 
 namespace masutils
 {
