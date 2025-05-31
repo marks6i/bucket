@@ -143,10 +143,19 @@ install(TARGETS bucket
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
     INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
-install(DIRECTORY include/bucket
-    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+
+# Install header files
+install(DIRECTORY include/bucket/
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/bucket
+    FILES_MATCHING 
+    PATTERN "*.h"
+    PATTERN "detail" EXCLUDE
+)
+install(DIRECTORY include/bucket/detail/
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/bucket/detail
     FILES_MATCHING PATTERN "*.h"
 )
+
 install(EXPORT bucket-targets
     FILE bucket-targets.cmake
     NAMESPACE bucket::

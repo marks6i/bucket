@@ -147,17 +147,18 @@ The following files are created during the release process:
 bucket-X.Y.Z/
 ├── include/
 │   └── bucket/
-│       ├── bucket_compare_traits.h
-│       ├── bucket_fwd.h
-│       ├── bucket_iterator.h
-│       ├── bucket_list.h
-│       ├── bucket_map.h
-│       ├── bucket_object.h
-│       ├── bucket_range.h
-│       ├── bucket_traits.h
-│       ├── bucket_types.h
-│       ├── bucket_value_traits.h
-│       └── buckets_supp.h
+│       ├── bucket_list.h         # Public API
+│       ├── bucket_map.h          # Public API
+│       ├── buckets_supp.h        # Public API
+│       └── detail/               # Implementation details
+│           ├── bucket_compare_traits.h
+│           ├── bucket_fwd.h
+│           ├── bucket_iterator.h
+│           ├── bucket_object.h
+│           ├── bucket_range.h
+│           ├── bucket_traits.h
+│           ├── bucket_types.h
+│           └── bucket_value_traits.h
 ├── docs/
 │   ├── bucket_map_api.md
 │   ├── bucket_list_api.md
@@ -166,6 +167,16 @@ bucket-X.Y.Z/
 ├── LICENSE
 └── README.md
 ```
+
+The header files are organized as follows:
+- Public API headers (in `include/bucket/`):
+  - `bucket_list.h`: Main bucket list container
+  - `bucket_map.h`: Main bucket map container
+  - `buckets_supp.h`: Supplemental utilities and traits
+- Implementation headers (in `include/bucket/detail/`):
+  - Internal implementation details
+  - Not intended for direct use by library users
+  - May change between versions without notice
 
 ## CMake Integration
 

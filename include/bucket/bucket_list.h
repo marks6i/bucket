@@ -34,11 +34,11 @@
 #include <stdexcept>
 #include <type_traits>
 
-#include "bucket_compare_traits.h"
-#include "bucket_iterator.h"
-#include "bucket_object.h"
-#include "bucket_range.h"
-#include "bucket_value_traits.h"
+#include "detail/bucket_compare_traits.h"
+#include "detail/bucket_iterator.h"
+#include "detail/bucket_object.h"
+#include "detail/bucket_range.h"
+#include "detail/bucket_value_traits.h"
 
 namespace masutils {
 /**
