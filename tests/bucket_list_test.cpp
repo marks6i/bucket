@@ -751,6 +751,51 @@ TEST_F(BucketListTest, FindMethod) {
   verifyContainerContents(const_it->values(), {"test3"});
 }
 
+TEST_F(BucketListTest, FindMethodWithOverlappingRanges) {
+  container_type test_container;
+  test_container.spread(0, 10, "test1");
+  test_container.spread(20, 30, "test2");
+  test_container.spread(5, 25, "test3");
+
+  // Test finding values in the first non-overlapping segment [0,5)
+  auto it = test_container.find(2);
+  EXPECT_NE(it, test_container.end());
+  EXPECT_EQ(it->low(), 0);
+  EXPECT_EQ(it->high(), 5);
+  verifyContainerContents(it->values(), {"test1"});
+
+  // Test finding values in the first overlapping segment [5,10)
+  it = test_container.find(7);
+  EXPECT_NE(it, test_container.end());
+  EXPECT_EQ(it->low(), 5);
+  EXPECT_EQ(it->high(), 10);
+  verifyContainerContents(it->values(), {"test1", "test3"});
+
+  // Test finding values in the middle segment [10,20)
+  it = test_container.find(15);
+  EXPECT_NE(it, test_container.end());
+  EXPECT_EQ(it->low(), 10);
+  EXPECT_EQ(it->high(), 20);
+  verifyContainerContents(it->values(), {"test3"});
+
+  // Test finding values in the second overlapping segment [20,25)
+  it = test_container.find(22);
+  EXPECT_NE(it, test_container.end());
+  EXPECT_EQ(it->low(), 20);
+  EXPECT_EQ(it->high(), 25);
+  verifyContainerContents(it->values(), {"test2", "test3"});
+
+  // Test finding values in the last non-overlapping segment [25,30)
+  it = test_container.find(27);
+  EXPECT_NE(it, test_container.end());
+  EXPECT_EQ(it->low(), 25);
+  EXPECT_EQ(it->high(), 30);
+  verifyContainerContents(it->values(), {"test2"});
+
+  // Test finding values in gaps between ranges
+  EXPECT_EQ(test_container.find(35), test_container.end());
+}
+
 // Add new test case for std::set
 TEST_F(BucketListTest, SetContainerType) {
   using set_container_type = bucket_list<int, std::string, bucket_compare_traits<int>, bucket_value_traits<std::string, std::set<std::string>>>;
@@ -767,6 +812,231 @@ TEST_F(BucketListTest, SetContainerType) {
   EXPECT_EQ(it->low(), 0);
   EXPECT_EQ(it->high(), 10);
   verifyContainerContents(it->values(), {"test1", "test2"});
+}
+
+TEST_F(BucketListTest, SpreadWithConstrainedBoundsOutOfRange) {
+  container_type test_container(10, 40);
+  
+  // Test spreading range completely before constrained bounds
+  test_container.spread(0, 5, "test1");
+  EXPECT_TRUE(test_container.empty());
+
+  // Test spreading range completely after constrained bounds
+  test_container.spread(45, 50, "test2");
+  EXPECT_TRUE(test_container.empty());
+
+  // Test spreading range partially before constrained bounds
+  test_container.spread(5, 15, "test3");
+  auto it = test_container.begin();
+  EXPECT_EQ(it->low(), 10);
+  EXPECT_EQ(it->high(), 15);
+  verifyContainerContents(it->values(), {"test3"});
+
+  // Test spreading range partially after constrained bounds
+  test_container.spread(35, 45, "test4");
+  it = test_container.begin();
+  ++it;
+  EXPECT_EQ(it->low(), 35);
+  EXPECT_EQ(it->high(), 40);
+  verifyContainerContents(it->values(), {"test4"});
+}
+
+TEST_F(BucketListTest, SpreadWithGapBeforeExistingBucket) {
+  container_type test_container;
+  test_container.spread(20, 30, "test1");
+  
+  // Test spreading with a gap before existing bucket
+  test_container.spread(5, 15, "test2");
+  
+  auto it = test_container.begin();
+  EXPECT_EQ(it->low(), 5);
+  EXPECT_EQ(it->high(), 15);
+  verifyContainerContents(it->values(), {"test2"});
+  
+  ++it;
+  EXPECT_EQ(it->low(), 20);
+  EXPECT_EQ(it->high(), 30);
+  verifyContainerContents(it->values(), {"test1"});
+}
+
+TEST_F(BucketListTest, SpreadWithExactBucketSplit) {
+  container_type test_container;
+  test_container.spread(0, 30, "test1");
+  
+  // Test exact splitting points
+  test_container.spread(10, 20, "test2");
+  
+  auto it = test_container.begin();
+  EXPECT_EQ(it->low(), 0);
+  EXPECT_EQ(it->high(), 10);
+  verifyContainerContents(it->values(), {"test1"});
+  
+  ++it;
+  EXPECT_EQ(it->low(), 10);
+  EXPECT_EQ(it->high(), 20);
+  verifyContainerContents(it->values(), {"test1", "test2"});
+  
+  ++it;
+  EXPECT_EQ(it->low(), 20);
+  EXPECT_EQ(it->high(), 30);
+  verifyContainerContents(it->values(), {"test1"});
+}
+
+TEST_F(BucketListTest, SpreadWithGapAfterLastBucket) {
+  container_type test_container;
+  test_container.spread(0, 10, "test1");
+  
+  // Test spreading with a gap after the last bucket
+  test_container.spread(20, 30, "test2");
+  
+  auto it = test_container.begin();
+  EXPECT_EQ(it->low(), 0);
+  EXPECT_EQ(it->high(), 10);
+  verifyContainerContents(it->values(), {"test1"});
+  
+  ++it;
+  EXPECT_EQ(it->low(), 20);
+  EXPECT_EQ(it->high(), 30);
+  verifyContainerContents(it->values(), {"test2"});
+}
+
+TEST_F(BucketListTest, SpreadWithEmptyContainer) {
+  container_type test_container;
+  
+  // Test spreading into empty container
+  test_container.spread(10, 20, "test1");
+  
+  auto it = test_container.begin();
+  EXPECT_EQ(it->low(), 10);
+  EXPECT_EQ(it->high(), 20);
+  verifyContainerContents(it->values(), {"test1"});
+}
+
+TEST_F(BucketListTest, SpreadWithInvalidRange) {
+  container_type test_container;
+  
+  // Test spreading with high < low
+  test_container.spread(20, 10, "test1");
+  EXPECT_TRUE(test_container.empty());
+  
+  // Test spreading with equal bounds
+  test_container.spread(10, 10, "test2");
+  EXPECT_TRUE(test_container.empty());
+}
+
+TEST_F(BucketListTest, BucketRangeOperations) {
+  container_type test_container;
+  test_container.spread(0, 10, "test1");
+  test_container.spread(20, 30, "test2");
+  test_container.spread(40, 50, "test3");
+
+  // Test range that includes multiple buckets
+  auto range = test_container.range(5, 35);
+  auto range_it = range.begin();
+  EXPECT_EQ(range_it->low(), 0);
+  EXPECT_EQ(range_it->high(), 10);
+  verifyContainerContents(range_it->values(), {"test1"});
+
+  ++range_it;
+  EXPECT_EQ(range_it->low(), 20);
+  EXPECT_EQ(range_it->high(), 30);
+  verifyContainerContents(range_it->values(), {"test2"});
+
+  ++range_it;
+  EXPECT_EQ(range_it, range.end());
+
+  // Test empty range between buckets
+  auto empty_range = test_container.range(12, 18);
+  EXPECT_EQ(empty_range.begin(), empty_range.end());
+
+  // Test const range
+  const container_type& const_container = test_container;
+  auto const_range = const_container.range(15, 45);
+  auto const_it = const_range.begin();
+  EXPECT_EQ(const_it->low(), 20);
+  EXPECT_EQ(const_it->high(), 30);
+  verifyContainerContents(const_it->values(), {"test2"});
+}
+
+TEST_F(BucketListTest, FindEdgeCases) {
+  container_type test_container;
+  test_container.spread(0, 10, "test1");
+  test_container.spread(20, 30, "test2");
+
+  // Test finding values at exact bucket boundaries
+  EXPECT_EQ(test_container.find(0), test_container.end());  // [low, high) is half-open
+  EXPECT_EQ(test_container.find(10), test_container.end()); // high boundary is exclusive
+  
+  auto it = test_container.find(5);
+  EXPECT_NE(it, test_container.end());
+  EXPECT_EQ(it->low(), 0);
+  EXPECT_EQ(it->high(), 10);
+  verifyContainerContents(it->values(), {"test1"});
+
+  // Test finding in gaps
+  EXPECT_EQ(test_container.find(15), test_container.end());
+
+  // Test finding in empty container
+  container_type empty_container;
+  EXPECT_EQ(empty_container.find(5), empty_container.end());
+}
+
+TEST_F(BucketListTest, FindInConstrainedBuckets) {
+  container_type test_container(0, 100);
+  test_container.spread(0, 10, "test1");
+  test_container.spread(90, 100, "test2");
+
+  // Test finding at constraint boundaries
+  EXPECT_EQ(test_container.find(0), test_container.end());  // [low, high) is half-open
+  EXPECT_EQ(test_container.find(100), test_container.end());
+
+  // Test finding within valid ranges
+  auto it = test_container.find(5);
+  EXPECT_NE(it, test_container.end());
+  EXPECT_EQ(it->low(), 0);
+  EXPECT_EQ(it->high(), 10);
+  verifyContainerContents(it->values(), {"test1"});
+
+  it = test_container.find(95);
+  EXPECT_NE(it, test_container.end());
+  EXPECT_EQ(it->low(), 90);
+  EXPECT_EQ(it->high(), 100);
+  verifyContainerContents(it->values(), {"test2"});
+}
+
+TEST_F(BucketListTest, CustomIndexType) {
+  // Test with a custom index type (e.g., std::pair<int, int>)
+  using custom_container_type = bucket_list<std::pair<int, int>, std::string>;
+  custom_container_type test_container;
+
+  std::pair<int, int> low(0, 0);
+  std::pair<int, int> high(10, 10);
+  test_container.spread(low, high, "test");
+
+  auto it = test_container.find(std::pair<int, int>(5, 5));
+  EXPECT_NE(it, test_container.end());
+  EXPECT_EQ(it->low(), low);
+  EXPECT_EQ(it->high(), high);
+  verifyContainerContents(it->values(), {"test"});
+}
+
+TEST_F(BucketListTest, CustomValueContainer) {
+  // Test with a custom value container (e.g., std::set)
+  using set_container_type = bucket_list<int, std::string, 
+    bucket_compare_traits<int>, 
+    bucket_value_traits<std::string, std::set<std::string>>>;
+  
+  set_container_type test_container;
+  
+  // Sets should deduplicate values
+  test_container.spread(0, 10, "test");
+  test_container.spread(0, 10, "test");
+  test_container.spread(0, 10, "different");
+
+  auto it = test_container.begin();
+  EXPECT_EQ(it->values().size(), 2); // Only unique values
+  EXPECT_TRUE(it->values().contains("test"));
+  EXPECT_TRUE(it->values().contains("different"));
 }
 
 } // namespace test

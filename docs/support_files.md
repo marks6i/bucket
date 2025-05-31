@@ -183,10 +183,6 @@ bucket_list<int, std::string> list;
 bucket_map<MyType, std::string> map;
 ```
 
-## Thread Safety
-
-The support files themselves are thread-safe as they contain only static methods and no shared state. However, bucket containers should be synchronized by the user when accessed from multiple threads.
-
 ## Error Handling
 
 - Invalid range bounds throw `std::invalid_argument`

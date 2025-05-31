@@ -276,14 +276,6 @@ public:
 
   // Spread operation
   int spread(index_type low, index_type high, value_type value) {
-    if (CompareTraits::lt(high, low)) {
-      throw std::invalid_argument("high must be greater than low");
-    }
-    if (constrained_ &&
-        (CompareTraits::lt(low, low_) || CompareTraits::lt(high_, high))) {
-      throw std::out_of_range("range is outside of constrained bounds");
-    }
-
     value_container container_;
     ValueTraits::add(container_, value);
     bucket_type bucket_(low, high, container_);

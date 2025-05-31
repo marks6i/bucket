@@ -11,7 +11,6 @@ Common features for both components:
 - Range-based operations (spread, cover, erase)
 - Efficient storage and retrieval of values associated with ranges
 - Support for custom index and value types
-- Thread-safe operations
 - Modern C++20 design
 
 ### bucket_map
@@ -184,7 +183,7 @@ bucket/
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the Apache License, Version 2.0 - see the LICENSE file for details.
 
 ## Installation
 
