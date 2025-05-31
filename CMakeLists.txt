@@ -2,6 +2,12 @@ cmake_minimum_required(VERSION 3.15)
 
 project(bucket VERSION 1.0.0 LANGUAGES CXX)
 
+# Set default binary directory to 'build'
+if(CMAKE_BINARY_DIR STREQUAL CMAKE_SOURCE_DIR)
+    set(CMAKE_BINARY_DIR "${CMAKE_SOURCE_DIR}/build")
+    message(STATUS "Setting binary directory to: ${CMAKE_BINARY_DIR}")
+endif()
+
 # Set C++20 standard
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

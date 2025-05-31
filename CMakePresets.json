@@ -2,6 +2,19 @@
   "version": 3,
   "configurePresets": [
     {
+      "name": "default",
+      "displayName": "Default Config",
+      "description": "Default build configuration using Ninja generator",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "CMAKE_CXX_STANDARD": "20",
+        "CMAKE_CXX_STANDARD_REQUIRED": "ON",
+        "CMAKE_CXX_EXTENSIONS": "OFF",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
+    },
+    {
       "name": "windows-x64-debug",
       "displayName": "Windows x64 Debug",
       "condition": {
@@ -84,6 +97,12 @@
   ],
 
   "buildPresets": [
+    {
+      "name": "default",
+      "configurePreset": "default",
+      "displayName": "Default Build",
+      "description": "Default build using Ninja generator"
+    },
     {
       "name": "build-windows-x64-debug",
       "configurePreset": "windows-x64-debug"

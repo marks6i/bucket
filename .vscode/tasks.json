@@ -2,6 +2,29 @@
   "version": "2.0.0",
   "tasks": [
     {
+      "label": "build",
+      "type": "shell",
+      "command": "cmake",
+      "args": [
+        "--preset",
+        "default",
+        "-B",
+        "build",
+        "-S",
+        ".",
+        "&&",
+        "cmake",
+        "--build",
+        "build"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": ["$gcc", "$msCompile"],
+      "detail": "Build using default preset (always builds in build/)"
+    },
+    {
       "label": "build-linux-x64-debug",
       "type": "shell",
       "command": "cmake",
