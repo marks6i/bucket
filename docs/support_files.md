@@ -19,8 +19,17 @@ This file is fundamental to the library's type safety and interface consistency.
   - Enables circular references without full includes
 
 - **Type Traits**:
-  - `has_ordering_ops<T>`: Checks if a type supports all ordering operations (<, <=, >, >=)
-  - `has_equality_ops<T>`: Checks if a type supports equality operations (==, !=)
+  ```cpp
+  template <typename T>
+  struct has_ordering_ops {
+    static constexpr bool value = /* checks for <, <=, >, >= */;
+  };
+
+  template <typename T>
+  struct has_equality_ops {
+    static constexpr bool value = /* checks for ==, != */;
+  };
+  ```
 
 - **Core Concepts**:
   - `has_bucket_interface`: A C++20 concept that defines the required interface for any bucket type:
@@ -32,13 +41,14 @@ This file is fundamental to the library's type safety and interface consistency.
       { t.low() } -> std::same_as<typename T::index_type &>;         // Must have low()
       { t.high() } -> std::same_as<typename T::index_type &>;        // Must have high()
       { t.values() } -> std::same_as<typename T::value_container_type &>; // Must have values()
+    } || requires(const T t) {  // Also support const access
+      typename T::index_type;
+      typename T::value_container_type;
+      { t.low() } -> std::same_as<const typename T::index_type &>;
+      { t.high() } -> std::same_as<const typename T::index_type &>;
+      { t.values() } -> std::same_as<const typename T::value_container_type &>;
     };
     ```
-    This concept ensures that any type used as a bucket must provide:
-    - Type definitions for indices and value containers
-    - Accessor methods for the range bounds (low/high)
-    - Accessor method for the values
-    - Both const and non-const versions of these accessors
 
   - `has_bucket_type`: A concept that ensures container types properly expose their bucket implementation:
     ```cpp
@@ -51,19 +61,30 @@ This file is fundamental to the library's type safety and interface consistency.
                           typename T::bucket_type::index_type>;
     };
     ```
-    This concept ensures that container types:
-    - Define their bucket implementation type
-    - Use bucket types that satisfy the bucket interface
-    - Have consistent index types throughout
 
 #### Interface Guarantees
 
 The type system in `bucket_types.h` provides several important guarantees:
 
-1. **Type Safety**: All bucket-related types must explicitly define their index and value container types.
-2. **Interface Consistency**: All bucket types must provide the same core interface (low, high, values).
-3. **Const Correctness**: Both const and non-const access patterns are enforced.
-4. **Type Compatibility**: Index types must be consistent between containers and their buckets.
+1. **Type Safety**: 
+   - All bucket-related types must explicitly define their index and value container types
+   - Index types must support either arithmetic operations or custom comparison traits
+   - Value container types must satisfy container requirements
+
+2. **Interface Consistency**: 
+   - All bucket types must provide the same core interface (low, high, values)
+   - Both mutable and const access patterns are supported
+   - Bucket containers must maintain consistent type relationships
+
+3. **Const Correctness**: 
+   - Both const and non-const access patterns are enforced
+   - Const buckets provide read-only access to their contents
+   - Const iterators preserve const correctness
+
+4. **Type Compatibility**: 
+   - Index types must be consistent between containers and their buckets
+   - Value container types must support required operations (add, append)
+   - Iterator types must satisfy standard iterator requirements
 
 #### Usage in Container Classes
 
@@ -86,38 +107,81 @@ bucket_range<bucket_list<int, std::string>, true> const_range;  // const range
 
 Provides a unified interface for comparing key elements in a bucket container. It uses C++20 concepts to ensure type safety and provides sensible defaults for common types.
 
-### Key Features
+#### Key Features
 
 - **Type Requirements**:
-  - Must be either arithmetic or a class type supporting comparison operations
-  - If class type, must support `lt` and `eq` operations through the traits
+  ```cpp
+  template<typename T>
+  concept LessThanComparable = requires(const T& a, const T& b) {
+      { a < b } -> std::convertible_to<bool>;
+  };
+
+  template<typename T>
+  concept EqualityComparable = requires(const T& a, const T& b) {
+      { a == b } -> std::convertible_to<bool>;
+  };
+  ```
 
 - **Core Comparison Functions**:
-  - `lt`: Compares two elements for less-than relationship
-  - `eq`: Compares two elements for equality
-  - `assign`: Assigns one value to another
+  ```cpp
+  template<class IndexType>
+  struct bucket_compare_traits {
+      static bool lt(const IndexType& a, const IndexType& b);
+      static bool eq(const IndexType& a, const IndexType& b);
+      static void assign(IndexType& dest, const IndexType& src);
+  };
+  ```
 
 ### bucket_value_traits.h
 
 Defines operations for working with bucket values, including container type definitions and value operations.
 
-### Key Features
+#### Key Features
 
-- **Container Type Definition**: Defines the container type used to store values
+- **Container Requirements** (C++20):
+  ```cpp
+  template <typename C>
+  concept container = requires(C c, typename C::value_type v) {
+    { c.begin() } -> std::same_as<typename C::iterator>;
+    { c.end() } -> std::same_as<typename C::iterator>;
+    { c.push_back(v) } -> std::same_as<void>;
+    { c.insert(c.end(), v) } -> std::same_as<typename C::iterator>;
+    { c.erase(c.begin()) } -> std::same_as<typename C::iterator>;
+  };
+  ```
+
 - **Value Operations**:
-  - `add`: Adds a value to a container
-  - `append`: Appends one container's values to another
+  ```cpp
+  template<typename T>
+  struct bucket_value_traits {
+      using value_container = std::vector<T>;
+      
+      static void add(value_container& container, const T& value);
+      static void append(value_container& dest, const value_container& src);
+  };
+  ```
 
 ### bucket_object.h
 
-Defines the core bucket type used by both `bucket_map` and `bucket_list`. Each bucket represents a non-overlapping range on an ordered axis.
+Implements the core bucket type that satisfies the `has_bucket_interface` concept.
 
-### Key Features
+#### Key Features
 
-- **Range Representation**: 
-  - `low()`: Lower bound of the range
-  - `high()`: Upper bound of the range
-  - `values()`: Container of values in the range
+- **Required Interface**:
+  ```cpp
+  template <class IndexType, class ValueContainerType>
+  class bucket_object {
+      using index_type = IndexType;
+      using value_container_type = ValueContainerType;
+      
+      index_type& low() noexcept;
+      const index_type& low() const noexcept;
+      index_type& high() noexcept;
+      const index_type& high() const noexcept;
+      value_container_type& values() noexcept;
+      const value_container_type& values() const noexcept;
+  };
+  ```
 
 ### bucket_range.h
 
