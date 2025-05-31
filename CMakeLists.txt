@@ -112,7 +112,7 @@ target_include_directories(bucket INTERFACE
     $<INSTALL_INTERFACE:include>
 )
 
-# Add test executables using the helper function
+# Add test executables
 add_gtest_executable(bucket_list_test)
 add_gtest_executable(bucket_map_test)
 add_gtest_executable(bucket_compare_traits_test)

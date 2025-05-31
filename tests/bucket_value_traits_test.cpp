@@ -1,5 +1,5 @@
 #include <algorithm>
-#include <bucket/bucket_value_traits.h>
+#include <bucket/detail/bucket_value_traits.h>
 #include <gtest/gtest.h>
 #include <list>
 #include <set>

@@ -1,4 +1,4 @@
-/#/**
+/**
  * @file  bucket_object.h
  * @copyright
  * Copyright 2024 Mark Solinski
@@ -21,7 +21,7 @@
 #pragma once
 
 #include <utility>
-#include "bucket_compare_traits.h"
+#include "./bucket_compare_traits.h"
 
 namespace masutils
 {

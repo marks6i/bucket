@@ -50,8 +50,7 @@ Checks: >
   -misc-non-private-member-variables-in-classes,
   -hicpp-named-parameter,
   -readability-named-parameter,
-  -cert-dcl50-cpp,
-  -modernize-use-constraints
+  -cert-dcl50-cpp
 WarningsAsErrors: ''
 HeaderFilterRegex: ''
 FormatStyle: none

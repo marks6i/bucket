@@ -32,6 +32,7 @@
 
 namespace masutils {
 
+#if __cplusplus >= 202002L
 // Define concepts for types that support comparison operations
 template<typename T>
 concept LessThanComparable = requires(const T& a, const T& b) {
@@ -42,6 +43,7 @@ template<typename T>
 concept EqualityComparable = requires(const T& a, const T& b) {
     { a == b } -> std::convertible_to<bool>;
 };
+#endif // __cplusplus >= 202002L
 
 /**
  * @brief Traits class for comparing and assigning bucket key elements

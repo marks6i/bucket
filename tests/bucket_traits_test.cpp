@@ -24,7 +24,7 @@
 #include <forward_list>
 #include <vector>
 
-#include "bucket/bucket_traits.h"
+#include "bucket/detail/bucket_traits.h"
 
 using namespace masutils;
 

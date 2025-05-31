@@ -70,6 +70,12 @@ compile_commands.json
 CTestTestfile.cmake
 _deps
 .cache/
+CPackConfig.cmake
+CPackSourceConfig.cmake
+*_tests.cmake
+*_include.cmake
+bucket-config.cmake
+bucket-config-version.cmake
 
 # Temporary files
 *.tmp

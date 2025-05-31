@@ -79,7 +79,7 @@ public:
   using value_container = typename ValueTraits::value_container;
   using const_value_container = const typename ValueTraits::value_container;
 
-  // Define the bucket type using the new bucket_object class
+  // Define the bucket type using the bucket_object class
   using bucket_type = bucket_object<index_type, value_container>;
 
   // Use a list to store the buckets
@@ -87,8 +87,7 @@ public:
 
   // Update iterator type definitions
   using iterator = bucket_iterator_base<bucket_type_list, bucket_type, false>;
-  using const_iterator =
-      bucket_iterator_base<bucket_type_list, bucket_type, true>;
+  using const_iterator = bucket_iterator_base<bucket_type_list, bucket_type, true>;
   using reverse_iterator = std::reverse_iterator<iterator>;
   using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
@@ -590,9 +589,9 @@ private:
   mytype &operator=(const mytype &) = default;
 
   bucket_type_list buckets_;
-  const index_type low_;
-  const index_type high_;
-  const bool constrained_;
+  index_type low_;
+  index_type high_;
+  bool constrained_;
 };
 } // namespace masutils
 

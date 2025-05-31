@@ -1,8 +1,4 @@
-#include <bucket/bucket_compare_traits.h>
 #include <bucket/bucket_list.h>
-#include <bucket/bucket_object.h>
-#include <bucket/bucket_range.h>
-#include <bucket/bucket_value_traits.h>
 #include <gtest/gtest.h>
 #include <list>
 #include <memory>

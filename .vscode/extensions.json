@@ -7,9 +7,6 @@
     "ms-vscode.cpptools",
 
     // Optional: helpful C++ tooling (clang-format, etc.)
-    "ms-vscode.cpptools-extension-pack",
-
-    // Test Explorer UI for integrated test discovery/debug
-    "hbenl.vscode-test-explorer"
+    "ms-vscode.cpptools-extension-pack"
   ]
 }

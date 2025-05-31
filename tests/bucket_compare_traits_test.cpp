@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include <bucket/bucket_compare_traits.h>
+#include <bucket/detail/bucket_compare_traits.h>
 #include <chrono>
 #include <concepts>
 
