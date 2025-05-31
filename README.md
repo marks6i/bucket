@@ -192,10 +192,24 @@ The bucket library is header-only, which means there are no binaries to compile 
 ### Option 1: Download from GitHub Releases
 
 1. Visit the [Releases page](https://github.com/yourusername/bucket/releases) of the bucket library
-2. Download the latest release package `bucket-x.y.z.tar.gz`
+2. Download the latest release package:
+   - `bucket-x.y.z.tar.gz` - Source archive (Unix-like systems)
+   - `bucket-x.y.z.zip` - Source archive (Windows)
 3. Extract the package:
    ```bash
+   # For .tar.gz
    tar xzf bucket-x.y.z.tar.gz
+   # For .zip
+   unzip bucket-x.y.z.zip
+   ```
+4. Install using CMake:
+   ```bash
+   cd bucket-x.y.z
+   cmake -B build \
+       -DCMAKE_BUILD_TYPE=Release \
+       -DCMAKE_INSTALL_PREFIX=/usr/local
+   cmake --build build
+   sudo cmake --install build
    ```
 
 ### Option 2: Building from Source
