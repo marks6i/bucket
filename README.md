@@ -190,8 +190,29 @@ list.cover(2, 4, "segment2");     // Override range [2, 4)
 list.erase(1, 3);                // Remove range [1, 3)
 
 // Querying and accessing
-bool has_value = list.contains(4);
-std::string val = list.at(4);     // Get value at index
+bool has_value = list.contains(4);          // Check if index is in any bucket
+if (has_value) {
+    auto& values = list.at(4);              // Get values at index (throws if not found)
+    // Process values
+}
+
+// Using find with exception handling
+try {
+    auto it = list.find(4);                 // Find bucket containing index (throws if not found)
+    // Process bucket
+} catch (const std::out_of_range& e) {
+    // Handle case where index is not found
+}
+
+// Safe pattern for accessing values
+if (list.contains(4)) {                     // Check first
+    try {
+        auto& values = list.at(4);          // Then access
+        // Process values
+    } catch (const std::out_of_range& e) {
+        // This should never happen if contains() returned true
+    }
+}
 
 // Iterating through ranges in order
 for (const auto& [range, value] : list) {

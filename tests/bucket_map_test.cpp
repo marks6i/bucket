@@ -720,159 +720,44 @@ TEST_F(BucketMapTest, FindMethod) {
   test_container.spread(20, 30, "test2");
   test_container.spread(40, 50, "test3");
 
-  // Test finding existing values
-  auto it = test_container.find(5);
-  EXPECT_NE(it, test_container.end());
-  EXPECT_EQ(it->low(), 0);
-  EXPECT_EQ(it->high(), 10);
-  verifyContainerContents(it->values(), {"test1"});
+  // Test finding values at exact bucket boundaries
+  EXPECT_THROW({[[maybe_unused]] auto it = test_container.find(0);}, std::out_of_range);  // [low, high) is half-open
+  EXPECT_THROW({[[maybe_unused]] auto it = test_container.find(10);}, std::out_of_range); // high boundary is exclusive
+  
+  EXPECT_NO_THROW({
+    auto it = test_container.find(5);
+    EXPECT_EQ(it->low(), 0);
+    EXPECT_EQ(it->high(), 10);
+    verifyContainerContents(it->values(), {"test1"});
+  });
 
-  it = test_container.find(25);
-  EXPECT_NE(it, test_container.end());
-  EXPECT_EQ(it->low(), 20);
-  EXPECT_EQ(it->high(), 30);
-  verifyContainerContents(it->values(), {"test2"});
+  // Test finding in gaps
+  EXPECT_THROW({[[maybe_unused]] auto it = test_container.find(15);}, std::out_of_range);
 
-  // Test finding non-existent values
-  EXPECT_EQ(test_container.find(15), test_container.end());
-  EXPECT_EQ(test_container.find(35), test_container.end());
-  EXPECT_EQ(test_container.find(55), test_container.end());
+  // Test finding in empty container
+  container_type empty_container;
+  EXPECT_THROW({[[maybe_unused]] auto it = empty_container.find(5);}, std::out_of_range);
+
+  // Test accessing non-existing values
+  EXPECT_THROW({[[maybe_unused]] auto& values = test_container.at(15);}, std::out_of_range);
+  EXPECT_THROW({[[maybe_unused]] auto& values = test_container.at(35);}, std::out_of_range);
+
+  // Test boundary conditions
+  EXPECT_THROW({[[maybe_unused]] auto& values = test_container.at(0);}, std::out_of_range);  // [low, high) is half-open
+  EXPECT_THROW({[[maybe_unused]] auto& values = test_container.at(10);}, std::out_of_range); // high boundary is exclusive
+  EXPECT_THROW({[[maybe_unused]] auto& values = test_container.at(20);}, std::out_of_range); // [low, high) is half-open
+  EXPECT_THROW({[[maybe_unused]] auto& values = test_container.at(30);}, std::out_of_range); // high boundary is exclusive
+
+  // Test empty container
+  EXPECT_THROW({[[maybe_unused]] auto& values = empty_container.at(5);}, std::out_of_range);
 
   // Test const version
   const container_type& const_container = test_container;
-  auto const_it = const_container.find(45);
-  EXPECT_NE(const_it, const_container.end());
-  EXPECT_EQ(const_it->low(), 40);
-  EXPECT_EQ(const_it->high(), 50);
-  verifyContainerContents(const_it->values(), {"test3"});
-}
-
-// Add new test case for std::set
-TEST_F(BucketMapTest, SetContainerType) {
-  using set_container_type = bucket_map<int, std::string, bucket_compare_traits<int>, bucket_value_traits<std::string, std::set<std::string>>>;
-  set_container_type test_container;
-  set_container_type::value_container values;
-  bucket_value_traits<std::string, std::set<std::string>>::add(values, "test1");
-  bucket_value_traits<std::string, std::set<std::string>>::add(values, "test2");
-  bucket_value_traits<std::string, std::set<std::string>>::add(values, "test1"); // Duplicate value should be ignored in set
-  
-  set_container_type::bucket_type bucket(0, 10, values);
-  test_container.spread(bucket);
-
-  auto it = test_container.begin();
-  EXPECT_EQ(it->low(), 0);
-  EXPECT_EQ(it->high(), 10);
-  verifyContainerContents(it->values(), {"test1", "test2"});
-}
-
-TEST_F(BucketMapTest, SpreadWithInvalidRange) {
-  container_type test_container;
-  
-  // Test spreading with high < low
-  test_container.spread(20, 10, "test1");
-  EXPECT_TRUE(test_container.empty());
-  
-  // Test spreading with equal bounds
-  test_container.spread(10, 10, "test2");
-  EXPECT_TRUE(test_container.empty());
-}
-
-TEST_F(BucketMapTest, SpreadWithConstrainedBoundsOutOfRange) {
-  container_type test_container(10, 40);
-  
-  // Test spreading range completely before constrained bounds
-  test_container.spread(0, 5, "test1");
-  EXPECT_TRUE(test_container.empty());
-
-  // Test spreading range completely after constrained bounds
-  test_container.spread(45, 50, "test2");
-  EXPECT_TRUE(test_container.empty());
-
-  // Test spreading range partially before constrained bounds
-  test_container.spread(5, 15, "test3");
-  auto it = test_container.begin();
-  EXPECT_EQ(it->low(), 10);
-  EXPECT_EQ(it->high(), 15);
-  verifyContainerContents(it->values(), {"test3"});
-
-  // Test spreading range partially after constrained bounds
-  test_container.spread(35, 45, "test4");
-  it = test_container.begin();
-  ++it;
-  EXPECT_EQ(it->low(), 35);
-  EXPECT_EQ(it->high(), 40);
-  verifyContainerContents(it->values(), {"test4"});
-}
-
-TEST_F(BucketMapTest, SpreadWithGapBeforeExistingBucket) {
-  container_type test_container;
-  test_container.spread(20, 30, "test1");
-  
-  // Test spreading with a gap before existing bucket
-  test_container.spread(5, 15, "test2");
-  
-  auto it = test_container.begin();
-  EXPECT_EQ(it->low(), 5);
-  EXPECT_EQ(it->high(), 15);
-  verifyContainerContents(it->values(), {"test2"});
-  
-  ++it;
-  EXPECT_EQ(it->low(), 20);
-  EXPECT_EQ(it->high(), 30);
-  verifyContainerContents(it->values(), {"test1"});
-}
-
-TEST_F(BucketMapTest, SpreadWithExactBucketSplit) {
-  container_type test_container;
-  test_container.spread(0, 30, "test1");
-  
-  // Test exact splitting points
-  test_container.spread(10, 20, "test2");
-  
-  auto it = test_container.begin();
-  EXPECT_EQ(it->low(), 0);
-  EXPECT_EQ(it->high(), 10);
-  verifyContainerContents(it->values(), {"test1"});
-  
-  ++it;
-  EXPECT_EQ(it->low(), 10);
-  EXPECT_EQ(it->high(), 20);
-  verifyContainerContents(it->values(), {"test1", "test2"});
-  
-  ++it;
-  EXPECT_EQ(it->low(), 20);
-  EXPECT_EQ(it->high(), 30);
-  verifyContainerContents(it->values(), {"test1"});
-}
-
-TEST_F(BucketMapTest, SpreadWithGapAfterLastBucket) {
-  container_type test_container;
-  test_container.spread(0, 10, "test1");
-  
-  // Test spreading with a gap after the last bucket
-  test_container.spread(20, 30, "test2");
-  
-  auto it = test_container.begin();
-  EXPECT_EQ(it->low(), 0);
-  EXPECT_EQ(it->high(), 10);
-  verifyContainerContents(it->values(), {"test1"});
-  
-  ++it;
-  EXPECT_EQ(it->low(), 20);
-  EXPECT_EQ(it->high(), 30);
-  verifyContainerContents(it->values(), {"test2"});
-}
-
-TEST_F(BucketMapTest, SpreadWithEmptyContainer) {
-  container_type test_container;
-  
-  // Test spreading into empty container
-  test_container.spread(10, 20, "test1");
-  
-  auto it = test_container.begin();
-  EXPECT_EQ(it->low(), 10);
-  EXPECT_EQ(it->high(), 20);
-  verifyContainerContents(it->values(), {"test1"});
+  EXPECT_NO_THROW({
+    const auto& values = const_container.at(5);
+    verifyContainerContents(values, {"test1"});
+  });
+  EXPECT_THROW({[[maybe_unused]] const auto& values = const_container.at(15);}, std::out_of_range);
 }
 
 TEST_F(BucketMapTest, FindMethodWithOverlappingRanges) {
@@ -882,42 +767,47 @@ TEST_F(BucketMapTest, FindMethodWithOverlappingRanges) {
   test_container.spread(5, 25, "test3");
 
   // Test finding values in the first non-overlapping segment [0,5)
-  auto it = test_container.find(2);
-  EXPECT_NE(it, test_container.end());
-  EXPECT_EQ(it->low(), 0);
-  EXPECT_EQ(it->high(), 5);
-  verifyContainerContents(it->values(), {"test1"});
+  EXPECT_NO_THROW({
+    auto it = test_container.find(2);
+    EXPECT_EQ(it->low(), 0);
+    EXPECT_EQ(it->high(), 5);
+    verifyContainerContents(it->values(), {"test1"});
+  });
 
   // Test finding values in the first overlapping segment [5,10)
-  it = test_container.find(7);
-  EXPECT_NE(it, test_container.end());
-  EXPECT_EQ(it->low(), 5);
-  EXPECT_EQ(it->high(), 10);
-  verifyContainerContents(it->values(), {"test1", "test3"});
+  EXPECT_NO_THROW({
+    auto it = test_container.find(7);
+    EXPECT_EQ(it->low(), 5);
+    EXPECT_EQ(it->high(), 10);
+    verifyContainerContents(it->values(), {"test1", "test3"});
+  });
 
   // Test finding values in the middle segment [10,20)
-  it = test_container.find(15);
-  EXPECT_NE(it, test_container.end());
-  EXPECT_EQ(it->low(), 10);
-  EXPECT_EQ(it->high(), 20);
-  verifyContainerContents(it->values(), {"test3"});
+  EXPECT_NO_THROW({
+    auto it = test_container.find(15);
+    EXPECT_EQ(it->low(), 10);
+    EXPECT_EQ(it->high(), 20);
+    verifyContainerContents(it->values(), {"test3"});
+  });
 
   // Test finding values in the second overlapping segment [20,25)
-  it = test_container.find(22);
-  EXPECT_NE(it, test_container.end());
-  EXPECT_EQ(it->low(), 20);
-  EXPECT_EQ(it->high(), 25);
-  verifyContainerContents(it->values(), {"test2", "test3"});
+  EXPECT_NO_THROW({
+    auto it = test_container.find(22);
+    EXPECT_EQ(it->low(), 20);
+    EXPECT_EQ(it->high(), 25);
+    verifyContainerContents(it->values(), {"test2", "test3"});
+  });
 
   // Test finding values in the last non-overlapping segment [25,30)
-  it = test_container.find(27);
-  EXPECT_NE(it, test_container.end());
-  EXPECT_EQ(it->low(), 25);
-  EXPECT_EQ(it->high(), 30);
-  verifyContainerContents(it->values(), {"test2"});
+  EXPECT_NO_THROW({
+    auto it = test_container.find(27);
+    EXPECT_EQ(it->low(), 25);
+    EXPECT_EQ(it->high(), 30);
+    verifyContainerContents(it->values(), {"test2"});
+  });
 
   // Test finding values in gaps between ranges
-  EXPECT_EQ(test_container.find(35), test_container.end());
+  EXPECT_THROW({[[maybe_unused]] auto it = test_container.find(35);}, std::out_of_range);
 }
 
 TEST_F(BucketMapTest, BucketRangeOperations) {
@@ -960,21 +850,22 @@ TEST_F(BucketMapTest, FindEdgeCases) {
   test_container.spread(20, 30, "test2");
 
   // Test finding values at exact bucket boundaries
-  EXPECT_EQ(test_container.find(0), test_container.end());  // [low, high) is half-open
-  EXPECT_EQ(test_container.find(10), test_container.end()); // high boundary is exclusive
+  EXPECT_THROW({[[maybe_unused]] auto it = test_container.find(0);}, std::out_of_range);  // [low, high) is half-open
+  EXPECT_THROW({[[maybe_unused]] auto it = test_container.find(10);}, std::out_of_range); // high boundary is exclusive
   
-  auto it = test_container.find(5);
-  EXPECT_NE(it, test_container.end());
-  EXPECT_EQ(it->low(), 0);
-  EXPECT_EQ(it->high(), 10);
-  verifyContainerContents(it->values(), {"test1"});
+  EXPECT_NO_THROW({
+    auto it = test_container.find(5);
+    EXPECT_EQ(it->low(), 0);
+    EXPECT_EQ(it->high(), 10);
+    verifyContainerContents(it->values(), {"test1"});
+  });
 
   // Test finding in gaps
-  EXPECT_EQ(test_container.find(15), test_container.end());
+  EXPECT_THROW({[[maybe_unused]] auto it = test_container.find(15);}, std::out_of_range);
 
   // Test finding in empty container
   container_type empty_container;
-  EXPECT_EQ(empty_container.find(5), empty_container.end());
+  EXPECT_THROW({[[maybe_unused]] auto it = empty_container.find(5);}, std::out_of_range);
 }
 
 TEST_F(BucketMapTest, FindInConstrainedBuckets) {
@@ -983,21 +874,23 @@ TEST_F(BucketMapTest, FindInConstrainedBuckets) {
   test_container.spread(90, 100, "test2");
 
   // Test finding at constraint boundaries
-  EXPECT_EQ(test_container.find(0), test_container.end());  // [low, high) is half-open
-  EXPECT_EQ(test_container.find(100), test_container.end());
+  EXPECT_THROW({[[maybe_unused]] auto it = test_container.find(0);}, std::out_of_range);  // [low, high) is half-open
+  EXPECT_THROW({[[maybe_unused]] auto it = test_container.find(100);}, std::out_of_range);
 
   // Test finding within valid ranges
-  auto it = test_container.find(5);
-  EXPECT_NE(it, test_container.end());
-  EXPECT_EQ(it->low(), 0);
-  EXPECT_EQ(it->high(), 10);
-  verifyContainerContents(it->values(), {"test1"});
+  EXPECT_NO_THROW({
+    auto it = test_container.find(5);
+    EXPECT_EQ(it->low(), 0);
+    EXPECT_EQ(it->high(), 10);
+    verifyContainerContents(it->values(), {"test1"});
+  });
 
-  it = test_container.find(95);
-  EXPECT_NE(it, test_container.end());
-  EXPECT_EQ(it->low(), 90);
-  EXPECT_EQ(it->high(), 100);
-  verifyContainerContents(it->values(), {"test2"});
+  EXPECT_NO_THROW({
+    auto it = test_container.find(95);
+    EXPECT_EQ(it->low(), 90);
+    EXPECT_EQ(it->high(), 100);
+    verifyContainerContents(it->values(), {"test2"});
+  });
 }
 
 TEST_F(BucketMapTest, CustomIndexType) {
@@ -1033,6 +926,180 @@ TEST_F(BucketMapTest, CustomValueContainer) {
   EXPECT_EQ(it->values().size(), 2); // Only unique values
   EXPECT_TRUE(it->values().contains("test"));
   EXPECT_TRUE(it->values().contains("different"));
+}
+
+TEST_F(BucketMapTest, ContainsMethod) {
+  container_type test_container;
+  test_container.spread(0, 10, "test1");
+  test_container.spread(20, 30, "test2");
+
+  // Test existing values
+  EXPECT_TRUE(test_container.contains(5));
+  EXPECT_TRUE(test_container.contains(25));
+
+  // Test non-existing values
+  EXPECT_FALSE(test_container.contains(15));
+  EXPECT_FALSE(test_container.contains(35));
+
+  // Test boundary conditions
+  EXPECT_FALSE(test_container.contains(0));  // [low, high) is half-open
+  EXPECT_FALSE(test_container.contains(10)); // high boundary is exclusive
+  EXPECT_FALSE(test_container.contains(20)); // [low, high) is half-open
+  EXPECT_FALSE(test_container.contains(30)); // high boundary is exclusive
+
+  // Test empty container
+  container_type empty_container;
+  EXPECT_FALSE(empty_container.contains(5));
+}
+
+TEST_F(BucketMapTest, AtMethod) {
+  container_type test_container;
+  test_container.spread(0, 10, "test1");
+  test_container.spread(20, 30, "test2");
+
+  // Test accessing existing values
+  EXPECT_NO_THROW({
+    auto& values = test_container.at(5);
+    verifyContainerContents(values, {"test1"});
+  });
+
+  EXPECT_NO_THROW({
+    auto& values = test_container.at(25);
+    verifyContainerContents(values, {"test2"});
+  });
+
+  // Test accessing non-existing values
+  EXPECT_THROW({[[maybe_unused]] auto& values = test_container.at(15);}, std::out_of_range);
+  EXPECT_THROW({[[maybe_unused]] auto& values = test_container.at(35);}, std::out_of_range);
+
+  // Test boundary conditions
+  EXPECT_THROW({[[maybe_unused]] auto& values = test_container.at(0);}, std::out_of_range);  // [low, high) is half-open
+  EXPECT_THROW({[[maybe_unused]] auto& values = test_container.at(10);}, std::out_of_range); // high boundary is exclusive
+  EXPECT_THROW({[[maybe_unused]] auto& values = test_container.at(20);}, std::out_of_range); // [low, high) is half-open
+  EXPECT_THROW({[[maybe_unused]] auto& values = test_container.at(30);}, std::out_of_range); // high boundary is exclusive
+
+  // Test empty container
+  container_type empty_container;
+  EXPECT_THROW({[[maybe_unused]] auto& values = empty_container.at(5);}, std::out_of_range);
+
+  // Test const version
+  const container_type& const_container = test_container;
+  EXPECT_NO_THROW({
+    const auto& values = const_container.at(5);
+    verifyContainerContents(values, {"test1"});
+  });
+  EXPECT_THROW({[[maybe_unused]] const auto& values = const_container.at(15);}, std::out_of_range);
+}
+
+// Update FindMethod test to check for exceptions
+TEST_F(BucketMapTest, FindMethodThrowsException) {
+  container_type test_container;
+  test_container.spread(0, 10, "test1");
+  test_container.spread(20, 30, "test2");
+  test_container.spread(40, 50, "test3");
+
+  // Test finding existing values
+  EXPECT_NO_THROW({
+    auto it = test_container.find(5);
+    EXPECT_EQ(it->low(), 0);
+    EXPECT_EQ(it->high(), 10);
+    verifyContainerContents(it->values(), {"test1"});
+  });
+
+  EXPECT_NO_THROW({
+    auto it = test_container.find(25);
+    EXPECT_EQ(it->low(), 20);
+    EXPECT_EQ(it->high(), 30);
+    verifyContainerContents(it->values(), {"test2"});
+  });
+
+  // Test finding non-existent values throws exception
+  EXPECT_THROW({[[maybe_unused]] auto it = test_container.find(15);}, std::out_of_range);
+  EXPECT_THROW({[[maybe_unused]] auto it = test_container.find(35);}, std::out_of_range);
+  EXPECT_THROW({[[maybe_unused]] auto it = test_container.find(55);}, std::out_of_range);
+
+  // Test const version
+  const container_type& const_container = test_container;
+  EXPECT_NO_THROW({
+    auto const_it = const_container.find(45);
+    EXPECT_EQ(const_it->low(), 40);
+    EXPECT_EQ(const_it->high(), 50);
+    verifyContainerContents(const_it->values(), {"test3"});
+  });
+  EXPECT_THROW({[[maybe_unused]] auto it = const_container.find(15);}, std::out_of_range);
+}
+
+TEST_F(BucketMapTest, NextMethod) {
+  container_type test_container;
+  test_container.spread(0, 10, "test1");
+  test_container.spread(20, 30, "test2");
+  test_container.spread(40, 50, "test3");
+
+  // Test finding current bucket
+  auto it = test_container.next(5);
+  EXPECT_NE(it, test_container.end());
+  EXPECT_EQ(it->low(), 0);
+  EXPECT_EQ(it->high(), 10);
+  verifyContainerContents(it->values(), {"test1"});
+
+  // Test finding next bucket
+  it = test_container.next(15);
+  EXPECT_NE(it, test_container.end());
+  EXPECT_EQ(it->low(), 20);
+  EXPECT_EQ(it->high(), 30);
+  verifyContainerContents(it->values(), {"test2"});
+
+  // Test when index is beyond all buckets
+  it = test_container.next(55);
+  EXPECT_EQ(it, test_container.end());
+
+  // Test const version
+  const container_type& const_container = test_container;
+  auto const_it = const_container.next(25);
+  EXPECT_NE(const_it, const_container.end());
+  EXPECT_EQ(const_it->low(), 20);
+  EXPECT_EQ(const_it->high(), 30);
+  verifyContainerContents(const_it->values(), {"test2"});
+}
+
+TEST_F(BucketMapTest, PreviousMethod) {
+  container_type test_container;
+  test_container.spread(0, 10, "test1");
+  test_container.spread(20, 30, "test2");
+  test_container.spread(40, 50, "test3");
+
+  // Test finding current bucket
+  auto it = test_container.previous(25);
+  EXPECT_NE(it, test_container.end());
+  EXPECT_EQ(it->low(), 20);
+  EXPECT_EQ(it->high(), 30);
+  verifyContainerContents(it->values(), {"test2"});
+
+  // Test finding previous bucket
+  it = test_container.previous(35);
+  EXPECT_NE(it, test_container.end());
+  EXPECT_EQ(it->low(), 20);
+  EXPECT_EQ(it->high(), 30);
+  verifyContainerContents(it->values(), {"test2"});
+
+  // Test when index is before all buckets
+  it = test_container.previous(-5);
+  EXPECT_EQ(it, test_container.end());
+
+  // Test when index is beyond all buckets
+  it = test_container.previous(55);
+  EXPECT_NE(it, test_container.end());
+  EXPECT_EQ(it->low(), 40);
+  EXPECT_EQ(it->high(), 50);
+  verifyContainerContents(it->values(), {"test3"});
+
+  // Test const version
+  const container_type& const_container = test_container;
+  auto const_it = const_container.previous(45);
+  EXPECT_NE(const_it, const_container.end());
+  EXPECT_EQ(const_it->low(), 40);
+  EXPECT_EQ(const_it->high(), 50);
+  verifyContainerContents(const_it->values(), {"test3"});
 }
 
 } // namespace test

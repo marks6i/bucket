@@ -466,7 +466,7 @@ public:
         (CompareTraits::lt(low, low_) || CompareTraits::lt(high_, high))) {
       throw std::out_of_range("range is outside of constrained bounds");
     }
-    return find_first_overlapping_bucket(low, high);
+    return next(low);
   }
 
   /**
@@ -523,22 +523,152 @@ public:
         *this, start, end);
   }
 
-  [[nodiscard]] iterator find(index_type index) {
-    for (auto it = begin(); it != end(); ++it) {
+  /**
+   * @brief Check if a bucket contains the given index
+   * @param index The index to check
+   * @return true if a bucket contains the index, false otherwise
+   */
+  [[nodiscard]] bool contains(index_type index) const {
+    for (auto it = buckets_.begin(); it != buckets_.end(); ++it) {
       if (CompareTraits::lt(it->low(), index) && CompareTraits::lt(index, it->high())) {
-        return it;
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * @brief Get the value container for the bucket containing the given index
+   * @param index The index to look up
+   * @return Reference to the value container
+   * @throw std::out_of_range if no bucket contains the index
+   * @note It is recommended to call contains() first to check if the index exists
+   */
+  [[nodiscard]] value_container& at(index_type index) {
+    auto it = find(index);
+    if (it == end()) {
+      throw std::out_of_range("No bucket contains the specified index");
+    }
+    return it->values();
+  }
+
+  /**
+   * @brief Get the value container for the bucket containing the given index (const version)
+   * @param index The index to look up
+   * @return Const reference to the value container
+   * @throw std::out_of_range if no bucket contains the index
+   * @note It is recommended to call contains() first to check if the index exists
+   */
+  [[nodiscard]] const value_container& at(index_type index) const {
+    auto it = find(index);
+    if (it == end()) {
+      throw std::out_of_range("No bucket contains the specified index");
+    }
+    return it->values();
+  }
+
+  /**
+   * @brief Find a bucket containing the given index
+   * @param index The index to search for
+   * @return Iterator to the bucket containing the index
+   * @throw std::out_of_range if no bucket contains the index
+   * @note It is recommended to call contains() first to check if the index exists
+   */
+  [[nodiscard]] iterator find(index_type index) {
+    for (auto it = buckets_.begin(); it != buckets_.end(); ++it) {
+      if (CompareTraits::lt(it->low(), index) && CompareTraits::lt(index, it->high())) {
+        return iterator(it);
+      }
+    }
+    throw std::out_of_range("No bucket contains the specified index");
+  }
+
+  /**
+   * @brief Find a bucket containing the given index (const version)
+   * @param index The index to search for
+   * @return Const iterator to the bucket containing the index
+   * @throw std::out_of_range if no bucket contains the index
+   * @note It is recommended to call contains() first to check if the index exists
+   */
+  [[nodiscard]] const_iterator find(index_type index) const {
+    for (auto it = buckets_.begin(); it != buckets_.end(); ++it) {
+      if (CompareTraits::lt(it->low(), index) && CompareTraits::lt(index, it->high())) {
+        return const_iterator(it);
+      }
+    }
+    throw std::out_of_range("No bucket contains the specified index");
+  }
+
+  /**
+   * @brief Find the next bucket relative to the given index
+   * @param index The index to search from
+   * @return Iterator to the current bucket if index is in it, otherwise the next bucket. Returns end() if no such bucket exists.
+   */
+  [[nodiscard]] iterator next(index_type index) {
+    for (auto it = buckets_.begin(); it != buckets_.end(); ++it) {
+      if (CompareTraits::lt(it->low(), index) && CompareTraits::lt(index, it->high())) {
+        return iterator(it);  // Return current bucket if index is in it
+      }
+      if (CompareTraits::lt(index, it->low())) {
+        return iterator(it);  // Return this bucket as it's the next one
       }
     }
     return end();
   }
 
-  [[nodiscard]] const_iterator find(index_type index) const {
-    for (auto it = begin(); it != end(); ++it) {
+  /**
+   * @brief Find the next bucket relative to the given index (const version)
+   * @param index The index to search from
+   * @return Const iterator to the current bucket if index is in it, otherwise the next bucket. Returns end() if no such bucket exists.
+   */
+  [[nodiscard]] const_iterator next(index_type index) const {
+    for (auto it = buckets_.begin(); it != buckets_.end(); ++it) {
       if (CompareTraits::lt(it->low(), index) && CompareTraits::lt(index, it->high())) {
-        return it;
+        return const_iterator(it);  // Return current bucket if index is in it
+      }
+      if (CompareTraits::lt(index, it->low())) {
+        return const_iterator(it);  // Return this bucket as it's the next one
       }
     }
     return end();
+  }
+
+  /**
+   * @brief Find the previous bucket relative to the given index
+   * @param index The index to search from
+   * @return Iterator to the current bucket if index is in it, otherwise the previous bucket. Returns end() if no such bucket exists.
+   */
+  [[nodiscard]] iterator previous(index_type index) {
+    typename bucket_type_list::iterator prev = buckets_.end();
+    for (auto it = buckets_.begin(); it != buckets_.end(); ++it) {
+      if (CompareTraits::lt(it->low(), index) && CompareTraits::lt(index, it->high())) {
+        return iterator(it);  // Return current bucket if index is in it
+      }
+      if (CompareTraits::lt(index, it->low())) {
+        return iterator(prev);  // Return previous bucket
+      }
+      prev = it;
+    }
+    return iterator(prev);  // Return last bucket if index is beyond all buckets
+  }
+
+  /**
+   * @brief Find the previous bucket relative to the given index (const version)
+   * @param index The index to search from
+   * @return Const iterator to the current bucket if index is in it, otherwise the previous bucket. Returns end() if no such bucket exists.
+   */
+  [[nodiscard]] const_iterator previous(index_type index) const {
+    typename bucket_type_list::const_iterator prev = buckets_.end();
+    for (auto it = buckets_.begin(); it != buckets_.end(); ++it) {
+      if (CompareTraits::lt(it->low(), index) && CompareTraits::lt(index, it->high())) {
+        return const_iterator(it);  // Return current bucket if index is in it
+      }
+      if (CompareTraits::lt(index, it->low())) {
+        return const_iterator(prev);  // Return previous bucket
+      }
+      prev = it;
+    }
+    return const_iterator(prev);  // Return last bucket if index is beyond all buckets
   }
 
 protected:
@@ -562,22 +692,6 @@ protected:
     // Erase the range
     buckets_.erase(internal_begin, internal_end);
     return true;
-  }
-
-  /**
-   * @brief Find the first bucket that overlaps with the given range
-   * @param low Lower bound of the range
-   * @param high Upper bound of the range
-   * @return Iterator to the first overlapping bucket, or end() if none found
-   */
-  iterator find_first_overlapping_bucket(index_type low, index_type high) {
-    for (auto it = buckets_.begin(); it != buckets_.end(); ++it) {
-      if (CompareTraits::lt(it->low(), high) &&
-          CompareTraits::lt(low, it->high())) {
-        return iterator(it);
-      }
-    }
-    return end();
   }
 
   // Make these functions available to bucket_range

@@ -179,11 +179,39 @@ bucket_map& operator=(bucket_map&&) noexcept = default;
 // Returns true if any values were erased, false if container was empty
 [[nodiscard]] bool erase();
 
-// Find a bucket containing the specified index
-// Returns an iterator to the bucket if found, end() otherwise
+// Check if a bucket contains the given index
+// Returns true if a bucket's range [low, high) contains the index, false otherwise
 // No exceptions thrown
+[[nodiscard]] bool contains(index_type index) const;
+
+// Get the value container for the bucket containing the given index
+// Returns a reference to the value container
+// Throws std::out_of_range if no bucket contains the index
+// Note: It is recommended to call contains() first to check if the index exists
+[[nodiscard]] value_container& at(index_type index);
+[[nodiscard]] const value_container& at(index_type index) const;
+
+// Find a bucket containing the specified index
+// Returns an iterator to the bucket containing the index
+// Throws std::out_of_range if no bucket contains the index
+// Note: It is recommended to call contains() first to check if the index exists
 [[nodiscard]] iterator find(index_type index);
 [[nodiscard]] const_iterator find(index_type index) const;
+
+// Find the next bucket relative to the given index
+// Returns iterator to the current bucket if index is in it, otherwise the next bucket
+// Returns end() if no such bucket exists
+// No exceptions thrown
+[[nodiscard]] iterator next(index_type index);
+[[nodiscard]] const_iterator next(index_type index) const;
+
+// Find the previous bucket relative to the given index
+// Returns iterator to the current bucket if index is in it, otherwise the previous bucket
+// Returns end() if no such bucket exists before the index
+// Returns the last bucket if index is beyond all buckets
+// No exceptions thrown
+[[nodiscard]] iterator previous(index_type index);
+[[nodiscard]] const_iterator previous(index_type index) const;
 
 // Create a view over a range of buckets [start, end)
 // Returns a range view that can be used with range-based for loops
