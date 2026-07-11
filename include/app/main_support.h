@@ -43,10 +43,15 @@ inline std::tm localtime_xp(std::time_t timer)
 	// Convert std::time_t to std::tm as a local time
 	std::tm bt{};
 
-#if defined(__unix__) || defined(_MSC_VER)
+#if defined(_MSC_VER)
 
-	// Both GCC (Linux) and MSVC (Windows) support thread-safe "localtime_s".
+	// MSVC supports thread-safe "localtime_s" with (result, time) argument order.
 	localtime_s(&bt, &timer);
+
+#elif defined(__unix__)
+
+	// POSIX systems use "localtime_r" with reversed (time, result) argument order.
+	localtime_r(&timer, &bt);
 
 #else
 
