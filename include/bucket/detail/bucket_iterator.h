@@ -63,7 +63,8 @@ struct access_policy_selector {
   template <typename Key, typename Value, typename Compare, typename Alloc>
   static constexpr bool is_map(std::map<Key, Value, Compare, Alloc>*) { return true; }
   
-  static constexpr bool is_map(...) { return false; }
+  template <typename T>
+  static constexpr bool is_map(T*) { return false; }
   
   using type = std::conditional_t<
     is_map(static_cast<Container*>(nullptr)),
@@ -110,7 +111,7 @@ public:
   // Allow conversion from non-const to const iterator
   template <bool OtherIsConst,
             typename = std::enable_if_t<IsConst && !OtherIsConst>>
-  bucket_iterator_base(
+  explicit bucket_iterator_base(
       const bucket_iterator_base<Container, ValueType, OtherIsConst,
                                  IteratorCategory>& other)
       : it_(other.it_) {}
@@ -119,7 +120,7 @@ public:
   template <typename OtherIterator,
             typename = std::enable_if_t<std::is_convertible_v<
                 OtherIterator, iterator_type>>>
-  bucket_iterator_base(OtherIterator it) : it_(it) {}
+  explicit bucket_iterator_base(OtherIterator it) : it_(it) {}
 
   // Basic iterator operations
   reference operator*() const { 

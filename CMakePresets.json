@@ -93,6 +93,29 @@
         "CMAKE_CXX_EXTENSIONS": "OFF",
         "CMAKE_BUILD_TYPE": "Release"
       }
+    },
+    {
+      "name": "linux-x64-coverage",
+      "displayName": "Linux x64 Coverage",
+      "description": "Linux x64 Debug with code coverage instrumentation",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      },
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/linux-x64-coverage",
+      "installDir": "${sourceDir}/install/linux-x64-coverage",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "/usr/bin/gcc",
+        "CMAKE_CXX_COMPILER": "/usr/bin/g++",
+        "CMAKE_CXX_STANDARD": "20",
+        "CMAKE_CXX_STANDARD_REQUIRED": "ON",
+        "CMAKE_CXX_EXTENSIONS": "OFF",
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_FLAGS": "--coverage -fprofile-arcs -ftest-coverage",
+        "CMAKE_EXE_LINKER_FLAGS": "--coverage"
+      }
     }
   ],
 
@@ -118,6 +141,10 @@
     {
       "name": "build-linux-x64-release",
       "configurePreset": "linux-x64-release"
+    },
+    {
+      "name": "build-linux-x64-coverage",
+      "configurePreset": "linux-x64-coverage"
     }
   ],
 
@@ -146,6 +173,13 @@
     {
       "name": "test-linux-x64-release",
       "configurePreset": "linux-x64-release",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "test-linux-x64-coverage",
+      "configurePreset": "linux-x64-coverage",
       "output": {
         "outputOnFailure": true
       }

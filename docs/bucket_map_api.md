@@ -220,6 +220,90 @@ bucket_range<bucket_map, false> range(index_type start, index_type end);
 bucket_range<bucket_map, true> range(index_type start, index_type end) const;
 ```
 
+### bucket_range Operations
+
+The `bucket_range` class provides a view over a range of buckets in a bucket collection. It supports both forward and reverse iteration over buckets that overlap with the specified range.
+
+```cpp
+// Create a bucket_range view
+bucket_range<bucket_map, false> range(index_type start, index_type end);
+bucket_range<bucket_map, true> range(index_type start, index_type end) const;
+
+// bucket_range member functions:
+
+// Check if a bucket contains the given index within the range
+// Returns true if a bucket's range [low, high) contains the index, false otherwise
+// Returns false if the index is outside the range bounds
+[[nodiscard]] bool contains(index_type index) const;
+
+// Find a bucket containing the given index within the range
+// Returns iterator to the bucket containing the index, or end() if not found
+// Throws std::out_of_range if the index is outside the range bounds
+iterator find(index_type index);
+const_iterator find(index_type index) const;
+
+// Get a bucket at the given index within the range
+// Returns iterator to the bucket containing the index
+// Throws std::out_of_range if no bucket contains the index or if index is outside range bounds
+iterator at(index_type index);
+const_iterator at(index_type index) const;
+
+// Find the next bucket relative to the given index within the range
+// Returns iterator to the current bucket if index is in it, otherwise the next bucket
+// Returns end() if no suitable bucket exists or if index is outside range bounds
+iterator next(index_type index);
+const_iterator next(index_type index) const;
+
+// Find the previous bucket relative to the given index within the range
+// Returns iterator to the current bucket if index is in it, otherwise the previous bucket
+// Returns end() if no suitable bucket exists or if index is outside range bounds
+iterator previous(index_type index);
+const_iterator previous(index_type index) const;
+
+// Iterator operations
+iterator begin();
+iterator end();
+const_iterator begin() const;
+const_iterator end() const;
+iterator rbegin();
+iterator rend();
+const_iterator rbegin() const;
+const_iterator rend() const;
+```
+
+Example usage:
+```cpp
+bucket_map<int, std::string> map;
+map.spread(0, 5, "A");
+map.spread(5, 10, "B");
+map.spread(10, 15, "C");
+
+// Create a range view over [3, 12)
+auto range = map.range(3, 12);
+
+// Forward iteration
+for (const auto& bucket : range) {
+    // Will iterate over buckets that overlap with [3, 12)
+    std::cout << "Bucket: [" << bucket.low() << ", " << bucket.high() << ")\n";
+}
+
+// Reverse iteration
+for (auto it = range.rbegin(); it != range.rend(); ++it) {
+    // Will iterate over overlapping buckets in reverse order
+    std::cout << "Bucket: [" << it->low() << ", " << it->high() << ")\n";
+}
+
+// Using range operations
+if (range.contains(4)) {
+    auto it = range.find(4);  // Returns iterator to bucket containing 4
+    auto values = it->values();  // Access the values in the bucket
+}
+
+// Finding next/previous buckets
+auto it = range.next(6);      // Get bucket containing or after 6
+auto prev = range.previous(6); // Get bucket containing or before 6
+```
+
 ### Bound Operations
 
 The container provides two sets of methods for accessing bounds:

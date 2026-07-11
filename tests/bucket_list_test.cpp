@@ -720,7 +720,12 @@ TEST_F(BucketListTest, FindEdgeCases) {
   test_container.spread(20, 30, "test2");
 
   // Test finding values at exact bucket boundaries
-  EXPECT_THROW({[[maybe_unused]] auto it = test_container.find(0);}, std::out_of_range);  // [low, high) is half-open
+  EXPECT_NO_THROW({  // Lower bound is inclusive
+    auto it = test_container.find(0);
+    EXPECT_EQ(it->low(), 0);
+    EXPECT_EQ(it->high(), 10);
+    verifyContainerContents(it->values(), {"test1"});
+  });
   EXPECT_THROW({[[maybe_unused]] auto it = test_container.find(10);}, std::out_of_range); // high boundary is exclusive
   
   EXPECT_NO_THROW({
@@ -744,8 +749,13 @@ TEST_F(BucketListTest, FindInConstrainedBuckets) {
   test_container.spread(90, 100, "test2");
 
   // Test finding at constraint boundaries
-  EXPECT_THROW({[[maybe_unused]] auto it = test_container.find(0);}, std::out_of_range);  // [low, high) is half-open
-  EXPECT_THROW({[[maybe_unused]] auto it = test_container.find(100);}, std::out_of_range);
+  EXPECT_NO_THROW({  // Lower bound is inclusive
+    auto it = test_container.find(0);
+    EXPECT_EQ(it->low(), 0);
+    EXPECT_EQ(it->high(), 10);
+    verifyContainerContents(it->values(), {"test1"});
+  });
+  EXPECT_THROW({[[maybe_unused]] auto it = test_container.find(100);}, std::out_of_range); // Upper bound is exclusive
 
   // Test finding within valid ranges
   EXPECT_NO_THROW({
@@ -770,8 +780,8 @@ TEST_F(BucketListTest, FindMethod) {
   test_container.spread(40, 50, "test3");
 
   // Test finding existing values
-  EXPECT_NO_THROW({
-    auto it = test_container.find(5);
+  EXPECT_NO_THROW({  // Lower bound is inclusive
+    auto it = test_container.find(0);
     EXPECT_EQ(it->low(), 0);
     EXPECT_EQ(it->high(), 10);
     verifyContainerContents(it->values(), {"test1"});
@@ -1053,7 +1063,9 @@ TEST_F(BucketListTest, ContainsMethod) {
   test_container.spread(20, 30, "test2");
 
   // Test existing values
+  EXPECT_TRUE(test_container.contains(0));  // Lower bound is inclusive
   EXPECT_TRUE(test_container.contains(5));
+  EXPECT_TRUE(test_container.contains(20)); // Lower bound is inclusive
   EXPECT_TRUE(test_container.contains(25));
 
   // Test non-existing values
@@ -1061,10 +1073,10 @@ TEST_F(BucketListTest, ContainsMethod) {
   EXPECT_FALSE(test_container.contains(35));
 
   // Test boundary conditions
-  EXPECT_FALSE(test_container.contains(0));  // [low, high) is half-open
-  EXPECT_FALSE(test_container.contains(10)); // high boundary is exclusive
-  EXPECT_FALSE(test_container.contains(20)); // [low, high) is half-open
-  EXPECT_FALSE(test_container.contains(30)); // high boundary is exclusive
+  EXPECT_TRUE(test_container.contains(0));   // Lower bound is inclusive
+  EXPECT_FALSE(test_container.contains(10)); // Upper bound is exclusive
+  EXPECT_TRUE(test_container.contains(20));  // Lower bound is inclusive
+  EXPECT_FALSE(test_container.contains(30)); // Upper bound is exclusive
 
   // Test empty container
   container_type empty_container;
@@ -1092,10 +1104,16 @@ TEST_F(BucketListTest, AtMethod) {
   EXPECT_THROW({[[maybe_unused]] auto& values = test_container.at(35);}, std::out_of_range);
 
   // Test boundary conditions
-  EXPECT_THROW({[[maybe_unused]] auto& values = test_container.at(0);}, std::out_of_range);  // [low, high) is half-open
-  EXPECT_THROW({[[maybe_unused]] auto& values = test_container.at(10);}, std::out_of_range); // high boundary is exclusive
-  EXPECT_THROW({[[maybe_unused]] auto& values = test_container.at(20);}, std::out_of_range); // [low, high) is half-open
-  EXPECT_THROW({[[maybe_unused]] auto& values = test_container.at(30);}, std::out_of_range); // high boundary is exclusive
+  EXPECT_NO_THROW({  // Lower bound is inclusive
+    auto& values = test_container.at(0);
+    verifyContainerContents(values, {"test1"});
+  });
+  EXPECT_THROW({[[maybe_unused]] auto& values = test_container.at(10);}, std::out_of_range); // Upper bound is exclusive
+  EXPECT_NO_THROW({  // Lower bound is inclusive
+    auto& values = test_container.at(20);
+    verifyContainerContents(values, {"test2"});
+  });
+  EXPECT_THROW({[[maybe_unused]] auto& values = test_container.at(30);}, std::out_of_range); // Upper bound is exclusive
 
   // Test empty container
   container_type empty_container;

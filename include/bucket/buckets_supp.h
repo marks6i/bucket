@@ -54,8 +54,8 @@ namespace masutils {
 template<class E, class C = std::vector<E> >
 struct most_recent_bucket_value_traits {
 
-	typedef E  value_type;
-	typedef C  value_container;
+	using value_type = E;
+	using value_container = C;
 
 	/**
 	 * @brief 
@@ -107,10 +107,10 @@ protected:
 template<class E, class C = std::vector<E> >
 struct bucket_value_add_traits {
 
-	typedef E  value_type;
-	typedef C  value_container;
+	using value_type = E;
+	using value_container = C;
 
-	typedef typename value_container::const_iterator const_iterator;
+	using const_iterator = typename value_container::const_iterator;
 
 	/**
 	 * @brief 
@@ -167,10 +167,10 @@ protected:
 template<class E, class C = std::set<E> >
 struct unique_bucket_value_traits {
 
-	typedef E  value_type;
-	typedef C  value_container;
+	using value_type = E;
+	using value_container = C;
 
-	typedef typename value_container::const_iterator const_iterator;
+	using const_iterator = typename value_container::const_iterator;
 
 	/**
 	 * @brief 
@@ -261,7 +261,7 @@ public:
 	 * @brief 
 	 * @param value_ 
 	 */
-	bucket_value_wrapper(const T& value_) noexcept : value(value_) {}
+	explicit bucket_value_wrapper(const T& value_) noexcept : value(value_) {}
 
 	/**
 	 * @brief 

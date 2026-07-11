@@ -185,14 +185,117 @@ Implements the core bucket type that satisfies the `has_bucket_interface` concep
 
 ### bucket_range.h
 
-Provides range-based operations and iterators for bucket containers.
+Provides range-based views and operations for bucket containers. This class enables efficient iteration and operations over a specific range of buckets that overlap with the given range bounds.
 
-### Key Features
+#### Key Features
+
+- **Range View Operations**:
+  ```cpp
+  template <typename Container, bool IsConst>
+  class bucket_range {
+      // Core functionality
+      bucket_range(container_type& container, index_type low, index_type high);
+      
+      // Iterator support
+      iterator begin();
+      iterator end();
+      const_iterator begin() const;
+      const_iterator end() const;
+      iterator rbegin();
+      iterator rend();
+      const_iterator rbegin() const;
+      const_iterator rend() const;
+      
+      // Range operations
+      bool contains(index_type index) const;
+      iterator find(index_type index);
+      const_iterator find(index_type index) const;
+      iterator at(index_type index);
+      const_iterator at(index_type index) const;
+      iterator next(index_type index);
+      const_iterator next(index_type index) const;
+      iterator previous(index_type index);
+      const_iterator previous(index_type index) const;
+  };
+  ```
+
+- **Iterator Support**:
+  - Forward iteration over overlapping buckets
+  - Reverse iteration with proper range bounds
+  - Both const and non-const iterator variants
+  - Bidirectional iterator capabilities
 
 - **Range Operations**:
-  - `spread`: Spreads a value across a range
-  - `cover`: Covers a range with a value
-  - `erase`: Erases values from a range
+  - `contains`: Check if an index is within range and contained in a bucket
+  - `find`: Locate bucket containing an index, returns end() if not found
+  - `at`: Get bucket containing an index, throws if not found
+  - `next`: Get current/next bucket for an index
+  - `previous`: Get current/previous bucket for an index
+
+- **Exception Safety**:
+  - Strong exception guarantee for all operations
+  - Proper bounds checking for index-based operations
+  - Clear error messages for out-of-range conditions
+
+#### Usage Examples
+
+```cpp
+// Create a bucket container
+bucket_list<int, std::string> list;
+list.spread(0, 5, "A");
+list.spread(5, 10, "B");
+list.spread(10, 15, "C");
+
+// Create a range view
+auto range = list.range(3, 12);
+
+// Forward iteration
+for (const auto& bucket : range) {
+    // Process buckets overlapping with [3, 12)
+}
+
+// Reverse iteration
+for (auto it = range.rbegin(); it != range.rend(); ++it) {
+    // Process buckets in reverse order
+}
+
+// Range operations
+if (range.contains(4)) {
+    auto it = range.find(4);      // Find bucket containing 4
+    auto next = range.next(4);    // Get current/next bucket
+    auto prev = range.previous(4); // Get current/previous bucket
+    
+    try {
+        auto bucket = range.at(4); // Get bucket, throws if not found
+    } catch (const std::out_of_range& e) {
+        // Handle not found case
+    }
+}
+```
+
+#### Implementation Details
+
+1. **Range View**:
+   - Maintains reference to parent container
+   - Stores range bounds [low, high)
+   - Provides filtered view of overlapping buckets
+
+2. **Iterator Implementation**:
+   - Custom bidirectional iterator
+   - Skips non-overlapping buckets
+   - Proper const/non-const handling
+   - Efficient reverse iteration
+
+3. **Range Operations**:
+   - Bounds checking for all index operations
+   - Consistent behavior with parent container
+   - Exception safety guarantees
+
+4. **Performance Considerations**:
+   - O(1) range creation
+   - O(log n) for find/at operations
+   - O(1) for iterator increment/decrement
+   - Efficient memory usage (view only)
 
 ### bucket_iterator.h
 

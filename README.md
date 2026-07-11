@@ -1,9 +1,13 @@
 # Bucket Template Library
 
-A modern C++20 template library for managing ranges with associated values. The library provides two main components:
+## Version 2.0alpha1
 
-- `bucket_map`: A map-like container for storing values associated with ranges of indices
-- `bucket_list`: A list-like container for storing ordered ranges with associated values
+A modern C++20 template library for managing ranges with associated values; these ranges with associated values are know as buckets. The library provides two main components:
+
+- `bucket_map`: A container for storing values associated with ranges of indices.  Internally it uses a std::map to manage the buckets.
+- `bucket_list`: A container for storing ordered ranges with associated values. Internally it uses a std::list for managing buckets.
+
+Both bucket_map and bucket_list have exactly the same public interface and can be used interchangeably.
 
 ## Features
 
@@ -13,18 +17,6 @@ Common features for both components:
 - Efficient storage and retrieval of values associated with ranges
 - Support for custom index and value types
 - Modern C++20 design
-
-### bucket_map
-- Map-like interface for range-value associations
-- Efficient lookup of values at specific indices
-- Support for overlapping ranges
-- Automatic range splitting and merging
-
-### bucket_list
-- List-like interface for ordered ranges
-- Optimized for range-based operations
-- Maintains sorted order of ranges
-- Support for multiple values per range
 
 ## Range Behavior
 
@@ -122,7 +114,7 @@ ctest -C Debug --output-on-failure
 ## Continuous Integration
 
 The project uses GitHub Actions for CI. The pipeline:
-- Builds on Windows and Linux
+- Builds on Windows and Linux  (both AMD64 and ARM64)
 - Runs all tests
 - Checks for C++20 compliance
 - Validates CMake configuration
@@ -139,26 +131,34 @@ The project uses GitHub Actions for CI. The pipeline:
 // Create a bucket map with integer indices and string values
 masutils::bucket_map<int, std::string> map;
 
-// Basic range operations
+// Basic bucket operations
 map.spread(0, 5, "value1");  // Associates "value1" with range [0, 5)
-map.cover(2, 4, "value2");   // Overwrites range [2, 4) with "value2"
-map.erase(1, 3);            // Removes values in range [1, 3)
+map.cover(2, 4, "value2");   // Overwrites bucket in range [2, 4) with "value2"
+map.erase(1, 3);            // Removes buckets in range [1, 3)
 
 // Querying values
 std::string val = map.at(4);  // Get value at specific index
 bool exists = map.contains(2); // Check if index has a value
 
-// Iterating over ranges
-for (const auto& [range, value] : map) {
-    std::cout << "Range [" << range.first << ", " << range.second << "): " 
-              << value << "\n";
+// Iterating over buckets
+for (const auto& bucket : map) {
+    std::cout << "Range [" << bucket.low() << ", " << bucket.high() << "): ";
+    for (const auto& value : bucket.values()) {
+        std::cout << value << " ";
+    }
+    std::cout << "\n";
 }
 
 // Advanced operations
-map.clear();  // Clear all ranges
-map.spread(0, 10, "base");      // Range [0, 10)
-map.cover(3, 7, "middle");      // Range [3, 7) splits existing range
-map.spread(5, 8, "overlap");    // Range [5, 8) overlaps with existing ranges
+map.erase();  // Clear all buckets
+map.spread(0, 10, "base");      // Creates bucket in range [0, 10)
+map.cover(3, 7, "middle");      // Creates bucket in range [3, 7), splitting "base" into [0,3) and [7,10)
+map.spread(5, 8, "overlap");    // Creates bucket in range [5, 8), resulting in:
+                               // [0,3)->"base"
+                               // [3,5)->"middle"
+                               // [5,7)->"middle" and "overlap"
+                               // [7,8)->"base" and "overlap"
+                               // [8,10)->"base"
 
 // Using custom types
 struct CustomValue {
@@ -167,11 +167,18 @@ struct CustomValue {
 };
 
 masutils::bucket_map<double, CustomValue> custom_map;
-custom_map.spread(0.0, 1.0, CustomValue{1, "low"});   // Range [0.0, 1.0)
-custom_map.spread(1.0, 2.0, CustomValue{2, "high"});  // Range [1.0, 2.0)
+custom_map.spread(0.0, 1.0, CustomValue{1, "low"});   // Creates bucket in range [0.0, 1.0)
+custom_map.spread(1.0, 2.0, CustomValue{2, "high"});  // Creates bucket in range [1.0, 2.0)
 
-// Range lookup operations
-auto ranges = custom_map.find_ranges(0.5, 1.5);  // Find all ranges overlapping [0.5, 1.5)
+// Bucket lookup operations
+auto overlapping_buckets = custom_map.range(0.5, 1.5);  // Get all buckets overlapping [0.5, 1.5)
+for (const auto& bucket : overlapping_buckets) {
+    std::cout << "Bucket [" << bucket.low() << ", " << bucket.high() << "): ";
+    for (const auto& value : bucket.values()) {
+        std::cout << value.priority << "," << value.data << " ";
+    }
+    std::cout << "\n";
+}
 ```
 
 ### bucket_list
@@ -184,10 +191,10 @@ auto ranges = custom_map.find_ranges(0.5, 1.5);  // Find all ranges overlapping 
 // Create a bucket list with integer indices and string values
 masutils::bucket_list<int, std::string> list;
 
-// Basic range operations
-list.spread(0, 5, "segment1");    // Add range [0, 5)
-list.cover(2, 4, "segment2");     // Override range [2, 4)
-list.erase(1, 3);                // Remove range [1, 3)
+// Basic bucket operations
+list.spread(0, 5, "segment1");    // Add bucket in range [0, 5)
+list.cover(2, 4, "segment2");     // Override bucket in range [2, 4)
+list.erase(1, 3);                // Remove buckets in range [1, 3)
 
 // Querying and accessing
 bool has_value = list.contains(4);          // Check if index is in any bucket
@@ -214,23 +221,26 @@ if (list.contains(4)) {                     // Check first
     }
 }
 
-// Iterating through ranges in order
-for (const auto& [range, value] : list) {
-    std::cout << "Range [" << range.first << ", " << range.second << "): " 
-              << value << "\n";
+// Iterating through buckets in order
+for (const auto& bucket : list) {
+    std::cout << "Range [" << bucket.low() << ", " << bucket.high() << "): ";
+    for (const auto& value : bucket.values()) {
+        std::cout << value << " ";
+    }
+    std::cout << "\n";
 }
 
 // Advanced operations
-list.clear();  // Clear all ranges
+list.erase();  // Clear all buckets
 
-// Building a sequence of ranges
-list.spread(0, 3, "first");    // Range [0, 3)
-list.spread(3, 6, "second");   // Range [3, 6)
-list.spread(6, 9, "third");    // Range [6, 9)
+// Building a sequence of buckets
+list.spread(0, 3, "first");    // Creates bucket in range [0, 3)
+list.spread(3, 6, "second");   // Creates bucket in range [3, 6)
+list.spread(6, 9, "third");    // Creates bucket in range [6, 9)
 
-// Modifying multiple ranges
-list.cover(2, 7, "overlap");   // Covers ranges [2, 7)
-list.erase(4, 8);             // Removes ranges [4, 8)
+// Modifying multiple buckets
+list.cover(2, 7, "overlap");   // Covers buckets in range [2, 7)
+list.erase(4, 8);             // Removes buckets in range [4, 8)
 
 // Using with custom types
 struct TimeSegment {
@@ -239,9 +249,9 @@ struct TimeSegment {
 };
 
 masutils::bucket_list<int, TimeSegment> schedule;
-schedule.spread(0, 2, TimeSegment{"meeting", 120});  // Range [0, 2)
-schedule.spread(2, 4, TimeSegment{"lunch", 120});    // Range [2, 4)
-schedule.spread(4, 8, TimeSegment{"work", 240});     // Range [4, 8)
+schedule.spread(0, 2, TimeSegment{"meeting", 120});  // Creates bucket in range [0, 2)
+schedule.spread(2, 4, TimeSegment{"lunch", 120});    // Creates bucket in range [2, 4)
+schedule.spread(4, 8, TimeSegment{"work", 240});     // Creates bucket in range [4, 8)
 ```
 
 ## Advanced Custom Type Examples
@@ -326,6 +336,7 @@ void resource_monitoring_example() {
     auto metric = metrics.at(0.5);
     std::cout << "Average at t=0.5: " << metric.average() << "\n";
 }
+```
 
 ### Complex Types with bucket_list
 
@@ -492,9 +503,11 @@ public:
     bool modify_range(Index start, Index end, 
                      std::function<void(Value&)> modifier) noexcept {
         try {
-            auto ranges = map_.find_ranges(start, end);
-            for (auto& [range, value] : ranges) {
-                modifier(value);
+            auto overlapping_buckets = map_.range(start, end);
+            for (auto& bucket : overlapping_buckets) {
+                for (auto& value : bucket.values()) {
+                    modifier(value);
+                }
             }
             return true;
         } catch (const std::exception&) {
@@ -630,9 +643,9 @@ public:
 
         Result spread(Index start, Index end, const Value& value) {
             try {
-                list_.list_.spread(start, end, value);
+                list_.spread(start, end, value);
                 rollback_actions_.push_back([&, start, end]() {
-                    list_.list_.erase(start, end);
+                    list_.erase(start, end);
                 });
                 return {true, {}};
             } catch (const std::exception&) {
@@ -694,6 +707,7 @@ void bucket_list_error_handling_example() {
         transaction.commit();  // All operations successful
     }
 }
+```
 
 ### Concurrent Access and Logging Examples
 
@@ -790,8 +804,8 @@ public:
         logger_->info("Active readers: {}", active_readers_.load());
         logger_->info("Active writers: {}", active_writers_.load());
         
-        for (const auto& [range, value] : map_) {
-            logger_->info("Range [{}, {}]: {}", range.first, range.second, value);
+        for (const auto& bucket : map_) {
+            logger_->info("Range [{}, {}]: {}", bucket.low(), bucket.high(), bucket.values());
         }
     }
 };
@@ -919,10 +933,11 @@ void concurrent_debug_example() {
         thread.join();
     }
 }
+```
 
 ## Project Structure
 
-```
+```cpp
 bucket/
 ├── include/
 │   └── bucket/
@@ -977,7 +992,7 @@ The bucket library is header-only, which means there are no binaries to compile 
    tar xzf bucket-x.y.z.tar.gz
    # For .zip
    unzip bucket-x.y.z.zip
-   ```
+```
 4. Install using CMake:
    ```bash
    cd bucket-x.y.z

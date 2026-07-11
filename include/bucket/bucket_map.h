@@ -6,8 +6,8 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
- *    https://www.apache.org/licenses/LICENSE-2.0
+    std::is_nothrow_default_constructible<bucket_type>::value &&
+    std::is_nothrow_default_constructible<index_type>::value &&
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -69,6 +69,7 @@ public:
 
   using index_type = Indices;
   using value_type = Values;
+  using compare_traits = CompareTraits;
 
   // Public container type that represents the actual values
   using value_container = typename ValueTraits::value_container;
@@ -224,10 +225,9 @@ public:
    * @brief Constructor of an unconstrained buckets collection.
    */
   explicit bucket_map() noexcept(
-      std::is_nothrow_default_constructible<bucket_type>::value &&
-      std::is_nothrow_default_constructible<index_type>::value &&
-      noexcept(false))
-      : low_(), high_(), constrained_(false) {}
+      std::is_nothrow_default_constructible_v<bucket_type> &&
+      std::is_nothrow_default_constructible_v<index_type> &&
+      noexcept(false)) = default;
 
   /**
    * @brief Constructor of a constrained buckets collection.
@@ -285,13 +285,14 @@ public:
   int spread(const bucket_type &bucket_) {
     int added_to_bucket = 0;
 
-    typename bucket_type_map::iterator begin, end;
-    const bool b_spliced = splice(bucket_.low(), bucket_.high(), begin, end);
+    typename bucket_type_map::iterator begin;
+    typename bucket_type_map::iterator end;
 
-    if (!b_spliced)
+    if (const bool b_spliced = splice(bucket_.low(), bucket_.high(), begin, end); !b_spliced)
       return added_to_bucket;
 
-    index_type l, h;
+    index_type l;
+    index_type h;
     CompareTraits::assign(l, bucket_.low());
     CompareTraits::assign(h, bucket_.high());
 
@@ -333,13 +334,14 @@ public:
   int cover(const bucket_type &bucket_) {
     int added_to_bucket = 0;
 
-    typename bucket_type_map::iterator begin, end;
-    const bool b_spliced = splice(bucket_.low(), bucket_.high(), begin, end);
+    typename bucket_type_map::iterator begin;
+    typename bucket_type_map::iterator end;
 
-    if (!b_spliced)
+    if (const bool b_spliced = splice(bucket_.low(), bucket_.high(), begin, end); !b_spliced)
       return added_to_bucket;
 
-    index_type l, h;
+    index_type l;
+    index_type h;
     CompareTraits::assign(l, bucket_.low());
     CompareTraits::assign(h, bucket_.high());
 
@@ -377,7 +379,6 @@ public:
     return bucket_range<bucket_map, true>(*this, start, end);
   }
 
-public:
   /**
    * @brief Find the first bucket that overlaps with the given range
    * @param low Lower bound of the range
@@ -385,8 +386,7 @@ public:
    * @return Iterator to the first overlapping bucket, or end() if none found
    */
   iterator find_first_overlapping_bucket(index_type low, index_type high) {
-    auto it = buckets_.lower_bound(low);
-    if (it != buckets_.end() && CompareTraits::lt(it->first, high)) {
+    if (auto it = buckets_.lower_bound(low); it != buckets_.end() && CompareTraits::lt(it->first, high)) {
       return iterator(it);
     }
     return end();
@@ -413,7 +413,8 @@ public:
   [[nodiscard]] bool splice(index_type low, index_type high,
       typename bucket_type_map::iterator& begin,
       typename bucket_type_map::iterator& end) {
-      index_type l, h;
+      index_type l;
+      index_type h;
       CompareTraits::assign(l, low);
       CompareTraits::assign(h, high);
 
@@ -427,7 +428,8 @@ public:
               CompareTraits::assign(h, high_);
       }
 
-      index_type lowest_, highest_;
+      index_type lowest_;
+      index_type highest_;
       CompareTraits::assign(lowest_, l);
       CompareTraits::assign(highest_, h);
 
@@ -524,7 +526,8 @@ public:
    * @return true if any buckets were erased, false otherwise
    */
   bool erase_impl(index_type low, index_type high) {
-    typename bucket_type_map::iterator begin, end;
+    typename bucket_type_map::iterator begin;
+    typename bucket_type_map::iterator end;
     const bool b_spliced = splice(low, high, begin, end);  // Empty container is fine for erase
 
     if (b_spliced) {
@@ -535,7 +538,6 @@ public:
     return false;
   }
 
-public:
   template <class OtherValueTraits>
   int spread(const bucket_map<Indices, Values, CompareTraits, OtherValueTraits>
           &bucket_) {
@@ -569,7 +571,7 @@ public:
    */
   [[nodiscard]] bool contains(index_type index) const {
     for (auto it = begin(); it != end(); ++it) {
-      if (CompareTraits::lt(it->low(), index) && CompareTraits::lt(index, it->high())) {
+      if (!CompareTraits::lt(index, it->low()) && CompareTraits::lt(index, it->high())) {
         return true;
       }
     }
@@ -584,11 +586,12 @@ public:
    * @note It is recommended to call contains() first to check if the index exists
    */
   [[nodiscard]] value_container& at(index_type index) {
-    auto it = find(index);
-    if (it == end()) {
-      throw std::out_of_range("No bucket contains the specified index");
+    for (auto it = begin(); it != end(); ++it) {
+      if (!CompareTraits::lt(index, it->low()) && CompareTraits::lt(index, it->high())) {
+        return it->values();
+      }
     }
-    return it->values();
+    throw std::out_of_range("No bucket contains the specified index");
   }
 
   /**
@@ -599,11 +602,12 @@ public:
    * @note It is recommended to call contains() first to check if the index exists
    */
   [[nodiscard]] const value_container& at(index_type index) const {
-    auto it = find(index);
-    if (it == end()) {
-      throw std::out_of_range("No bucket contains the specified index");
+    for (auto it = begin(); it != end(); ++it) {
+      if (!CompareTraits::lt(index, it->low()) && CompareTraits::lt(index, it->high())) {
+        return it->values();
+      }
     }
-    return it->values();
+    throw std::out_of_range("No bucket contains the specified index");
   }
 
   /**
@@ -615,7 +619,7 @@ public:
    */
   [[nodiscard]] iterator find(index_type index) {
     for (auto it = begin(); it != end(); ++it) {
-      if (CompareTraits::lt(it->low(), index) && CompareTraits::lt(index, it->high())) {
+      if (!CompareTraits::lt(index, it->low()) && CompareTraits::lt(index, it->high())) {
         return it;
       }
     }
@@ -631,7 +635,7 @@ public:
    */
   [[nodiscard]] const_iterator find(index_type index) const {
     for (auto it = begin(); it != end(); ++it) {
-      if (CompareTraits::lt(it->low(), index) && CompareTraits::lt(index, it->high())) {
+      if (!CompareTraits::lt(index, it->low()) && CompareTraits::lt(index, it->high())) {
         return it;
       }
     }
@@ -645,7 +649,7 @@ public:
    */
   [[nodiscard]] iterator next(index_type index) {
     for (auto it = begin(); it != end(); ++it) {
-      if (CompareTraits::lt(it->low(), index) && CompareTraits::lt(index, it->high())) {
+      if (!CompareTraits::lt(index, it->low()) && CompareTraits::lt(index, it->high())) {
         return it;  // Return current bucket if index is in it
       }
       if (CompareTraits::lt(index, it->low())) {
@@ -662,7 +666,7 @@ public:
    */
   [[nodiscard]] const_iterator next(index_type index) const {
     for (auto it = begin(); it != end(); ++it) {
-      if (CompareTraits::lt(it->low(), index) && CompareTraits::lt(index, it->high())) {
+      if (!CompareTraits::lt(index, it->low()) && CompareTraits::lt(index, it->high())) {
         return it;  // Return current bucket if index is in it
       }
       if (CompareTraits::lt(index, it->low())) {
@@ -680,7 +684,7 @@ public:
   [[nodiscard]] iterator previous(index_type index) {
     iterator prev = end();
     for (auto it = begin(); it != end(); ++it) {
-      if (CompareTraits::lt(it->low(), index) && CompareTraits::lt(index, it->high())) {
+      if (!CompareTraits::lt(index, it->low()) && CompareTraits::lt(index, it->high())) {
         return it;  // Return current bucket if index is in it
       }
       if (CompareTraits::lt(index, it->low())) {
@@ -699,7 +703,7 @@ public:
   [[nodiscard]] const_iterator previous(index_type index) const {
     const_iterator prev = end();
     for (auto it = begin(); it != end(); ++it) {
-      if (CompareTraits::lt(it->low(), index) && CompareTraits::lt(index, it->high())) {
+      if (!CompareTraits::lt(index, it->low()) && CompareTraits::lt(index, it->high())) {
         return it;  // Return current bucket if index is in it
       }
       if (CompareTraits::lt(index, it->low())) {

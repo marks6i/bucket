@@ -20,12 +20,12 @@ endif()
 
 # Platform-specific compiler settings
 if(MSVC)
-    add_compile_options(/W4 /std:c++20)
+    add_compile_options(/W4)
     # Use the same runtime library for all targets
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
     set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 else()
-    add_compile_options(-Wall -Wextra -Wpedantic -std=c++20)
+    add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
 # Add clang-tidy target
@@ -53,6 +53,30 @@ if(CLANG_TIDY_EXE)
     )
 else()
     message(STATUS "clang-tidy not found. The 'ctidy' target will not be available.")
+endif()
+
+# Add coverage support for GCC/Clang on Unix
+if(NOT MSVC AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    find_program(LCOV_PATH lcov)
+    find_program(GENHTML_PATH genhtml)
+    
+    if(LCOV_PATH AND GENHTML_PATH)
+        message(STATUS "Found lcov and genhtml. Coverage target will be available.")
+        
+        add_custom_target(coverage
+            COMMAND ctest
+            COMMAND ${LCOV_PATH} --ignore-errors mismatch --directory . --capture --output-file coverage.info
+            COMMAND ${LCOV_PATH} --ignore-errors mismatch --remove coverage.info */tests/* */googletest/* /usr/include/* --output-file coverage.info.cleaned
+            COMMAND ${GENHTML_PATH} coverage.info.cleaned --output-directory coverage_html
+            WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+            COMMENT "Running coverage analysis and generating HTML report..."
+            VERBATIM
+        )
+    elseif(LCOV_PATH)
+        message(STATUS "Found lcov but not genhtml. Install genhtml (part of lcov) for HTML reports.")
+    else()
+        message(STATUS "lcov not found. Code coverage analysis will not be available. Install lcov to enable coverage.")
+    endif()
 endif()
 
 # Enable testing
@@ -117,13 +141,18 @@ target_include_directories(bucket INTERFACE
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
 )
+target_compile_features(bucket INTERFACE cxx_std_20)
 
 # Add test executables
 add_gtest_executable(bucket_list_test)
 add_gtest_executable(bucket_map_test)
+add_gtest_executable(bucket_list_readme_test)
+add_gtest_executable(bucket_map_readme_test)
 add_gtest_executable(bucket_compare_traits_test)
 add_gtest_executable(bucket_value_traits_test)
 add_gtest_executable(bucket_traits_test)
+add_gtest_executable(bucket_list_range_test)
+add_gtest_executable(bucket_map_range_test)
 
 # Configure package version
 include(CMakePackageConfigHelpers)
