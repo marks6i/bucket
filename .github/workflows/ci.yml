@@ -5,6 +5,7 @@ on:
     branches: [ master, rel20, dev* ]
   pull_request:
     branches: [ master, rel20 ]
+  workflow_dispatch:
 
 # Add permissions configuration
 permissions:
@@ -31,11 +32,11 @@ jobs:
             compiler: gcc
             arch: x64
             build_type: Release
-          - os: ubuntu-latest
+          - os: ubuntu-24.04-arm
             compiler: gcc
             arch: arm64
             build_type: Debug
-          - os: ubuntu-latest
+          - os: ubuntu-24.04-arm
             compiler: gcc
             arch: arm64
             build_type: Release
@@ -65,7 +66,7 @@ jobs:
           -DCMAKE_CXX_STANDARD_REQUIRED=ON
 
     - name: Configure CMake (Linux)
-      if: matrix.os == 'ubuntu-latest'
+      if: startsWith(matrix.os, 'ubuntu-')
       run: |
         cmake -B "$GITHUB_WORKSPACE/build" \
           -DCMAKE_BUILD_TYPE=${{matrix.build_type}} \
