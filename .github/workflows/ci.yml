@@ -2,90 +2,132 @@ name: CI/CD
 
 on:
   push:
-    branches: [ master, rel20, dev* ]
+    branches:
+      - master
+      - rel20
+      - "dev*"
   pull_request:
-    branches: [ master, rel20 ]
+    branches:
+      - master
+      - rel20
   workflow_dispatch:
 
-# Add permissions configuration
 permissions:
   contents: read
-  packages: write
 
 jobs:
   build:
+    name: build (${{ matrix.os }}, ${{ matrix.compiler }}, ${{ matrix.arch }}, ${{ matrix.build_type }})
     runs-on: ${{ matrix.os }}
+
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: windows-latest
             compiler: msvc
+            arch: x64
             build_type: Debug
+
           - os: windows-latest
             compiler: msvc
+            arch: x64
             build_type: Release
+
           - os: ubuntu-latest
             compiler: gcc
             arch: x64
             build_type: Debug
+
           - os: ubuntu-latest
             compiler: gcc
             arch: x64
             build_type: Release
+
           - os: ubuntu-24.04-arm
             compiler: gcc
             arch: arm64
             build_type: Debug
+
           - os: ubuntu-24.04-arm
             compiler: gcc
             arch: arm64
             build_type: Release
 
     steps:
-    - uses: actions/checkout@v3
+      - name: Check out source
+        uses: actions/checkout@v4
 
-    - name: Set up CMake
-      uses: lukka/get-cmake@latest
+      - name: Install CMake and Ninja
+        uses: lukka/get-cmake@latest
+        with:
+          cmakeVersion: "~3.31.0"
+          ninjaVersion: "^1.12.0"
 
-    - name: Configure MSVC (Windows)
-      if: matrix.os == 'windows-latest'
-      run: |
-        echo "Setting up MSVC environment..."
-        & "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
-        echo "MSVC environment setup complete"
+      - name: Show runner information
+        shell: bash
+        run: |
+          echo "Runner OS:   $RUNNER_OS"
+          echo "Runner arch: $RUNNER_ARCH"
+          echo "Workspace:   $GITHUB_WORKSPACE"
+          cmake --version
+          ninja --version
 
-    - name: Configure CMake (Windows)
-      if: matrix.os == 'windows-latest'
-      run: |
-        $buildDir = Join-Path $env:GITHUB_WORKSPACE "build"
-        cmake -B "$buildDir" `
-          -DCMAKE_BUILD_TYPE=${{matrix.build_type}} `
-          -DCMAKE_CXX_COMPILER=${{ matrix.compiler == 'gcc' && 'g++' || 'cl.exe' }} `
-          -DCMAKE_C_COMPILER=${{ matrix.compiler == 'gcc' && 'gcc' || 'cl.exe' }} `
-          -DCMAKE_CXX_STANDARD=20 `
-          -DCMAKE_CXX_STANDARD_REQUIRED=ON
+      - name: Configure MSVC
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
 
-    - name: Configure CMake (Linux)
-      if: startsWith(matrix.os, 'ubuntu-')
-      run: |
-        cmake -B "$GITHUB_WORKSPACE/build" \
-          -DCMAKE_BUILD_TYPE=${{matrix.build_type}} \
-          -DCMAKE_CXX_COMPILER=${{ matrix.compiler == 'gcc' && 'g++' || 'cl.exe' }} \
-          -DCMAKE_C_COMPILER=${{ matrix.compiler == 'gcc' && 'gcc' || 'cl.exe' }} \
-          -DCMAKE_CXX_STANDARD=20 \
-          -DCMAKE_CXX_STANDARD_REQUIRED=ON
+      - name: Show MSVC version
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          cl.exe 2>&1 | Select-Object -First 3
+          Write-Host "Architecture: $env:PROCESSOR_ARCHITECTURE"
 
-    - name: Build
-      run: cmake --build ${{github.workspace}}/build --config ${{matrix.build_type}}
+      - name: Show GCC version
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          gcc --version
+          g++ --version
+          uname -a
 
-    - name: Test
-      working-directory: ${{github.workspace}}/build
-      run: ctest -C ${{matrix.build_type}} --output-on-failure
+      - name: Configure CMake
+        shell: bash
+        run: |
+          cmake -S "$GITHUB_WORKSPACE" \
+            -B "$GITHUB_WORKSPACE/build" \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE="${{ matrix.build_type }}" \
+            -DCMAKE_CXX_STANDARD=20 \
+            -DCMAKE_CXX_STANDARD_REQUIRED=ON \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
-    - name: Upload build artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: build-${{ matrix.os }}-${{ matrix.compiler }}-${{ matrix.arch || 'x64' }}-${{ matrix.build_type }}
-        path: ${{github.workspace}}/build/
-        retention-days: 5
-        if-no-files-found: warn 
+      - name: Build
+        shell: bash
+        run: |
+          cmake --build "$GITHUB_WORKSPACE/build" \
+            --parallel 2 \
+            --verbose
+
+      - name: Test
+        shell: bash
+        working-directory: ${{ github.workspace }}/build
+        run: |
+          ctest \
+            --output-on-failure \
+            --no-tests=error \
+            --timeout 300
+
+      - name: Upload build artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-${{ matrix.os }}-${{ matrix.compiler }}-${{ matrix.arch }}-${{ matrix.build_type }}
+          path: |
+            ${{ github.workspace }}/build/
+          retention-days: 5
+          if-no-files-found: warn
+
