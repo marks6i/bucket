@@ -137,8 +137,8 @@ TEST_F(BucketMapRangeTest, FindMethod) {
   EXPECT_EQ(it, range.end());
   
   // Find outside range
-  EXPECT_THROW(range.find(45), std::out_of_range);
-  EXPECT_THROW(range.find(2), std::out_of_range);
+  EXPECT_THROW(range.find(45), range_index_out_of_bounds_error);
+  EXPECT_THROW(range.find(2), range_index_out_of_bounds_error);
 }
 
 TEST_F(BucketMapRangeTest, AtMethod) {
@@ -155,11 +155,11 @@ TEST_F(BucketMapRangeTest, AtMethod) {
   EXPECT_EQ(it->high(), 30);
   
   // At in gap
-  EXPECT_THROW(range.at(15), std::out_of_range);
+  EXPECT_THROW(range.at(15), bucket_index_not_found_error);
   
   // At outside range
-  EXPECT_THROW(range.at(45), std::out_of_range);
-  EXPECT_THROW(range.at(2), std::out_of_range);
+  EXPECT_THROW(range.at(45), range_index_out_of_bounds_error);
+  EXPECT_THROW(range.at(2), range_index_out_of_bounds_error);
 }
 
 TEST_F(BucketMapRangeTest, NextMethod) {

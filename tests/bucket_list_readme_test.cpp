@@ -6,8 +6,7 @@
 
 using namespace masutils;
 
-namespace masutils {
-namespace test {
+namespace masutils::test {
 
 class BucketListReadmeTest : public ::testing::Test {
 protected:
@@ -66,7 +65,7 @@ TEST_F(BucketListReadmeTest, BasicOperations) {
         try {
             auto& values = list.at(3);          // Then access
             EXPECT_EQ(values.front(), "segment2");
-        } catch (const std::out_of_range& e) {
+        } catch (const std::out_of_range&) {
             FAIL() << "This should never happen if contains() returned true";
         }
     }
@@ -153,5 +152,4 @@ TEST_F(BucketListReadmeTest, CustomTypes) {
     EXPECT_EQ(it->values().front(), (TimeSegment{"work", 240}));
 }
 
-} // namespace test
-} // namespace masutils 
+} // namespace masutils::test

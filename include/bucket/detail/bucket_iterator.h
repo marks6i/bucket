@@ -109,17 +109,16 @@ public:
   bucket_iterator_base& operator=(const bucket_iterator_base&) = default;
 
   // Allow conversion from non-const to const iterator
-  template <bool OtherIsConst,
-            typename = std::enable_if_t<IsConst && !OtherIsConst>>
+  template <bool OtherIsConst>
+    requires (IsConst && !OtherIsConst)
   explicit bucket_iterator_base(
       const bucket_iterator_base<Container, ValueType, OtherIsConst,
                                  IteratorCategory>& other)
       : it_(other.it_) {}
 
   // Allow conversion from std::list iterator
-  template <typename OtherIterator,
-            typename = std::enable_if_t<std::is_convertible_v<
-                OtherIterator, iterator_type>>>
+  template <typename OtherIterator>
+    requires std::is_convertible_v<OtherIterator, iterator_type>
   explicit bucket_iterator_base(OtherIterator it) : it_(it) {}
 
   // Basic iterator operations
@@ -144,20 +143,16 @@ public:
   }
 
   // Bidirectional iterator requirements (if supported)
-  template <
-      typename = std::enable_if_t<
-          std::is_same_v<IteratorCategory, std::bidirectional_iterator_tag> ||
-          std::is_same_v<IteratorCategory, std::random_access_iterator_tag>>>
-  bucket_iterator_base& operator--() {
+  bucket_iterator_base& operator--()
+    requires (std::is_same_v<IteratorCategory, std::bidirectional_iterator_tag> ||
+              std::is_same_v<IteratorCategory, std::random_access_iterator_tag>) {
     --it_;
     return *this;
   }
   
-  template <
-      typename = std::enable_if_t<
-          std::is_same_v<IteratorCategory, std::bidirectional_iterator_tag> ||
-          std::is_same_v<IteratorCategory, std::random_access_iterator_tag>>>
-  bucket_iterator_base operator--(int) {
+  bucket_iterator_base operator--(int)
+    requires (std::is_same_v<IteratorCategory, std::bidirectional_iterator_tag> ||
+              std::is_same_v<IteratorCategory, std::random_access_iterator_tag>) {
     bucket_iterator_base tmp = *this;
     --it_;
     return tmp;

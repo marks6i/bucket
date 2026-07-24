@@ -25,6 +25,7 @@
 #include <iterator>
 #include <type_traits>
 
+#include "../bucket_exceptions.h"
 #include "./bucket_types.h"
 #include "./bucket_traits.h"
 
@@ -176,8 +177,6 @@ public:
       return current_ == other.current_ && is_forward_ == other.is_forward_;
     }
 
-    bool operator!=(const iterator& other) const { return !(*this == other); }
-
   protected:
     friend class bucket_range;
     container_type *container_ = nullptr;
@@ -282,11 +281,11 @@ public:
    * @brief Find a bucket containing the given index within the range
    * @param index The index to search for
    * @return Iterator to the bucket containing the index, or end() if not found
-   * @throw std::out_of_range if the index is outside the range bounds
+  * @throw range_index_out_of_bounds_error if the index is outside the range bounds
    */
   iterator find(typename container_type::index_type index) {
     if (CompareTraits::lt(index, low_) || CompareTraits::lt(high_, index)) {
-      throw std::out_of_range("Index is outside the range bounds");
+      throw range_index_out_of_bounds_error{};
     }
     
     for (auto it = begin(); it != end(); ++it) {
@@ -301,11 +300,11 @@ public:
    * @brief Find a bucket containing the given index within the range (const version)
    * @param index The index to search for
    * @return Const iterator to the bucket containing the index, or end() if not found
-   * @throw std::out_of_range if the index is outside the range bounds
+  * @throw range_index_out_of_bounds_error if the index is outside the range bounds
    */
   const_iterator find(typename container_type::index_type index) const {
     if (CompareTraits::lt(index, low_) || CompareTraits::lt(high_, index)) {
-      throw std::out_of_range("Index is outside the range bounds");
+      throw range_index_out_of_bounds_error{};
     }
     
     for (auto it = begin(); it != end(); ++it) {
@@ -320,12 +319,13 @@ public:
    * @brief Get a bucket at the given index within the range
    * @param index The index to search for
    * @return Iterator to the bucket containing the index
-   * @throw std::out_of_range if no bucket contains the index or if index is outside range bounds
+  * @throw bucket_index_not_found_error if no bucket contains the index
+  * @throw range_index_out_of_bounds_error if index is outside range bounds
    */
   iterator at(typename container_type::index_type index) {
     auto it = find(index);
     if (it == end()) {
-      throw std::out_of_range("No bucket contains the specified index");
+      throw bucket_index_not_found_error{};
     }
     return it;
   }
@@ -334,12 +334,13 @@ public:
    * @brief Get a bucket at the given index within the range (const version)
    * @param index The index to search for
    * @return Const iterator to the bucket containing the index
-   * @throw std::out_of_range if no bucket contains the index or if index is outside range bounds
+  * @throw bucket_index_not_found_error if no bucket contains the index
+  * @throw range_index_out_of_bounds_error if index is outside range bounds
    */
   const_iterator at(typename container_type::index_type index) const {
     auto it = find(index);
     if (it == end()) {
-      throw std::out_of_range("No bucket contains the specified index");
+      throw bucket_index_not_found_error{};
     }
     return it;
   }

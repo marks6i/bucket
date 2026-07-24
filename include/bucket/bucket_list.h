@@ -35,6 +35,7 @@
 #include <type_traits>
 
 #include "detail/bucket_compare_traits.h"
+#include "bucket_exceptions.h"
 #include "detail/bucket_iterator.h"
 #include "detail/bucket_object.h"
 #include "detail/bucket_range.h"
@@ -133,13 +134,13 @@ public:
   }
   [[nodiscard]] index_type low() const {
     if (!constrained_) {
-      throw std::runtime_error("Bounds are not constrained.");
+      throw bounds_not_constrained_error{};
     }
     return low_;
   }
   [[nodiscard]] index_type high() const {
     if (!constrained_) {
-      throw std::runtime_error("Bounds are not constrained.");
+      throw bounds_not_constrained_error{};
     }
     return high_;
   }
@@ -152,10 +153,7 @@ public:
    * or a run-time exception if not constrained.
    */
   [[nodiscard]] index_type lower_bound() const {
-    if (!constrained_) {
-      throw std::runtime_error("Bounds are not constrained.");
-    }
-    return low_;
+    return low();
   }
 
   /**
@@ -163,10 +161,7 @@ public:
    * or a run-time exception if not constrained.
    */
   [[nodiscard]] index_type upper_bound() const {
-    if (!constrained_) {
-      throw std::runtime_error("Bounds are not constrained.");
-    }
-    return high_;
+    return high();
   }
 
   /**
@@ -177,7 +172,7 @@ public:
   explicit bucket_list(index_type low, index_type high)
       : low_(low), high_(high), constrained_(true) {
     if (CompareTraits::lt(high_, low_))
-      throw std::invalid_argument("Arguments not in correct order.");
+      throw invalid_range_order_error{};
   }
 
   /**
@@ -229,7 +224,8 @@ protected:
         CompareTraits::assign(h, high_);
     }
 
-    index_type lowest_, highest_;
+    index_type lowest_;
+    index_type highest_;
     CompareTraits::assign(lowest_, l);
     CompareTraits::assign(highest_, h);
 
@@ -242,11 +238,7 @@ protected:
     }
 
 	// Iterate through the buckets and handle overlaps
-    for (; p != buckets_.end(); ) {
-
-	  // If the current bucket is completely after the range, we can stop
-      if (CompareTraits::lt(l, h) != true)
-        break;
+    while (p != buckets_.end() && CompareTraits::lt(l, h)) {
 
       bucket_type &current_bucket = *p;
 
@@ -265,7 +257,8 @@ protected:
           bucket_type new_bucket = bucket_type(l, h, container_);
           p = buckets_.insert(p, new_bucket);
           CompareTraits::assign(l, h);
-          break;
+          p = buckets_.end();
+          continue;
         }
       }
 
@@ -434,11 +427,11 @@ public:
    */
   bool erase(index_type low, index_type high) {
     if (CompareTraits::lt(high, low)) {
-      throw std::invalid_argument("high must be greater than low");
+      throw invalid_range_order_error{};
     }
     if (constrained_ &&
         (CompareTraits::lt(low, low_) || CompareTraits::lt(high_, high))) {
-      throw std::out_of_range("range is outside of constrained bounds");
+      throw range_outside_constrained_bounds_error{};
     }
     return erase_impl(low, high);
   }
@@ -463,11 +456,11 @@ public:
    */
   iterator find_range(index_type low, index_type high) {
     if (CompareTraits::lt(high, low)) {
-      throw std::invalid_argument("high must be greater than low");
+      throw invalid_range_order_error{};
     }
     if (constrained_ &&
         (CompareTraits::lt(low, low_) || CompareTraits::lt(high_, high))) {
-      throw std::out_of_range("range is outside of constrained bounds");
+      throw range_outside_constrained_bounds_error{};
     }
     return next(low);
   }
@@ -483,8 +476,7 @@ public:
                  &bucket_) {
     int added_to_bucket = 0;
 
-    for (const_iterator p = bucket_.begin(); p != bucket_.end(); ++p) {
-      const bucket_type &bucket = *p;
+    for (const auto &bucket : bucket_) {
       added_to_bucket += spread(bucket);
     }
 
@@ -502,8 +494,7 @@ public:
                 &bucket_) {
     int added_to_bucket = 0;
 
-    for (const_iterator p = bucket_.begin(); p != bucket_.end(); ++p) {
-      const bucket_type &bucket = *p;
+    for (const auto &bucket : bucket_) {
       added_to_bucket += cover(bucket);
     }
 
@@ -544,7 +535,7 @@ public:
    * @brief Get the value container for the bucket containing the given index
    * @param index The index to look up
    * @return Reference to the value container
-   * @throw std::out_of_range if no bucket contains the index
+  * @throw bucket_index_not_found_error if no bucket contains the index
    * @note It is recommended to call contains() first to check if the index exists
    */
   [[nodiscard]] value_container& at(index_type index) {
@@ -553,14 +544,14 @@ public:
         return it->values();
       }
     }
-    throw std::out_of_range("No bucket contains the specified index");
+    throw bucket_index_not_found_error{};
   }
 
   /**
    * @brief Get the value container for the bucket containing the given index (const version)
    * @param index The index to look up
    * @return Const reference to the value container
-   * @throw std::out_of_range if no bucket contains the index
+  * @throw bucket_index_not_found_error if no bucket contains the index
    * @note It is recommended to call contains() first to check if the index exists
    */
   [[nodiscard]] const value_container& at(index_type index) const {
@@ -569,14 +560,14 @@ public:
         return it->values();
       }
     }
-    throw std::out_of_range("No bucket contains the specified index");
+    throw bucket_index_not_found_error{};
   }
 
   /**
    * @brief Find a bucket containing the given index
    * @param index The index to search for
    * @return Iterator to the bucket containing the index
-   * @throw std::out_of_range if no bucket contains the index
+  * @throw bucket_index_not_found_error if no bucket contains the index
    * @note It is recommended to call contains() first to check if the index exists
    */
   [[nodiscard]] iterator find(index_type index) {
@@ -585,14 +576,14 @@ public:
         return iterator(it);
       }
     }
-    throw std::out_of_range("No bucket contains the specified index");
+    throw bucket_index_not_found_error{};
   }
 
   /**
    * @brief Find a bucket containing the given index (const version)
    * @param index The index to search for
    * @return Const iterator to the bucket containing the index
-   * @throw std::out_of_range if no bucket contains the index
+  * @throw bucket_index_not_found_error if no bucket contains the index
    * @note It is recommended to call contains() first to check if the index exists
    */
   [[nodiscard]] const_iterator find(index_type index) const {
@@ -601,7 +592,7 @@ public:
         return const_iterator(it);
       }
     }
-    throw std::out_of_range("No bucket contains the specified index");
+    throw bucket_index_not_found_error{};
   }
 
   /**

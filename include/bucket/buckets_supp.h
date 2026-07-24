@@ -21,8 +21,8 @@
 #ifndef MASUTILS_BUCKETS_SUPP_H_
 #define MASUTILS_BUCKETS_SUPP_H_
 
-#ifndef MASUTILS_BUCKETS_H_
-#error Must include buckets.h first
+#if !defined(MASUTILS_BUCKET_LIST_H_) && !defined(MASUTILS_BUCKET_MAP_H_)
+#error Must include bucket_list.h or bucket_map.h first
 #endif
 
 #ifndef VECTOR_H_
@@ -44,6 +44,10 @@
 #ifndef CCTYPE_H_
 #include <cctype>
 #endif // CCTYPE_H_
+
+#ifndef IOSTREAM_H_
+#include <iostream>
+#endif // IOSTREAM_H_
 
 namespace masutils {
 /**
@@ -136,11 +140,8 @@ struct bucket_value_add_traits {
 	template<typename other_value_container>
 	static void append(value_container& _X, const other_value_container& _Y)
 	{
-		for (const_iterator p = _Y.begin();
-			p != _Y.end();
-			++p)
-		{
-			add(_X, *p);
+		for (const auto& p : _Y) {
+			add(_X, p);
 		}
 	}
 
@@ -191,11 +192,8 @@ struct unique_bucket_value_traits {
 	template<typename other_value_container>
 	static void append(value_container& x, const other_value_container& y)
 	{
-		for (const_iterator p = y.begin();
-			p != y.end();
-			++p)
-		{
-			add(x, *p);
+		for (const auto& p : y) {
+			add(x, p);
 		}
 	}
 
@@ -396,19 +394,19 @@ public:
 			os << "unconstrained," << std::endl;
 		}
 
-		for (auto it = bucket_.begin(); it != bucket_.end(); ++it) {
+		for (auto& item : bucket_) {
 			if (!b_first) {
 				os << "," << std::endl;
 			}
-			os << "{ " << IndexWrapper(bucket_type::accessor::low(*it)) << ", " << IndexWrapper(bucket_type::accessor::high(*it)) << ", ";
+			os << "{ " << IndexWrapper(bucket_type::accessor::low(item)) << ", " << IndexWrapper(bucket_type::accessor::high(item)) << ", ";
 			os << "{ ";
 			bool b_first2 = true;
-			auto value_container = bucket_type::accessor::values(*it);
-			for (auto it2 = value_container.begin(); it2 != value_container.end(); ++it2) {
+			auto value_container = bucket_type::accessor::values(item);
+			for (auto& value : value_container) {
 				if (!b_first2) {
 					os << ", ";
 				}
-				os << ValueWrapper(*it2);
+				os << ValueWrapper(value);
 				b_first2 = false;
 			}
 			os << " } }";

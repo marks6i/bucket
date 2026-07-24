@@ -26,8 +26,7 @@ struct masutils::bucket_value_traits<std::string, std::set<std::string>> {
   }
 };
 
-namespace masutils {
-namespace test {
+namespace masutils::test {
 
 using container_type = bucket_list<int, std::string>;
 
@@ -47,7 +46,7 @@ protected:
   // Helper function to verify container contents
   template <typename Container>
   void verifyContainerContents(const Container &values,
-                              const std::vector<std::string> &expected_values) {
+                              const std::vector<std::string> &expected_values) const {
     ASSERT_EQ(values.size(), expected_values.size());
     auto it = values.begin();
     for (const auto &expected : expected_values) {
@@ -56,18 +55,18 @@ protected:
     }
   }
 
-  void print_actual_ranges(const bucket_list<int, std::string>& cont) {
+  void print_actual_ranges(const bucket_list<int, std::string>& cont) const {
     std::string actual;
-    for (auto it = cont.begin(); it != cont.end(); ++it) {
+    for (const auto& range : cont) {
       if (!actual.empty()) {
         actual += ",";
       }
-      actual += "[" + std::to_string(it->low()) + "," + std::to_string(it->high()) + ")";
+      actual += std::format("[{},{})", range.low(), range.high());
     }
     std::cout << "Current ranges: " << actual << std::endl;
   }
 
-  void print_bucket_ranges(const std::string& expected, const bucket_list<int, std::string>& cont) {
+  void print_bucket_ranges(const std::string& expected, const bucket_list<int, std::string>& cont) const {
     std::cout << "Expected ranges: " << expected << std::endl;
     print_actual_ranges(cont);
   }
@@ -94,7 +93,7 @@ TEST_F(BucketListTest, ConstrainedConstruction) {
 }
 
 TEST_F(BucketListTest, InvalidConstrainedConstruction) {
-  EXPECT_THROW(container_type test_container(100, 0), std::invalid_argument);
+  EXPECT_THROW(container_type test_container(100, 0), invalid_range_order_error);
 }
 
 // Accessor tests
@@ -197,9 +196,9 @@ TEST_F(BucketListTest, UnconstrainedBoundOperations) {
   test_container.spread(9, 11, "test3");
 
   EXPECT_THROW(
-      { [[maybe_unused]] auto low = test_container.low(); }, std::runtime_error);
+      { [[maybe_unused]] auto low = test_container.low(); }, bounds_not_constrained_error);
   EXPECT_THROW(
-      { [[maybe_unused]] auto high = test_container.high(); }, std::runtime_error);
+      { [[maybe_unused]] auto high = test_container.high(); }, bounds_not_constrained_error);
 }
 
 TEST_F(BucketListTest, ConstrainedBoundOperations) {
@@ -726,7 +725,7 @@ TEST_F(BucketListTest, FindEdgeCases) {
     EXPECT_EQ(it->high(), 10);
     verifyContainerContents(it->values(), {"test1"});
   });
-  EXPECT_THROW({[[maybe_unused]] auto it = test_container.find(10);}, std::out_of_range); // high boundary is exclusive
+  EXPECT_THROW({[[maybe_unused]] auto it = test_container.find(10);}, bucket_index_not_found_error); // high boundary is exclusive
   
   EXPECT_NO_THROW({
     auto it = test_container.find(5);
@@ -736,11 +735,11 @@ TEST_F(BucketListTest, FindEdgeCases) {
   });
 
   // Test finding in gaps
-  EXPECT_THROW({[[maybe_unused]] auto it = test_container.find(15);}, std::out_of_range);
+  EXPECT_THROW({[[maybe_unused]] auto it = test_container.find(15);}, bucket_index_not_found_error);
 
   // Test finding in empty container
   container_type empty_container;
-  EXPECT_THROW({[[maybe_unused]] auto it = empty_container.find(5);}, std::out_of_range);
+  EXPECT_THROW({[[maybe_unused]] auto it = empty_container.find(5);}, bucket_index_not_found_error);
 }
 
 TEST_F(BucketListTest, FindInConstrainedBuckets) {
@@ -755,7 +754,7 @@ TEST_F(BucketListTest, FindInConstrainedBuckets) {
     EXPECT_EQ(it->high(), 10);
     verifyContainerContents(it->values(), {"test1"});
   });
-  EXPECT_THROW({[[maybe_unused]] auto it = test_container.find(100);}, std::out_of_range); // Upper bound is exclusive
+  EXPECT_THROW({[[maybe_unused]] auto it = test_container.find(100);}, bucket_index_not_found_error); // Upper bound is exclusive
 
   // Test finding within valid ranges
   EXPECT_NO_THROW({
@@ -795,9 +794,9 @@ TEST_F(BucketListTest, FindMethod) {
   });
 
   // Test finding non-existent values
-  EXPECT_THROW({[[maybe_unused]] auto it = test_container.find(15);}, std::out_of_range);
-  EXPECT_THROW({[[maybe_unused]] auto it = test_container.find(35);}, std::out_of_range);
-  EXPECT_THROW({[[maybe_unused]] auto it = test_container.find(55);}, std::out_of_range);
+  EXPECT_THROW({[[maybe_unused]] auto it = test_container.find(15);}, bucket_index_not_found_error);
+  EXPECT_THROW({[[maybe_unused]] auto it = test_container.find(35);}, bucket_index_not_found_error);
+  EXPECT_THROW({[[maybe_unused]] auto it = test_container.find(55);}, bucket_index_not_found_error);
 
   // Test const version
   const container_type& const_container = test_container;
@@ -807,7 +806,7 @@ TEST_F(BucketListTest, FindMethod) {
     EXPECT_EQ(const_it->high(), 50);
     verifyContainerContents(const_it->values(), {"test3"});
   });
-  EXPECT_THROW({[[maybe_unused]] auto const_it = const_container.find(15);}, std::out_of_range);
+  EXPECT_THROW({[[maybe_unused]] auto const_it = const_container.find(15);}, bucket_index_not_found_error);
 }
 
 TEST_F(BucketListTest, FindMethodWithOverlappingRanges) {
@@ -857,7 +856,7 @@ TEST_F(BucketListTest, FindMethodWithOverlappingRanges) {
   });
 
   // Test finding values in gaps between ranges
-  EXPECT_THROW({[[maybe_unused]] auto it = test_container.find(35);}, std::out_of_range);
+  EXPECT_THROW({[[maybe_unused]] auto it = test_container.find(35);}, bucket_index_not_found_error);
 }
 
 // Add new test case for std::set
@@ -1100,24 +1099,24 @@ TEST_F(BucketListTest, AtMethod) {
   });
 
   // Test accessing non-existing values
-  EXPECT_THROW({[[maybe_unused]] auto& values = test_container.at(15);}, std::out_of_range);
-  EXPECT_THROW({[[maybe_unused]] auto& values = test_container.at(35);}, std::out_of_range);
+  EXPECT_THROW({[[maybe_unused]] auto& values = test_container.at(15);}, bucket_index_not_found_error);
+  EXPECT_THROW({[[maybe_unused]] auto& values = test_container.at(35);}, bucket_index_not_found_error);
 
   // Test boundary conditions
   EXPECT_NO_THROW({  // Lower bound is inclusive
     auto& values = test_container.at(0);
     verifyContainerContents(values, {"test1"});
   });
-  EXPECT_THROW({[[maybe_unused]] auto& values = test_container.at(10);}, std::out_of_range); // Upper bound is exclusive
+  EXPECT_THROW({[[maybe_unused]] auto& values = test_container.at(10);}, bucket_index_not_found_error); // Upper bound is exclusive
   EXPECT_NO_THROW({  // Lower bound is inclusive
     auto& values = test_container.at(20);
     verifyContainerContents(values, {"test2"});
   });
-  EXPECT_THROW({[[maybe_unused]] auto& values = test_container.at(30);}, std::out_of_range); // Upper bound is exclusive
+  EXPECT_THROW({[[maybe_unused]] auto& values = test_container.at(30);}, bucket_index_not_found_error); // Upper bound is exclusive
 
   // Test empty container
   container_type empty_container;
-  EXPECT_THROW({[[maybe_unused]] auto& values = empty_container.at(5);}, std::out_of_range);
+  EXPECT_THROW({[[maybe_unused]] auto& values = empty_container.at(5);}, bucket_index_not_found_error);
 
   // Test const version
   const container_type& const_container = test_container;
@@ -1125,7 +1124,7 @@ TEST_F(BucketListTest, AtMethod) {
     const auto& values = const_container.at(5);
     verifyContainerContents(values, {"test1"});
   });
-  EXPECT_THROW({[[maybe_unused]] const auto& values = const_container.at(15);}, std::out_of_range);
+  EXPECT_THROW({[[maybe_unused]] const auto& values = const_container.at(15);}, bucket_index_not_found_error);
 }
 
 TEST_F(BucketListTest, NextMethod) {
@@ -1201,5 +1200,4 @@ TEST_F(BucketListTest, PreviousMethod) {
   verifyContainerContents(const_it->values(), {"test3"});
 }
 
-} // namespace test
-} // namespace masutils
+} // namespace masutils::test

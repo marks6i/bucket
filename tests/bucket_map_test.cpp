@@ -94,7 +94,7 @@ TEST_F(BucketMapTest, ConstrainedConstruction) {
 }
 
 TEST_F(BucketMapTest, InvalidConstrainedConstruction) {
-  EXPECT_THROW(container_type test_container(100, 0), std::invalid_argument);
+  EXPECT_THROW(container_type test_container(100, 0), invalid_range_order_error);
 }
 
 // Accessor tests
@@ -197,9 +197,9 @@ TEST_F(BucketMapTest, UnconstrainedBoundOperations) {
   test_container.spread(9, 11, "test3");
 
   EXPECT_THROW(
-      { [[maybe_unused]] auto low = test_container.low(); }, std::runtime_error);
+      { [[maybe_unused]] auto low = test_container.low(); }, bounds_not_constrained_error);
   EXPECT_THROW(
-      { [[maybe_unused]] auto high = test_container.high(); }, std::runtime_error);
+      { [[maybe_unused]] auto high = test_container.high(); }, bounds_not_constrained_error);
 }
 
 TEST_F(BucketMapTest, ConstrainedBoundOperations) {
@@ -743,12 +743,12 @@ TEST_F(BucketMapTest, FindMethod) {
   });
 
   // Test upper bounds (exclusive)
-  EXPECT_THROW({[[maybe_unused]] auto it = test_container.find(10);}, std::out_of_range);
-  EXPECT_THROW({[[maybe_unused]] auto it = test_container.find(30);}, std::out_of_range);
+  EXPECT_THROW({[[maybe_unused]] auto it = test_container.find(10);}, bucket_index_not_found_error);
+  EXPECT_THROW({[[maybe_unused]] auto it = test_container.find(30);}, bucket_index_not_found_error);
 
   // Test gaps
-  EXPECT_THROW({[[maybe_unused]] auto it = test_container.find(15);}, std::out_of_range);
-  EXPECT_THROW({[[maybe_unused]] auto it = test_container.find(35);}, std::out_of_range);
+  EXPECT_THROW({[[maybe_unused]] auto it = test_container.find(15);}, bucket_index_not_found_error);
+  EXPECT_THROW({[[maybe_unused]] auto it = test_container.find(35);}, bucket_index_not_found_error);
 
   // Test const version
   const container_type& const_container = test_container;
@@ -807,7 +807,7 @@ TEST_F(BucketMapTest, FindMethodWithOverlappingRanges) {
   });
 
   // Test finding values in gaps between ranges
-  EXPECT_THROW({[[maybe_unused]] auto it = test_container.find(35);}, std::out_of_range);
+  EXPECT_THROW({[[maybe_unused]] auto it = test_container.find(35);}, bucket_index_not_found_error);
 }
 
 TEST_F(BucketMapTest, BucketRangeOperations) {
@@ -856,7 +856,7 @@ TEST_F(BucketMapTest, FindEdgeCases) {
     EXPECT_EQ(it->high(), 10);
     verifyContainerContents(it->values(), {"test1"});
   });
-  EXPECT_THROW({[[maybe_unused]] auto it = test_container.find(10);}, std::out_of_range); // high boundary is exclusive
+  EXPECT_THROW({[[maybe_unused]] auto it = test_container.find(10);}, bucket_index_not_found_error); // high boundary is exclusive
   
   EXPECT_NO_THROW({
     auto it = test_container.find(5);
@@ -866,11 +866,11 @@ TEST_F(BucketMapTest, FindEdgeCases) {
   });
 
   // Test finding in gaps
-  EXPECT_THROW({[[maybe_unused]] auto it = test_container.find(15);}, std::out_of_range);
+  EXPECT_THROW({[[maybe_unused]] auto it = test_container.find(15);}, bucket_index_not_found_error);
 
   // Test finding in empty container
   container_type empty_container;
-  EXPECT_THROW({[[maybe_unused]] auto it = empty_container.find(5);}, std::out_of_range);
+  EXPECT_THROW({[[maybe_unused]] auto it = empty_container.find(5);}, bucket_index_not_found_error);
 }
 
 TEST_F(BucketMapTest, FindInConstrainedBuckets) {
@@ -885,7 +885,7 @@ TEST_F(BucketMapTest, FindInConstrainedBuckets) {
     EXPECT_EQ(it->high(), 10);
     verifyContainerContents(it->values(), {"test1"});
   });
-  EXPECT_THROW({[[maybe_unused]] auto it = test_container.find(100);}, std::out_of_range); // Upper bound is exclusive
+  EXPECT_THROW({[[maybe_unused]] auto it = test_container.find(100);}, bucket_index_not_found_error); // Upper bound is exclusive
 
   // Test finding within valid ranges
   EXPECT_NO_THROW({
@@ -991,16 +991,16 @@ TEST_F(BucketMapTest, AtMethod) {
   });
 
   // Test upper bounds (exclusive)
-  EXPECT_THROW({[[maybe_unused]] auto& values = test_container.at(10);}, std::out_of_range);
-  EXPECT_THROW({[[maybe_unused]] auto& values = test_container.at(30);}, std::out_of_range);
+  EXPECT_THROW({[[maybe_unused]] auto& values = test_container.at(10);}, bucket_index_not_found_error);
+  EXPECT_THROW({[[maybe_unused]] auto& values = test_container.at(30);}, bucket_index_not_found_error);
 
   // Test gaps
-  EXPECT_THROW({[[maybe_unused]] auto& values = test_container.at(15);}, std::out_of_range);
-  EXPECT_THROW({[[maybe_unused]] auto& values = test_container.at(35);}, std::out_of_range);
+  EXPECT_THROW({[[maybe_unused]] auto& values = test_container.at(15);}, bucket_index_not_found_error);
+  EXPECT_THROW({[[maybe_unused]] auto& values = test_container.at(35);}, bucket_index_not_found_error);
 
   // Test empty container
   container_type empty_container;
-  EXPECT_THROW({[[maybe_unused]] auto& values = empty_container.at(5);}, std::out_of_range);
+  EXPECT_THROW({[[maybe_unused]] auto& values = empty_container.at(5);}, bucket_index_not_found_error);
 
   // Test const version
   const container_type& const_container = test_container;
@@ -1008,7 +1008,7 @@ TEST_F(BucketMapTest, AtMethod) {
     const auto& values = const_container.at(5);
     verifyContainerContents(values, {"test1"});
   });
-  EXPECT_THROW({[[maybe_unused]] const auto& values = const_container.at(15);}, std::out_of_range);
+  EXPECT_THROW({[[maybe_unused]] const auto& values = const_container.at(15);}, bucket_index_not_found_error);
 }
 
 // Update FindMethod test to check for exceptions
@@ -1034,9 +1034,9 @@ TEST_F(BucketMapTest, FindMethodThrowsException) {
   });
 
   // Test finding non-existent values throws exception
-  EXPECT_THROW({[[maybe_unused]] auto it = test_container.find(15);}, std::out_of_range);
-  EXPECT_THROW({[[maybe_unused]] auto it = test_container.find(35);}, std::out_of_range);
-  EXPECT_THROW({[[maybe_unused]] auto it = test_container.find(55);}, std::out_of_range);
+  EXPECT_THROW({[[maybe_unused]] auto it = test_container.find(15);}, bucket_index_not_found_error);
+  EXPECT_THROW({[[maybe_unused]] auto it = test_container.find(35);}, bucket_index_not_found_error);
+  EXPECT_THROW({[[maybe_unused]] auto it = test_container.find(55);}, bucket_index_not_found_error);
 
   // Test const version
   const container_type& const_container = test_container;
@@ -1046,7 +1046,7 @@ TEST_F(BucketMapTest, FindMethodThrowsException) {
     EXPECT_EQ(const_it->high(), 50);
     verifyContainerContents(const_it->values(), {"test3"});
   });
-  EXPECT_THROW({[[maybe_unused]] auto it = const_container.find(15);}, std::out_of_range);
+  EXPECT_THROW({[[maybe_unused]] auto it = const_container.find(15);}, bucket_index_not_found_error);
 }
 
 TEST_F(BucketMapTest, NextMethod) {

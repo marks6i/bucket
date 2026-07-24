@@ -6,8 +6,7 @@
 
 using namespace masutils;
 
-namespace masutils {
-namespace test {
+namespace masutils::test {
 
 class BucketMapReadmeTest : public ::testing::Test {
 protected:
@@ -131,5 +130,4 @@ TEST_F(BucketMapReadmeTest, CustomTypes) {
     EXPECT_EQ(output.str(), expected_output);
 }
 
-} // namespace test
-} // namespace masutils 
+} // namespace masutils::test
