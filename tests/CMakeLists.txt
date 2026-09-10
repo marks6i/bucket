@@ -26,3 +26,9 @@ bucket_add_test(compare_traits_test)
 bucket_add_test(buckets_test)
 bucket_add_test(buckets_supp_test)
 bucket_add_test(main_support_test)
+
+# known_issues_test documents/reproduces latent library bugs discovered
+# while writing this suite. Its tests are all DISABLED_ by default (see
+# the file for how to run them explicitly) so that this target does not
+# affect the overall pass/fail status of `ctest`.
+bucket_add_test(known_issues_test)
