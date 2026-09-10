@@ -1,5 +1,5 @@
-#include "../external/googletest/googletest/include/gtest/gtest.h"
-#include "../include/bucket/bucket_map.h"
+#include <gtest/gtest.h>
+#include <bucket/bucket_map.h>
 #include <list>
 #include <string>
 #include <vector>

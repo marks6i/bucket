@@ -1,6 +1,6 @@
-#include "../external/googletest/googletest/include/gtest/gtest.h"
-#include "../include/bucket/bucket_list.h"
-#include "../include/bucket/bucket_map.h"
+#include <gtest/gtest.h>
+#include <bucket/bucket_list.h>
+#include <bucket/bucket_map.h>
 #include <vector>
 #include <string>
 

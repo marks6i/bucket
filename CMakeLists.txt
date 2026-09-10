@@ -47,14 +47,8 @@ target_include_directories(bucket INTERFACE
     $<INSTALL_INTERFACE:include>
 )
 
-# Add test executables
-add_executable(bucket_list_test tests/bucket_list_test.cpp)
-target_link_libraries(bucket_list_test PRIVATE bucket gtest_main gmock_main)
-add_test(NAME bucket_list_test COMMAND bucket_list_test)
-
-add_executable(bucket_map_test tests/bucket_map_test.cpp)
-target_link_libraries(bucket_map_test PRIVATE bucket gtest_main gmock_main)
-add_test(NAME bucket_map_test COMMAND bucket_map_test)
+# Add test executables (defined in tests/CMakeLists.txt)
+add_subdirectory(tests)
 
 # Install targets
 include(GNUInstallDirs)

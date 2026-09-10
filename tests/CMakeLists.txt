@@ -1,18 +1,11 @@
-# Create test executable
-add_executable(bucket_tests
-    main.cpp
-)
+include(GoogleTest)
 
-# Link against Google Test
-target_link_libraries(bucket_tests PRIVATE
-    GTest::gtest_main
-    GTest::gmock_main
-)
+# Each test file is built as its own executable and linked against
+# gtest_main/gmock_main, which supplies the test runner's main().
+add_executable(bucket_list_test bucket_list_test.cpp)
+target_link_libraries(bucket_list_test PRIVATE bucket gtest_main gmock_main)
+gtest_discover_tests(bucket_list_test)
 
-# Include directories
-target_include_directories(bucket_tests PRIVATE
-    ${PROJECT_SOURCE_DIR}/include
-)
-
-# Register tests
-gtest_discover_tests(bucket_tests) 
+add_executable(bucket_map_test bucket_map_test.cpp)
+target_link_libraries(bucket_map_test PRIVATE bucket gtest_main gmock_main)
+gtest_discover_tests(bucket_map_test) 
