@@ -15,6 +15,10 @@
 #ifndef MASUTILS_OPTIONAL_H_
 #define MASUTILS_OPTIONAL_H_
 
+#ifndef OSTREAM_H_
+#include <ostream>
+#endif // OSTREAM_H_
+
 namespace masutils {
 
 // This is a very simple implementation of std::optional. It is not a complete implementation.

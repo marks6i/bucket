@@ -33,6 +33,10 @@
 #include <string>
 #endif // STRING_H_
 
+#ifndef OSTREAM_H_
+#include <ostream>
+#endif // OSTREAM_H_
+
 #ifndef MASUTILS_OPTIONAL_H_
 #include "optional.h"
 #endif // MASUTILS_OPTIONAL_H_

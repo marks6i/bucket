@@ -21,6 +21,10 @@
 #include <iosfwd>
 #endif // !IOSFWD_H_
 
+#ifndef OSTREAM_H_
+#include <ostream>
+#endif // !OSTREAM_H_
+
 #ifndef CSTRING_H_
 #include <cstring>
 #endif // !CSTRING_H_
